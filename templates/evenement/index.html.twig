@@ -1,41 +1,81 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Evenement{% endblock %}
+{% block title %}Gestion des Évènements{% endblock %}
 
 {% block body %}
-    <h1>Evenements</h1>
+<div class="main-wrapper">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 fw-bold text-dark">Évènements</h1>
+                <p class="text-muted">Liste et suivi des évènements de l'organisation</p>
+            </div>
+            <a href="{{ path('app_evenement_new') }}" class="btn btn-cute">
+                <i class="fas fa-plus me-2"></i>Nouvel évènement
+            </a>
+        </div>
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Id</th>
-                <th>Nom</th>
-                <th>Date</th>
-                <th>Montant</th>
-                <th>Commentaire</th>
-                <th>actions</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for evenement in evenements %}
-            <tr>
-                <td>{{ evenement.id }}</td>
-                <td>{{ evenement.nom }}</td>
-                <td>{{ evenement.date ? evenement.date|date('Y-m-d') : '' }}</td>
-                <td>{{ evenement.montant }}</td>
-                <td>{{ evenement.commentaire }}</td>
-                <td>
-                    <a href="{{ path('app_evenement_show', {'id': evenement.id}) }}">show</a>
-                    <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}">edit</a>
-                </td>
-            </tr>
-        {% else %}
-            <tr>
-                <td colspan="6">no records found</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-
-    <a href="{{ path('app_evenement_new') }}">Create new</a>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Id</th>
+                        <th>Nom</th>
+                        <th>Date</th>
+                        <th>Montant</th>
+                        <th>Commentaire</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for evenement in evenements %}
+                    <tr>
+                        <td class="text-muted">#{{ evenement.id }}</td>
+                        <td>
+                            <span class="fw-bold text-primary">{{ evenement.nom }}</span>
+                        </td>
+                        <td>
+                            <i class="far fa-calendar-alt me-1 text-muted"></i>
+                            {{ evenement.date ? evenement.date|date('d/m/Y') : 'Non définie' }}
+                        </td>
+                        <td class="fw-bold">
+                            {{ evenement.montant ? evenement.montant|number_format(0, '.', ' ') ~ ' MGA' : '-' }}
+                        </td>
+                        <td>
+                            <span class="small text-muted">{{ evenement.commentaire|default('Aucun commentaire')|slice(0, 50) }}...</span>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                <a href="{{ path('app_evenement_show', {'id': evenement.id}) }}" 
+                                   class="btn btn-sm btn-outline-secondary border-0 bg-light" 
+                                   title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}" 
+                                   class="btn btn-sm btn-outline-secondary border-0 bg-light ms-1" 
+                                   title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        {# Corrigé : colspan="6" car il y a 6 colonnes #}
+                        <td colspan="6" class="text-center py-5">
+                            <div class="mb-3">
+                                <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="60" class="opacity-25" alt="aucun résultat">
+                            </div>
+                            <p class="text-muted fw-bold">Aucun évènement enregistré pour le moment.</p>
+                            <a href="{{ path('app_evenement_new') }}" class="btn btn-sm btn-link text-decoration-none" style="color: var(--primary-soft)">
+                                Créer le premier évènement
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% endblock %}

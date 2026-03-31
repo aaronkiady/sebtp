@@ -23,7 +23,7 @@ final class CotisationController extends AbstractController
         ]);
     }
 
-    #[Route('/new/{adherent_id}', name: 'app_cotisation_new', methods: ['GET', 'POST'])]
+    #[Route('/new/{adherent_id?}', name: 'app_cotisation_new', methods: ['GET', 'POST'])]
     public function new(Request $request, int $adherent_id, EntityManagerInterface $entityManager): Response
     {
         $adherent = $entityManager->getRepository(Liste::class)->find($adherent_id);
