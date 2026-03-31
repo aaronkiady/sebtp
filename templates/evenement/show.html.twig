@@ -1,38 +1,65 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Evenement{% endblock %}
+{% block title %}Détails Évènement{% endblock %}
 
 {% block body %}
-    <h1>Evenement</h1>
+<div class="main-wrapper">
+    <div class="form-card-wide">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <div>
+                    <h4 class="mb-0 fw-800">{{ evenement.nom }}</h4>
+                    <p class="text-muted mb-0 small">Consultation des informations détaillées</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}" class="btn-action btn-cute text-decoration-none">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                </div>
+            </div>
+        </div>
 
-    <table class="table">
-        <tbody>
-            <tr>
-                <th>Id</th>
-                <td>{{ evenement.id }}</td>
-            </tr>
-            <tr>
-                <th>Nom</th>
-                <td>{{ evenement.nom }}</td>
-            </tr>
-            <tr>
-                <th>Date</th>
-                <td>{{ evenement.date ? evenement.date|date('Y-m-d') : '' }}</td>
-            </tr>
-            <tr>
-                <th>Montant</th>
-                <td>{{ evenement.montant }}</td>
-            </tr>
-            <tr>
-                <th>Commentaire</th>
-                <td>{{ evenement.commentaire }}</td>
-            </tr>
-        </tbody>
-    </table>
+        <div class="p-4 p-md-5">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <label class="form-label text-uppercase small opacity-75">ID Évènement</label>
+                    <div class="p-3 bg-light rounded-3 fw-bold">#{{ evenement.id }}</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-uppercase small opacity-75">Date prévue</label>
+                    <div class="p-3 bg-light rounded-3">
+                        <i class="far fa-calendar text-primary me-2"></i>
+                        {{ evenement.date ? evenement.date|date('d/m/Y') : 'Non définie' }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-uppercase small opacity-75">Budget / Montant</label>
+                    <div class="p-3 bg-light rounded-3 fw-bold text-dark">
+                        {{ evenement.montant|number_format(0, '.', ' ') }} MGA
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label text-uppercase small opacity-75">Commentaire</label>
+                    <div class="p-4 border rounded-4 bg-white shadow-sm">
+                        {{ evenement.commentaire|default('Aucun commentaire supplémentaire.')|nl2br }}
+                    </div>
+                </div>
+            </div>
 
-    <a href="{{ path('app_evenement_index') }}">back to list</a>
-
-    <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}">edit</a>
-
-    {{ include('evenement/_delete_form.html.twig') }}
+            <div class="mt-5 pt-4 border-top d-flex justify-content-between align-items-center">
+                <a href="{{ path('app_evenement_index') }}" class="btn-action btn-cancel text-decoration-none">
+                    <i class="fas fa-chevron-left"></i> Retour à la liste
+                </a>
+                
+                {# Le delete est ici dans sa propre petite zone 
+                <div class="bg-danger-subtle p-2 rounded-3">
+                    {{ include('evenement/_delete_form.html.twig') }}
+                </div>#}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

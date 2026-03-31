@@ -29,6 +29,14 @@ class ListeType extends AbstractType
             ->add('email', TextType::class, [
                 'label' => 'Adresse email',
             ])
+            ->add('statut', ChoiceType::class, [
+                'label' => 'Statut',
+                'choices' => [
+                    'Actif' => 'actif',
+                    'Inactif' => 'inactif',
+                    'Radié' => 'radie',
+                ]
+            ])
             ->add('siteweb', TextType::class, [
                 'label' => 'Site Web',
             ])

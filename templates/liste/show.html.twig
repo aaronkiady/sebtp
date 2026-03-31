@@ -2,134 +2,110 @@
 
 {% block title %}Détails de {{ liste.nom }}{% endblock %}
 
-{% block stylesheets %}
-    {{ parent() }}
-    <style>
-        .page-container { padding: 3rem 1rem; max-width: 700px; margin: 0 auto; }
-        .info-card {
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.03);
-            padding: 3rem;
-            border: 1px solid #f1f5f9;
-        }
-        .info-header { border-bottom: 2px solid #f8fafc; margin-bottom: 2rem; padding-bottom: 1.5rem; }
-        .info-row {
-            display: flex;
-            align-items: center;
-            padding: 1.2rem 0;
-            border-bottom: 1px solid #f8fafc;
-        }
-        .info-label { width: 30%; color: #94a3b8; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; }
-        .info-value { width: 70%; color: #1e293b; font-weight: 500; font-size: 1.05rem; }
-        
-        /* Barre d'actions moderne */
-        .actions-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 2.5rem;
-            padding-top: 2rem;
-            border-top: 1px solid #f1f5f9;
-        }
-        
-        .btn-modern {
-            padding: 0.8rem 1.5rem;
-            border-radius: 14px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-        }
-
-        .btn-edit-main {
-            background: #6366f1;
-            color: white !important;
-            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
-        }
-
-        .btn-delete-main {
-            background: #fff1f2;
-            color: #e11d48 !important;
-        }
-
-        .btn-modern:hover { transform: translateY(-2px); filter: brightness(1.1); }
-    </style>
-{% endblock %}
-
 {% block body %}
-<div class="page-container">
-    <a href="{{ path('app_liste_index') }}" class="text-muted text-decoration-none small mb-4 d-inline-block">← Retour à la liste</a>
-
-    <div class="info-card">
-        <div class="info-header d-flex align-items-center">
-            <div class="rounded-4 bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; font-weight: 700;">
-                {{ liste.nom|first|upper }}
+<div class="main-wrapper">
+    <div class="form-card-wide">
+        {# En-tête de profil #}
+        <div class="card-header-modern justify-content-between">
+            <div class="d-flex align-items-center">
+                <div class="header-icon" style="background: var(--primary); color: white; font-weight: 800; font-size: 1.5rem;">
+                    {{ liste.nom|first|upper }}
+                </div>
+                <div>
+                    <h2 class="h3 fw-bold mb-0 text-dark">{{ liste.nom }}</h2>
+                    <span class="badge {{ liste.statutMenmbre == 'bureau' ? 'bg-primary-light text-primary' : 'bg-light text-muted' }} rounded-pill px-3">
+                        {{ liste.statutMenmbre == 'bureau' ? 'Membre du Bureau' : 'Simple Membre' }}
+                    </span>
+                </div>
             </div>
-            <h1 class="h3 fw-bold mb-0">{{ liste.nom }}</h1>
-        </div>
-        <div class="mt-4">
-    <h4 class="text-muted">Gestion des finances</h4>
-    <div class="d-flex gap-2">
-        {# Bouton pour VOIR l'historique #}
-        <a href="{{ path('app_cotisation_history', {'adherent_id': liste.id}) }}" class="btn btn-info text-white shadow-sm">
-            <i class="fas fa-list"></i> Historique cotisations
-        </a>
-        <a href="{{ path('app_formation_history', {'adherent_id': liste.id}) }}" class="btn btn-secondary">
-            Historique Formations
-        </a>
-        <a href="{{ path('app_evenement_history', {'adherent_id': liste.id}) }}" class="btn btn-outline-info">
-            <i class="fas fa-calendar-day"></i> Voir Événements
-        </a>
-
-        {# Bouton pour AJOUTER 
-        <a href="{{ path('app_cotisation_new', {'adherent_id': liste.id}) }}" class="btn btn-primary shadow-sm">
-            <i class="fas fa-plus"></i> Enregistrer une cotisation
-        </a>#}
-    </div>
-</div>
-
-        <div class="info-row"><span class="info-label">Adresse</span><span class="info-value">{{ liste.adresse }}</span></div>
-        <div class="info-row"><span class="info-label">Téléphone</span><span class="info-value">{{ liste.numero }}</span></div>
-        <div class="info-row"><span class="info-label">Email</span><span class="info-value">{{ liste.email }}</span></div>
-        <div class="info-row"><span class="info-label">Site Web</span><span class="info-value">{{ liste.siteweb }}</span></div>
-        <div class="info-row"><span class="info-label">Domaine d'activité</span><span class="info-value">{{ liste.activite }}</span></div>
-        <div class="info-row"><span class="info-label">Filière</span><span class="info-value">{{ liste.filiere }}</span></div>
-        <div class="info-row"><span class="info-label">Nombre d'employés</span><span class="info-value">{{ liste.nbEmployes }}</span></div>
-        <div class="info-row"><span class="info-label">Statut</span><span class="info-value">{{ liste.statut }}</span></div>
-        <div class="info-row"><span class="info-label">Cotisation FMTP</span><span class="info-value">{{ liste.cotFMTP }}</span></div>
-        <div class="info-row"><span class="info-label">Directeur général</span><span class="info-value">{{ liste.dg }}</span></div>
-        <div class="info-row"><span class="info-label">Adresse du DG</span><span class="info-value">{{ liste.adresseDg }}</span></div>
-        <div class="info-row"><span class="info-label">Téléphone du DG</span><span class="info-value">{{ liste.telephoneDg }}</span></div>
-        <div class="info-row">
-        <span class="info-label">Statut du membre</span>
-            <span class="info-value">
-                {{ liste.statutMenmbre == 'bureau' ? 'Membre du Bureau' : 'Simple Membre' }}
-            </span>
+            <div class="d-flex gap-2">
+                <a href="{{ path('app_liste_edit', {'id': liste.id}) }}" class="btn-action btn-cute text-decoration-none">
+                    <i class="fas fa-pen"></i> Modifier
+                </a>
+            </div>
         </div>
 
-        {% if liste.statutMenmbre == 'bureau' %}
-            <div class="info-row">
-                <span class="info-label">Fonction au SEBTP</span>
-                <span class="info-value">{{ liste.fonctionSEBTP|default('Non renseignée') }}</span>
+        <div class="p-4 p-md-5">
+            {# Section Historiques / Actions rapides #}
+            <div class="mb-5">
+                <h6 class="text-uppercase fw-bold text-muted small mb-3" style="letter-spacing: 1px;">Gestion et Suivi</h6>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ path('app_cotisation_history', {'adherent_id': liste.id}) }}" class="btn-action btn-cancel text-decoration-none border shadow-sm">
+                        <i class="fas fa-file-invoice-dollar text-primary"></i> Cotisations
+                    </a>
+                    <a href="{{ path('app_formation_history', {'adherent_id': liste.id}) }}" class="btn-action btn-cancel text-decoration-none border shadow-sm">
+                        <i class="fas fa-graduation-cap text-success"></i> Formations
+                    </a>
+                    <a href="{{ path('app_evenement_history', {'adherent_id': liste.id}) }}" class="btn-action btn-cancel text-decoration-none border shadow-sm">
+                        <i class="fas fa-calendar-star text-warning"></i> Événements
+                    </a>
+                </div>
             </div>
 
-            <div class="info-row">
-                <span class="info-label">Mandat</span>
-                <span class="info-value">{{ liste.mandat|default('Non renseigné') }}</span>
+            {# Grille d'informations #}
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <label class="form-label text-uppercase opacity-50 small">Contact</label>
+                    <div class="fw-bold"><i class="fas fa-phone me-2 text-muted"></i>{{ liste.numero }}</div>
+                    <div class="text-primary mt-1"><i class="fas fa-envelope me-2 text-muted"></i>{{ liste.email }}</div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <label class="form-label text-uppercase opacity-50 small">Localisation</label>
+                    <div class="fw-bold"><i class="fas fa-map-marker-alt me-2 text-muted"></i>{{ liste.adresse }}</div>
+                    <div class="text-muted mt-1"><i class="fas fa-globe me-2"></i>{{ liste.siteweb|default('N/A') }}</div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <label class="form-label text-uppercase opacity-50 small">Activité</label>
+                    <div class="fw-bold text-dark">{{ liste.activite }}</div>
+                    <div class="badge bg-light text-dark mt-1">{{ liste.filiere }}</div>
+                </div>
+                
+                <div class="col-12 mt-4 p-4 rounded-4" style="background: #f8fafc;">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <span class="d-block text-muted small">Employés</span>
+                            <span class="fw-bold">{{ liste.nbEmployes }}</span>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="d-block text-muted small">Statut Juridique</span>
+                            <span class="fw-bold text-uppercase">{{ liste.statut }}</span>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="d-block text-muted small">Cotisation FMTP</span>
+                            <span class="fw-bold">{{ liste.cotFMTP }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {# Section Direction #}
+                <div class="col-12 mt-4 pt-4 border-top">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-user-tie me-2 text-primary"></i>Direction Générale</h6>
+                    <div class="row">
+                        <div class="col-md-4"><strong>{{ liste.dg }}</strong><br><span class="text-muted small">Directeur Général</span></div>
+                        <div class="col-md-4"><i class="fas fa-phone-alt me-2 small opacity-50"></i>{{ liste.telephoneDg }}</div>
+                        <div class="col-md-4"><i class="fas fa-map me-2 small opacity-50"></i>{{ liste.adresseDg }}</div>
+                    </div>
+                </div>
+
+                {% if liste.statutMenmbre == 'bureau' %}
+                <div class="col-12 mt-4 pt-4 border-top">
+                    <div class="p-3 rounded-4" style="background: linear-gradient(to right, #eef2ff, #fdf2f8);">
+                        <h6 class="fw-bold text-primary mb-2">Responsabilités SEBTP</h6>
+                        <div class="d-flex gap-5">
+                            <div><span class="text-muted small">Fonction:</span> <span class="fw-bold">{{ liste.fonctionSEBTP }}</span></div>
+                            <div><span class="text-muted small">Mandat:</span> <span class="fw-bold">{{ liste.mandat }}</span></div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
-        {% endif %}
 
-        <div class="actions-bar">
-            {{ include('liste/_delete_form.html.twig') }}
-
-            <a href="{{ path('app_liste_edit', {'id': liste.id}) }}" class="btn-modern btn-edit-main">
-                Modifier le profil
-            </a>
+            <div class="mt-5 pt-4 border-top d-flex justify-content-between align-items-center">
+                <a href="{{ path('app_liste_index') }}" class="btn-action btn-cancel text-decoration-none">
+                    <i class="fas fa-arrow-left"></i> Liste des membres
+                </a>
+                {{ include('liste/_delete_form.html.twig') }}
+            </div>
         </div>
     </div>
 </div>

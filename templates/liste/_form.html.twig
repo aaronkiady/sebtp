@@ -1,27 +1,28 @@
 {{ form_start(form) }}
-    <div class="form-card-container">
-        <div class="form-header">
-            <i class="fas fa-id-card"></i>
-            <h5 class="mb-0 fw-bold">Informations de l'adhérent</h5>
+    <div class="form-card-wide mx-auto my-4">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-id-card"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-800">Informations de l'adhérent</h4>
+                <p class="text-muted mb-0 small">Renseignez les détails professionnels du membre</p>
+            </div>
         </div>
 
-        <div class="p-4" id="form-content">
-            <div class="row">
+        <div class="p-4 p-md-5" id="form-content">
+            <div class="row g-4">
                 {% for field in form %}
                     {% if field.vars.name != '_token' %}
-                        <div class="col-md-6 mb-4">
+                        <div class="col-md-6">
                             <label class="form-label">
-                                {# Mapping des icônes #}
-                                {% if 'nom' in field.vars.name %}<i class="fas fa-user"></i>
-                                {% elseif 'email' in field.vars.name %}<i class="fas fa-envelope"></i>
-                                {% elseif 'numero' in field.vars.name %}<i class="fas fa-phone"></i>
-                                {% elseif 'adresse' in field.vars.name %}<i class="fas fa-map-marker-alt"></i>
-                                {% elseif 'statut' in field.vars.name %}<i class="fas fa-user-tag"></i>
-                                {% elseif 'date' in field.vars.name %}<i class="fas fa-calendar-alt"></i>
-                                {% elseif 'montant' in field.vars.name %}<i class="fas fa-money-bill-wave"></i>
-                                {% else %}<i class="fas fa-info-circle"></i>
+                                {% if 'nom' in field.vars.name %}<i class="fas fa-building me-2 opacity-50"></i>
+                                {% elseif 'email' in field.vars.name %}<i class="fas fa-envelope me-2 opacity-50"></i>
+                                {% elseif 'numero' in field.vars.name %}<i class="fas fa-phone me-2 opacity-50"></i>
+                                {% elseif 'adresse' in field.vars.name %}<i class="fas fa-map-marker-alt me-2 opacity-50"></i>
+                                {% elseif 'statut' in field.vars.name %}<i class="fas fa-tag me-2 opacity-50"></i>
+                                {% else %}<i class="fas fa-circle-info me-2 opacity-50"></i>
                                 {% endif %}
-                                
                                 {{ field.vars.label|default(field.vars.name|capitalize) }}
                             </label>
                             
@@ -34,19 +35,22 @@
 
             {{ form_rest(form) }}
 
-            <div class="border-top mt-3 pt-4 d-flex gap-2">
-                <button type="submit" class="btn btn-update">
-                    <i class="fas fa-save me-2"></i> {{ button_label|default('Mettre à jour') }}
-                </button>
-                <a href="{{ path('app_liste_index') }}" class="btn btn-cancel text-decoration-none">
+            <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
+                <a href="{{ path('app_liste_index') }}" class="btn-action btn-cancel text-decoration-none">
                     <i class="fas fa-times me-2"></i> Annuler
                 </a>
+                <button type="submit" class="btn-action btn-update">
+                    <i class="fas fa-save me-2"></i> {{ button_label|default('Enregistrer') }}
+                </button>
             </div>
         </div>
     </div>
 {{ form_end(form) }}
 
 <script>
+/**
+ * Gestion du rechargement AJAX pour les champs dynamiques (Bureau/Simple membre)
+ */
 document.addEventListener('change', function (e) {
     if (e.target.id === 'liste_statutMenmbre') {
         let formElement = e.target.closest('form');
@@ -55,16 +59,12 @@ document.addEventListener('change', function (e) {
         fetch(formElement.action || window.location.href, {
             method: 'POST',
             body: data,
-            headers: {
-                // Ce header est CRUCIAL pour le contrôleur
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(response => response.text())
         .then(html => {
             let parser = new DOMParser();
             let doc = parser.parseFromString(html, 'text/html');
-            
             let newContent = doc.getElementById('form-content');
             if (newContent) {
                 document.getElementById('form-content').innerHTML = newContent.innerHTML;

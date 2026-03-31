@@ -3,7 +3,9 @@
 {% block title %}Nouveau Membre{% endblock %}
 
 {% block body %}
-<div class="container py-4">
-    {{ include('liste/_form.html.twig', {'button_label': 'Enregistrer'}) }}
+<div class="main-wrapper">
+    <div class="container">
+        {{ include('liste/_form.html.twig', {'button_label': 'Créer le profil'}) }}
+    </div>
 </div>
 {% endblock %}

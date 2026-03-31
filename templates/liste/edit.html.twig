@@ -2,10 +2,10 @@
 
 {% block title %}Modifier {{ liste.nom }}{% endblock %}
 
-
 {% block body %}
-
-<div class="container py-4">
-    {{ include('liste/_form.html.twig', {'button_label': 'Mettre à jour'}) }}
+<div class="main-wrapper">
+    <div class="container">
+        {{ include('liste/_form.html.twig', {'button_label': 'Mettre à jour'}) }}
+    </div>
 </div>
 {% endblock %}
