@@ -16,28 +16,22 @@ class EvenementRepository extends ServiceEntityRepository
         parent::__construct($registry, Evenement::class);
     }
 
-    //    /**
-    //     * @return Evenement[] Returns an array of Evenement objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('e')
-    //            ->andWhere('e.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('e.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    /**
+     * Recherche des événements par terme
+     * @param string|null $term
+     * @return Evenement[]
+     */
+    public function findBySearch(?string $term): array
+    {
+        $qb = $this->createQueryBuilder('e');
 
-    //    public function findOneBySomeField($value): ?Evenement
-    //    {
-    //        return $this->createQueryBuilder('e')
-    //            ->andWhere('e.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+        if ($term) {
+            $qb->andWhere('e.nom LIKE :q OR e.montant LIKE :q OR e.commentaire LIKE :q')
+               ->setParameter('q', '%' . $term . '%');
+        }
+
+        return $qb->orderBy('e.date', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }

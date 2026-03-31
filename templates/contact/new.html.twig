@@ -1,0 +1,29 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouveau Contact{% endblock %}
+
+{% block body %}
+<div class="main-wrapper">
+    <div class="form-card-wide" style="max-width: 750px;">
+        <div class="card-header-modern">
+            <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-800">Ajouter un contact interne</h4>
+                <p class="text-muted mb-0 small">Structure : <strong>{{ adherent.nom }}</strong></p>
+            </div>
+        </div>
+
+        <div class="p-4 p-md-5">
+            {{ include('contact/_form.html.twig') }}
+            
+            <div class="mt-4 pt-3 text-center">
+                <a href="{{ path('app_liste_show', {'id': adherent.id}) }}" class="text-muted small text-decoration-none">
+                    <i class="fas fa-arrow-left me-1"></i> Annuler et retourner au profil
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

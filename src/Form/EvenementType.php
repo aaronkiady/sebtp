@@ -54,16 +54,22 @@ class EvenementType extends AbstractType
                     'class' => 'form-control'
                 ],
             ])
-            ->add('participants', EntityType::class, [
+            /*->add('participants', EntityType::class, [
                 'class' => Liste::class,
                 'choice_label' => 'nom',
                 'multiple' => true,
                 'expanded' => false,
-                'required' => false,
-                'label' => 'Sélectionner les participants (Adhérents)',
+                'by_reference' => false,
                 'attr' => [
                     'class' => 'form-control select2',
                 ],
+            ]);*/
+            ->add('participants', EntityType::class, [
+                'class' => Liste::class,
+                'choice_label' => 'nom',
+                'multiple' => true,
+                'expanded' => true,
+                'label' => 'Sélectionner les participants',
             ]);
     }
 

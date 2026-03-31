@@ -1,11 +1,20 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}New Formation{% endblock %}
+{% block title %}Nouvelle Formation{% endblock %}
 
 {% block body %}
-    <h1>Create new Formation</h1>
-
-    {{ include('formation/_form.html.twig') }}
-
-    <a href="{{ path('app_formation_index') }}">back to list</a>
+<div class="main-wrapper">
+    <div class="form-card-wide" style="max-width: 800px;">
+        <div class="card-header-modern">
+            <div class="header-icon" style="background: #f0fdf4; color: #16a34a;"><i class="fas fa-plus-circle"></i></div>
+            <div>
+                <h4 class="mb-0 fw-800">Ajouter une formation</h4>
+                <p class="text-muted mb-0 small">Création d'un nouveau module</p>
+            </div>
+        </div>
+        <div class="p-4 p-md-5">
+            {{ include('formation/_form.html.twig') }}
+        </div>
+    </div>
+</div>
 {% endblock %}

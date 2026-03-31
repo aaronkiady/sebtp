@@ -39,6 +39,9 @@
                     <a href="{{ path('app_evenement_history', {'adherent_id': liste.id}) }}" class="btn-action btn-cancel text-decoration-none border shadow-sm">
                         <i class="fas fa-calendar-star text-warning"></i> Événements
                     </a>
+                    <a href="{{ path('app_liste_contacts_interne', {'id': liste.id}) }}" class="btn-action btn-cancel text-decoration-none border shadow-sm">
+                        <i class="fas fa-address-book text-info"></i> Contacts Internes
+                    </a>
                 </div>
             </div>
 
@@ -99,7 +102,6 @@
                 </div>
                 {% endif %}
             </div>
-
             <div class="mt-5 pt-4 border-top d-flex justify-content-between align-items-center">
                 <a href="{{ path('app_liste_index') }}" class="btn-action btn-cancel text-decoration-none">
                     <i class="fas fa-arrow-left"></i> Liste des membres

@@ -15,10 +15,11 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ListeController extends AbstractController
 {
     #[Route(name: 'app_liste_index', methods: ['GET'])]
-    public function index(ListeRepository $listeRepository): Response
+    public function index(Request $request, ListeRepository $listeRepository): Response
     {
+        $searchTerm = $request->query->get('q');
         return $this->render('liste/index.html.twig', [
-            'listes' => $listeRepository->findAll(),
+            'listes' => $listeRepository->findBySearch($searchTerm),
         ]);
     }
 

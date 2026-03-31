@@ -1,42 +1,61 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Formation{% endblock %}
+{% block title %}Détails Formation{% endblock %}
 
 {% block body %}
-    <h1>Formation</h1>
+<div class="main-wrapper">
+    <div class="form-card-wide" style="max-width: 800px;">
+        <div class="card-header-modern justify-content-between">
+            <div class="d-flex align-items-center">
+                <div class="header-icon"><i class="fas fa-info-circle"></i></div>
+                <div>
+                    <h4 class="mb-0 fw-800">{{ formation.nom }}</h4>
+                    <p class="text-muted mb-0 small">Détails techniques de la formation</p>
+                </div>
+            </div>
+            <a href="{{ path('app_formation_edit', {'id': formation.id}) }}" class="btn-action btn-cute text-decoration-none">
+                <i class="fas fa-pen"></i> Modifier
+            </a>
+        </div>
 
-    <table class="table">
-        <tbody>
-            <tr>
-                <th>Id</th>
-                <td>{{ formation.id }}</td>
-            </tr>
-            <tr>
-                <th>Nom</th>
-                <td>{{ formation.nom }}</td>
-            </tr>
-            <tr>
-                <th>Type</th>
-                <td>{{ formation.type }}</td>
-            </tr>
-            <tr>
-                <th>DateDebut</th>
-                <td>{{ formation.dateDebut ? formation.dateDebut|date('Y-m-d') : '' }}</td>
-            </tr>
-            <tr>
-                <th>DateFin</th>
-                <td>{{ formation.dateFin ? formation.dateFin|date('Y-m-d') : '' }}</td>
-            </tr>
-            <tr>
-                <th>Organisateur</th>
-                <td>{{ formation.organisateur }}</td>
-            </tr>
-        </tbody>
-    </table>
+        <div class="p-4 p-md-5">
+            <div class="row g-4 mb-5">
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-4 bg-light">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Type de formation</label>
+                        <span class="fw-bold">{{ formation.type }}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-4 bg-light">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Organisateur</label>
+                        <span class="fw-bold">{{ formation.organisateur }}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-4">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Date de début</label>
+                        <span class="text-primary fw-bold"><i class="far fa-calendar-alt me-2"></i>{{ formation.dateDebut ? formation.dateDebut|date('d/m/Y') : 'Non définie' }}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-4">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Date de fin</label>
+                        <span class="text-success fw-bold"><i class="fas fa-calendar-check me-2"></i>{{ formation.dateFin ? formation.dateFin|date('d/m/Y') : 'Non définie' }}</span>
+                    </div>
+                </div>
+            </div>
+            
 
-    <a href="{{ path('app_formation_index') }}">back to list</a>
-
-    <a href="{{ path('app_formation_edit', {'id': formation.id}) }}">edit</a>
-
-    {{ include('formation/_delete_form.html.twig') }}
+            <div class="d-flex justify-content-between align-items-center border-top pt-4">
+                <a href="{{ path('app_formation_index') }}" class="btn-action btn-cancel text-decoration-none">
+                    <i class="fas fa-arrow-left"></i> Retour à la liste
+                </a>
+                {#<div class="opacity-75">
+                    {{ include('formation/_delete_form.html.twig') }}
+                </div>#}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

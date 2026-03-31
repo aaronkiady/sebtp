@@ -3,16 +3,31 @@
 {% block title %}Gestion des Évènements{% endblock %}
 
 {% block body %}
-<div class="main-wrapper">
+<div class="main-wrapper mt-5">
     <div class="form-card-wide p-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h1 class="h2 fw-bold text-dark">Évènements</h1>
-                <p class="text-muted">Liste et suivi des évènements de l'organisation</p>
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_home') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Évènements</h1>
+                    <p class="text-muted mb-0">Liste et suivi des évènements de l'organisation</p>
+                </div>
             </div>
+
+            {# Bouton de création à droite #}
             <a href="{{ path('app_evenement_new') }}" class="btn btn-cute">
                 <i class="fas fa-plus me-2"></i>Nouvel évènement
             </a>
+        </div>
+
+        <div class="px-2 mb-4">
+            {{ include('_search_bar.html.twig') }}
         </div>
 
         <div class="table-responsive">
@@ -61,15 +76,11 @@
                     </tr>
                 {% else %}
                     <tr>
-                        {# Corrigé : colspan="6" car il y a 6 colonnes #}
                         <td colspan="6" class="text-center py-5">
                             <div class="mb-3">
                                 <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="60" class="opacity-25" alt="aucun résultat">
                             </div>
-                            <p class="text-muted fw-bold">Aucun évènement enregistré pour le moment.</p>
-                            <a href="{{ path('app_evenement_new') }}" class="btn btn-sm btn-link text-decoration-none" style="color: var(--primary-soft)">
-                                Créer le premier évènement
-                            </a>
+                            <p class="text-muted fw-bold">Aucun évènement enregistré.</p>
                         </td>
                     </tr>
                 {% endfor %}

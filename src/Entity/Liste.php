@@ -84,11 +84,18 @@ class Liste
     #[ORM\ManyToMany(targetEntity: Evenement::class, mappedBy: 'participants')]
     private Collection $evenements;
 
+    /**
+     * @var Collection<int, Contact>
+     */
+    #[ORM\OneToMany(targetEntity: Contact::class, mappedBy: 'liste')]
+    private Collection $contacts;
+
     public function __construct()
     {
         $this->formations = new ArrayCollection();
         $this->cotisations = new ArrayCollection();
         $this->evenements = new ArrayCollection();
+        $this->contacts = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -369,5 +376,35 @@ class Liste
             }
         }
         return false;
+    }
+
+    /**
+     * @return Collection<int, Contact>
+     */
+    public function getContacts(): Collection
+    {
+        return $this->contacts;
+    }
+
+    public function addContact(Contact $contact): static
+    {
+        if (!$this->contacts->contains($contact)) {
+            $this->contacts->add($contact);
+            $contact->setListe($this);
+        }
+
+        return $this;
+    }
+
+    public function removeContact(Contact $contact): static
+    {
+        if ($this->contacts->removeElement($contact)) {
+            // set the owning side to null (unless already changed)
+            if ($contact->getListe() === $this) {
+                $contact->setListe(null);
+            }
+        }
+
+        return $this;
     }
 }

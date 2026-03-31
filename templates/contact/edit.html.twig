@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier Contact{% endblock %}
+
+{% block body %}
+<div class="main-wrapper">
+    <div class="form-card-wide" style="max-width: 750px;">
+        <div class="card-header-modern">
+            <div class="header-icon" style="background: #fff7ed; color: #ea580c;">
+                <i class="fas fa-user-edit"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-800">Modifier le contact</h4>
+                <p class="text-muted mb-0 small">Édition de : {{ contact.nom }}</p>
+            </div>
+        </div>
+
+        <div class="p-4 p-md-5">
+            {{ include('contact/_form.html.twig', {'button_label': 'Mettre à jour'}) }}
+            
+            <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+                <a href="{{ path('app_liste_show', {'id': contact.liste.id}) }}" class="btn btn-link text-muted text-decoration-none small">
+                    <i class="fas fa-chevron-left"></i> Retour au profil
+                </a>
+                {{ include('contact/_delete_form.html.twig') }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

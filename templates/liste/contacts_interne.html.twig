@@ -1,0 +1,77 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Contacts Internes - {{ liste.nom }}{% endblock %}
+
+{% block body %}
+<div class="main-wrapper">
+    <div class="form-card-wide">
+        <div class="card-header-modern justify-content-between">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_liste_show', {'id': liste.id}) }}" class="btn btn-sm btn-light rounded-circle me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h4 class="mb-0 fw-800">Contacts Internes</h4>
+                    <p class="text-muted mb-0 small">Structure : {{ liste.nom }}</p>
+                </div>
+            </div>
+            <a href="{{ path('app_contact_new', {'adherent_id': liste.id}) }}" class="btn-action btn-update text-decoration-none">
+                <i class="fas fa-plus"></i> Nouveau Contact
+            </a>
+        </div>
+
+        <div class="p-4 p-md-5">
+            <div class="row g-4">
+                {% for contact in liste.contacts %}
+                    <div class="col-md-6">
+                        <div class="p-4 rounded-4 border bg-white shadow-sm hover-up transition-all">
+                            <div class="d-flex justify-content-between">
+                                <div class="d-flex gap-3">
+                                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary" style="width: 45px; height: 45px;">
+                                        <i class="fas fa-user-tie"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold mb-1">{{ contact.nom }}</h5>
+                                        <span class="badge bg-primary-light text-primary mb-3">{{ contact.fonction }}</span>
+                                        
+                                        <div class="text-muted small mb-1">
+                                            <i class="fas fa-envelope me-2 opacity-50"></i>{{ contact.email }}
+                                        </div>
+                                        {% if contact.telephone %}
+                                            <div class="text-muted small">
+                                                <i class="fas fa-phone me-2 opacity-50"></i>{{ contact.telephone }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-link text-muted" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-3">
+                                        <li><a class="dropdown-item" href="{{ path('app_contact_edit', {'id': contact.id}) }}"><i class="fas fa-pen me-2 small"></i>Modifier</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="col-12 text-center py-5">
+                        <div class="opacity-25 mb-3">
+                            <i class="fas fa-address-book fa-4x"></i>
+                        </div>
+                        <h5 class="text-muted">Aucun contact enregistré</h5>
+                        <p class="small text-muted">Ajoutez les responsables RH ou Comptabilité de cette structure.</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-5 pt-4 border-top">
+                <a href="{{ path('app_liste_show', {'id': liste.id}) }}" class="text-muted text-decoration-none small">
+                    <i class="fas fa-chevron-left me-1"></i> Retour au profil de l'adhérent
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

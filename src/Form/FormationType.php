@@ -37,8 +37,8 @@ class FormationType extends AbstractType
                 'class' => Liste::class,
                 'choice_label' => 'nom',
                 'multiple' => true,
-                'expanded' => false,
-                'attr' => ['class' => 'form-select select2'] // Utiliser Select2 si possible pour la recherche
+                'expanded' => true,
+                'label' => 'Sélectionner les participants',
             ]);
     }
 

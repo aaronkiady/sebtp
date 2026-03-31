@@ -40,4 +40,24 @@ class ListeRepository extends ServiceEntityRepository
     //            ->getOneOrNullResult()
     //        ;
     //    }
+
+    public function findBySearch(?string $term): array
+    {
+        $qb = $this->createQueryBuilder('l');
+        if ($term) {
+            $qb->andWhere('l.nom LIKE :q OR l.email LIKE :q OR l.activite LIKE :q OR l.numero LIKE :q OR l.adresse LIKE :q')
+                ->setParameter('q', '%'.$term.'%');
+        }
+        return $qb->orderBy('l.nom', 'ASC')->getQuery()->getResult();
+    }
+
+    public function countByStatut(string $statut): int
+{
+    return $this->createQueryBuilder('l')
+        ->select('count(l.id)')
+        ->andWhere('l.statut = :s')
+        ->setParameter('s', $statut)
+        ->getQuery()
+        ->getSingleScalarResult();
+}
 }

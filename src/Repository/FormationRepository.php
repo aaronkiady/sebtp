@@ -16,28 +16,22 @@ class FormationRepository extends ServiceEntityRepository
         parent::__construct($registry, Formation::class);
     }
 
-    //    /**
-    //     * @return Formation[] Returns an array of Formation objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('f')
-    //            ->andWhere('f.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('f.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    /**
+     * Recherche des formations par terme
+     * @param string|null $term
+     * @return Formation[]
+     */
+    public function findBySearch(?string $term): array
+    {
+        $qb = $this->createQueryBuilder('f');
 
-    //    public function findOneBySomeField($value): ?Formation
-    //    {
-    //        return $this->createQueryBuilder('f')
-    //            ->andWhere('f.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+        if ($term) {
+            $qb->andWhere('f.nom LIKE :q OR f.type LIKE :q OR f.organisateur LIKE :q')
+               ->setParameter('q', '%' . $term . '%');
+        }
+
+        return $qb->orderBy('f.nom', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

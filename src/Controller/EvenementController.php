@@ -16,25 +16,42 @@ use Symfony\Component\Routing\Attribute\Route;
 final class EvenementController extends AbstractController
 {
     #[Route(name: 'app_evenement_index', methods: ['GET'])]
-    public function index(EvenementRepository $evenementRepository): Response
+    public function index(Request $request, EvenementRepository $evenementRepository): Response
     {
+        $searchTerm = $request->query->get('q');
+        
         return $this->render('evenement/index.html.twig', [
-            'evenements' => $evenementRepository->findAll(),
+            'evenements' => $evenementRepository->findBySearch($searchTerm),
         ]);
     }
 
     #[Route('/historique/{adherent_id}', name: 'app_evenement_history', methods: ['GET'])]
-    public function history(int $adherent_id, EntityManagerInterface $entityManager): Response
-    {
+    public function history(
+        int $adherent_id, 
+        EntityManagerInterface $entityManager, 
+        Request $request
+    ): Response {
         $adherent = $entityManager->getRepository(Liste::class)->find($adherent_id);
 
         if (!$adherent) {
             throw $this->createNotFoundException('Adhérent introuvable.');
         }
 
+        // On récupère les événements liés à cet adhérent
+        $evenements = $adherent->getEvenements();
+        
+        // Si recherche, on filtre manuellement ou via une méthode spécifique au Repository
+        $searchTerm = $request->query->get('q');
+        if ($searchTerm) {
+            // Option simple : filtrage PHP pour l'historique spécifique
+            $evenements = $evenements->filter(function(Evenement $e) use ($searchTerm) {
+                return stripos($e->getNom(), $searchTerm) !== false;
+            });
+        }
+
         return $this->render('evenement/history.html.twig', [
             'adherent' => $adherent,
-            'evenements' => $adherent->getEvenements(),
+            'evenements' => $evenements,
         ]);
     }
 

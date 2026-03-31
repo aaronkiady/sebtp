@@ -8,14 +8,15 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
 
     {% block stylesheets %}
     <style>
         :root {
-            --primary: #6366f1;          /* Indigo Moderne */
+            --primary: #6366f1; 
             --primary-light: #e0e7ff;
-            --secondary: #ff8fa3;        /* Rose Cute */
-            --accent: #f97316;           /* Orange Action */
+            --secondary: #ff8fa3;       
+            --accent: #f97316;           
             --bg-body: #f8fafc;
             --glass-bg: rgba(255, 255, 255, 0.95);
             --text-dark: #1e293b;
@@ -159,6 +160,45 @@
     {% endblock %}
 </head>
 <body>
+{% if app.user %}
+<header class="main-header sticky-top bg-white border-bottom shadow-sm">
+    <nav class="container-fluid px-4 py-2 d-flex justify-content-between align-items-center">
+        <a href="{{ path('app_home') }}" class="navbar-brand d-flex align-items-center">
+            <div class="logo-icon me-2">
+                <i class="fas fa-layer-group text-primary fs-3"></i>
+            </div>
+            <span class="fw-bold fs-4 text-dark tracking-tight">Gestion<span class="text-primary"> SEBTP</span></span>
+        </a>
+
+        <ul class="nav nav-pills d-none d-md-flex">
+            <li class="nav-item">
+                <a href="{{ path('app_home') }}" class="nav-link {{ app.request.get('_route') == 'app_home' ? 'active' : 'text-muted' }}">
+                    <i class="fas fa-home me-1"></i> Accueil
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ path('app_liste_index') }}" class="nav-link {{ 'liste' in app.request.get('_route') ? 'active' : 'text-muted' }}">
+                    <i class="fas fa-users me-1"></i> Adhérents
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ path('app_evenement_index') }}" class="nav-link {{ 'evenement' in app.request.get('_route') ? 'active' : 'text-muted' }}">
+                    <i class="fas fa-calendar-alt me-1"></i> Évènements
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ path('app_formation_index') }}" class="nav-link {{ 'formation' in app.request.get('_route') ? 'active' : 'text-muted' }}">
+                    <i class="fas fa-graduation-cap me-1"></i> Formations
+                </a>
+            </li>
+        </ul>
+         <a href="{{ path('app_logout') }}" class="btn btn-danger">
+            <i class="fas fa-power-off"></i> Déconnexion
+        </a>
+        
+    </nav>
+</header>
+{% endif %}
     <div class="container-fluid p-0">
         {% block body %}{% endblock %}
     </div>

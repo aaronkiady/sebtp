@@ -1,7 +1,158 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Dashboard | SEBTP{% endblock %}
 
 {% block body %}
-Mbola tsara
+<div class="container-fluid py-4">
+
+    <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap mb-4">
+        <div>
+            <h2 class="fw-bold">
+                Bonjour, <span class="text-gradient">{{ app.user.nom }}</span> 👋
+            </h2>
+            <p class="text-muted mb-0">Voici ce qui se passe aujourd’hui dans votre organisation.</p>
+        </div>
+        <div class="text-end d-none d-md-block">
+            <span class="badge bg-light text-dark border p-2 rounded-3">
+                <i class="far fa-calendar-alt me-1"></i> {{ "now"|date("d/m/Y") }}
+            </span>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card rose">
+                <i class="fas fa-users"></i>
+                <div>
+                    {# Affiche le total des actifs par défaut ou la somme #}
+                    <h3>{{ nb_actifs + nb_inactifs + nb_radies }}</h3>
+                    <p>Adhérents au total</p>
+                    <div class="mt-1">
+                        <small class="badge bg-white text-success p-1">{{ nb_actifs }} actifs</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="stat-card blue">
+                <i class="fas fa-calendar-alt"></i>
+                <div>
+                    <h3>{{ total_evenements }}</h3>
+                    <p>Évènements</p>
+                    <small class="text-white-50">Programmés en base</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="stat-card purple">
+                <i class="fas fa-graduation-cap"></i>
+                <div>
+                    <h3>{{ total_formations }}</h3>
+                    <p>Formations</p>
+                    <small class="text-white-50">Modules enregistrés</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-lg-8">
+
+            <div class="card-modern p-4 mb-4">
+                <h5 class="fw-bold mb-3">Actions rapides ⚡</h5>
+
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ path('app_liste_new') }}" class="btn btn-cute">
+                        <i class="fas fa-user-plus me-2"></i> Ajouter adhérent
+                    </a>
+
+                    <a href="{{ path('app_evenement_new') }}" class="btn btn-light-modern border">
+                        <i class="fas fa-calendar-plus me-2"></i> Créer évènement
+                    </a>
+
+                    <a href="{{ path('app_formation_index') }}" class="btn btn-light-modern border">
+                        <i class="fas fa-book me-2"></i> Voir formations
+                    </a>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="module-card">
+                        <i class="fas fa-users icon"></i>
+                        <h5>Annuaire Adhérents</h5>
+                        <p>Filtrer par statut ({{ nb_actifs }} actifs actuellement).</p>
+                        <a href="{{ path('app_liste_index') }}">Explorer l'annuaire →</a>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="module-card">
+                        <i class="fas fa-calendar icon"></i>
+                        <h5>Gestion Évènements</h5>
+                        <p>Consulter les {{ total_evenements }} évènements.</p>
+                        <a href="{{ path('app_evenement_index') }}">Voir le calendrier →</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="col-lg-4">
+
+            <div class="card-dark p-4 mb-4 shadow-lg">
+                <h5 class="fw-bold">Plateforme SEBTP 📊</h5>
+                <p class="small text-white-50">
+                    Gérez efficacement vos adhérents, suivez les cotisations et analysez les formations depuis un tableau de bord centralisé et dynamique.
+                </p>
+
+                <div class="mt-4 small">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>👥 Gestion des membres</span>
+                        <span class="text-success">✔</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>💰 Suivi des cotisations</span>
+                        <span class="text-success">✔</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>🎓 Suivi des formations</span>
+                        <span class="text-success">✔</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>📈 Rapports & statistiques</span>
+                        <span class="text-success">✔</span>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <span class="badge bg-success">Données en temps réel</span>
+                    <span class="badge bg-info ms-2">Centralisé</span>
+                </div>
+            </div>
+        <div class="card-modern p-4 border shadow-sm">
+                <h6 class="fw-bold mb-3">Résumé des Adhérents</h6>
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Actifs</span>
+                        <span class="badge bg-success-soft text-success rounded-pill">{{ nb_actifs }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Inactifs</span>
+                        <span class="badge bg-warning-soft text-warning rounded-pill">{{ nb_inactifs }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Radiés</span>
+                        <span class="badge bg-danger-soft text-danger rounded-pill">{{ nb_radies }}</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
 {% endblock %}

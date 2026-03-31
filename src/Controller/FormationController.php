@@ -15,11 +15,40 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/formation')]
 final class FormationController extends AbstractController
 {
-    #[Route(name: 'app_formation_index', methods: ['GET'])]
-    public function index(FormationRepository $formationRepository): Response
+   #[Route(name: 'app_formation_index', methods: ['GET'])]
+    public function index(Request $request, FormationRepository $formationRepository): Response
     {
+        // Récupération du terme de recherche depuis l'URL (?q=...)
+        $searchTerm = $request->query->get('q');
+
         return $this->render('formation/index.html.twig', [
-            'formations' => $formationRepository->findAll(),
+            'formations' => $formationRepository->findBySearch($searchTerm),
+        ]);
+    }
+
+    #[Route('/historique/{adherent_id}', name: 'app_formation_history', methods: ['GET'])]
+    public function history(int $adherent_id, EntityManagerInterface $entityManager, Request $request): Response
+    {
+        $adherent = $entityManager->getRepository(Liste::class)->find($adherent_id);
+
+        if (!$adherent) {
+            throw $this->createNotFoundException("Adhérent non trouvé");
+        }
+
+        $searchTerm = $request->query->get('q');
+        $formations = $adherent->getFormations();
+
+        // Filtrage de l'historique si une recherche est lancée
+        if ($searchTerm) {
+            $formations = $formations->filter(function(Formation $f) use ($searchTerm) {
+                return stripos($f->getNom(), $searchTerm) !== false || 
+                       stripos($f->getType(), $searchTerm) !== false;
+            });
+        }
+
+        return $this->render('formation/history.html.twig', [
+            'adherent' => $adherent,
+            'formations' => $formations,
         ]);
     }
 
@@ -40,24 +69,6 @@ final class FormationController extends AbstractController
         return $this->render('formation/new.html.twig', [
             'formation' => $formation,
             'form' => $form,
-        ]);
-    }
-
-    
-    //  Historique des formations pour un adhérent spécifique
-    
-    #[Route('/historique/{adherent_id}', name: 'app_formation_history', methods: ['GET'])]
-    public function history(int $adherent_id, EntityManagerInterface $entityManager): Response
-    {
-        $adherent = $entityManager->getRepository(Liste::class)->find($adherent_id);
-
-        if (!$adherent) {
-            throw $this->createNotFoundException("Adhérent non trouvé");
-        }
-
-        return $this->render('formation/history.html.twig', [
-            'adherent' => $adherent,
-            'formations' => $adherent->getFormations(),
         ]);
     }
 
