@@ -18,6 +18,11 @@
             --accent: #f59e0b; /* Orange pour le bouton "Mettre à jour" comme sur ton image */
             --bg-body: #f1f5f9;
             --text-main: #334155;
+            --primary-soft: #ff8fa3;   /* Rose principal */
+            --primary-light: #ffb7c5;  /* Rose clair */
+            --primary-hover: #ff758f;  /* Rose au survol */
+            --bg-gradient: linear-gradient(135deg, #fff5f6 0%, #fce4ec 100%);
+            --text-dark: #4a4a4a;
         }
 
         body { 
@@ -99,6 +104,81 @@
             font-weight: 700 !important;
             border: none !important;
         }
+
+        .auth-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--bg-auth);
+            padding: 20px;
+        }
+
+        .form-card {
+            background: white;
+            width: 100%;
+            max-width: 400px;
+            padding: 2.5rem;
+            border-radius: 24px;
+            box-shadow: 0 15px 35px rgba(255, 143, 163, 0.15);
+            border: 1px solid rgba(255, 183, 197, 0.3);
+        }
+
+        /* Titre stylé */
+        .form-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        /* Inputs arrondis et doux */
+        .form-control {
+            border-radius: 12px !important;
+            border: 2px solid #f0f0f0 !important;
+            padding: 12px 15px !important;
+            transition: all 0.3s ease;
+            background-color: #fafafa !important;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-light) !important;
+            box-shadow: 0 0 0 4px rgba(255, 183, 197, 0.2) !important;
+            background-color: white !important;
+            outline: none;
+        }
+
+        /* Bouton "Cute" Rose */
+        .btn-cute {
+            background: var(--primary-soft) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 12px !important;
+            font-weight: 700 !important;
+            font-size: 1rem;
+            transition: all 0.3s transform ease;
+            box-shadow: 0 4px 15px rgba(255, 143, 163, 0.3) !important;
+        }
+
+        .btn-cute:hover {
+            background: var(--primary-hover) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 143, 163, 0.4) !important;
+        }
+
+        .btn-cute:active {
+            transform: translateY(0);
+        }
+
+        /* Alertes d'erreurs douces */
+        .alert-danger {
+            background-color: #fff1f2;
+            color: #e11d48;
+            border: 1px solid #ffe4e6;
+            padding: 10px 15px;
+            margin-bottom: 20px;
     </style>
     {% endblock %}
 </head>
