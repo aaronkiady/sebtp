@@ -43,9 +43,9 @@ final class FormationController extends AbstractController
         ]);
     }
 
-    /**
-     * Historique des formations pour un adhérent spécifique
-     */
+    
+    //  Historique des formations pour un adhérent spécifique
+    
     #[Route('/historique/{adherent_id}', name: 'app_formation_history', methods: ['GET'])]
     public function history(int $adherent_id, EntityManagerInterface $entityManager): Response
     {

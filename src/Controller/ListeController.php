@@ -29,6 +29,7 @@ final class ListeController extends AbstractController
         $form = $this->createForm(ListeType::class, $liste);
         $form->handleRequest($request);
 
+        // Si c'est une requête AJAX, on renvoie JUSTE le formulaire mis à jour (pour les champs qui s'affiche avec condition)
         if ($request->headers->get('X-Requested-With') === 'XMLHttpRequest') {
             return $this->render('liste/_form.html.twig', [
                 'form' => $form->createView(),

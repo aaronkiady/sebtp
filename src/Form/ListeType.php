@@ -71,7 +71,7 @@ class ListeType extends AbstractType
                 'placeholder' => 'Sélectionnez un statut',
             ]);
 
-        // Fonction pour ajouter/supprimer les champs selon le statut
+        // Fonction pour ajouter/supprimer les champs selon le statut (satria refa membre du bureau zay vo mipotra reo option reo)
         $formModifier = function (FormInterface $form, ?string $statut) {
             if ($statut === 'bureau') {
                 $form->add('fonctionSEBTP', TextType::class, [

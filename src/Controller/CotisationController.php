@@ -90,8 +90,6 @@ final class CotisationController extends AbstractController
         return $this->redirectToRoute('app_liste_show', ['id' => $adherentId], Response::HTTP_SEE_OTHER);
     }
 
-    // src/Controller/CotisationController.php
-
     #[Route('/historique/{adherent_id}', name: 'app_cotisation_history', methods: ['GET'])]
     public function history(int $adherent_id, EntityManagerInterface $entityManager): Response
     {

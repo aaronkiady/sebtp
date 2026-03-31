@@ -74,7 +74,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function eraseCredentials(): void
     {
-        // Si tu stockes des données sensibles temporaires, vide-les ici
+        // Si on stocke des données sensibles temporaires, c'est ici qu'on les vide
     }
 
     public function setEmail(string $email): static
