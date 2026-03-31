@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Bon retour !{% endblock %}
+
+{% block body %}
+<div class="auth-wrapper">
+    <div class="form-card">
+        <h1 class="form-title">Heureux de te revoir ! 👋</h1>
+
+        <form method="post">
+            {% if error %}
+                <div class="alert alert-danger border-0 shadow-sm small" style="border-radius: 12px;">
+                    {{ error.messageKey|trans(error.messageData, 'security') }}
+                </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label for="inputEmail" class="form-label small fw-bold text-muted">Email</label>
+                <input type="email" value="{{ last_username }}" name="email" id="inputEmail" class="form-control">
+            </div>
+
+            <div class="mb-4">
+                <label for="inputPassword" class="form-label small fw-bold text-muted">Mot de passe</label>
+                <input type="password" name="password" id="inputPassword" class="form-control">
+            </div>
+
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+            <button class="btn btn-cute w-100" type="submit">Se connecter 🚀</button>
+            
+            {#<div class="mt-4 text-center">
+                <a href="{{ path('app_register') }}" class="small text-decoration-none text-muted">
+                    Pas encore de compte ? <span style="color: var(--primary-soft)" class="fw-bold">S'inscrire</span>
+                </a>
+            </div>#}
+        </form>
+    </div>
+</div>
+{% endblock %}

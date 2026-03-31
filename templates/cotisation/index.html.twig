@@ -1,0 +1,59 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des Cotisations{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h2 fw-800">Cotisations</h1>
+        <p class="text-muted">Flux financier et suivi des paiements</p>
+    </div>
+    <a href="{{ path('app_cotisation_new') }}" class="btn btn-create">
+        <i class="fas fa-plus me-2"></i>Nouveau Paiement
+    </a>
+</div>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Adhérent</th>
+                    <th>Montant</th>
+                    <th>Date</th>
+                    <th>Statut</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for cotisation in cotisations %}
+                <tr>
+                    <td class="fw-bold">{{ cotisation.adherent.nom|default('N/A') }}</td>
+                    <td>{{ cotisation.montant|number_format(0, '.', ' ') }} MGA</td>
+                    <td>{{ cotisation.datePaiement ? cotisation.datePaiement|date('d/m/Y') : '-' }}</td>
+                    <td>
+                        {% if cotisation.statut == 'payé' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">Payé</span>
+                        {% else %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3">En attente</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ path('app_cotisation_show', {'id': cotisation.id}) }}" class="btn btn-sm btn-light border">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{{ path('app_cotisation_edit', {'id': cotisation.id}) }}" class="btn btn-sm btn-light border ms-1">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">Aucun enregistrement trouvé.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

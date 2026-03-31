@@ -1,17 +1,110 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
-        {% block stylesheets %}
-        {% endblock %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gestion App{% endblock %}</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-        {% block javascripts %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
-        {% endblock %}
-    </head>
-    <body>
+    {% block stylesheets %}
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-cute: #ffb7c5;
+            --primary-hover: #ffa4b5;
+            --accent: #f59e0b; /* Orange pour le bouton "Mettre à jour" comme sur ton image */
+            --bg-body: #f1f5f9;
+            --text-main: #334155;
+        }
+
+        body { 
+            background-color: var(--bg-body); 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            color: var(--text-main);
+        }
+
+        /* Carte de formulaire large et moderne */
+        .form-card-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+        }
+
+        .form-header {
+            background-color: #f8fafc;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            color: #1e293b;
+        }
+
+        .form-header i {
+            color: var(--primary);
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        /* Inputs & Labels */
+        .form-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-label i {
+            width: 20px;
+            margin-right: 8px;
+            color: var(--primary);
+        }
+
+        .custom-input {
+            border-radius: 8px !important;
+            border: 1px solid #e2e8f0 !important;
+            padding: 10px 15px !important;
+            background-color: white !important;
+            transition: all 0.2s;
+        }
+
+        .custom-input:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+            outline: none;
+        }
+
+        /* Boutons comme sur ton image */
+        .btn-update {
+            background-color: #f97316 !important; /* Orange vif */
+            color: white !important;
+            border-radius: 8px !important;
+            padding: 10px 25px !important;
+            font-weight: 700 !important;
+            border: none !important;
+        }
+
+        .btn-cancel {
+            background-color: #64748b !important; /* Gris ardoise */
+            color: white !important;
+            border-radius: 8px !important;
+            padding: 10px 25px !important;
+            font-weight: 700 !important;
+            border: none !important;
+        }
+    </style>
+    {% endblock %}
+</head>
+<body>
+    <div class="container-fluid">
         {% block body %}{% endblock %}
-    </body>
+    </div>
+</body>
 </html>

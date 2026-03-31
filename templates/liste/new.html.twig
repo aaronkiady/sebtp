@@ -1,0 +1,9 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouveau Membre{% endblock %}
+
+{% block body %}
+<div class="container py-4">
+    {{ include('liste/_form.html.twig', {'button_label': 'Enregistrer'}) }}
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rejoignez-nous !{% endblock %}
+
+{% block body %}
+<div class="auth-wrapper">
+    <div class="form-card">
+        <div class="form-title">Bienvenue ! ✨</div>
+
+        {{ form_start(form) }}
+            <div class="mb-3">
+                {{ form_label(form.nom, 'Votre nom', {'label_attr': {'class': 'form-label small fw-bold text-muted'}}) }}
+                {{ form_widget(form.nom, {'attr': {'class': 'form-control'}}) }}
+                <div class="text-danger small mt-1">{{ form_errors(form.nom) }}</div>
+            </div>
+
+            <div class="mb-3">
+                {{ form_label(form.email, 'Votre adresse email', {'label_attr': {'class': 'form-label small fw-bold text-muted'}}) }}
+                {{ form_widget(form.email, {'attr': {'class': 'form-control'}}) }}
+                <div class="text-danger small mt-1">{{ form_errors(form.email) }}</div>
+            </div>
+
+            <div class="mb-3">
+                {{ form_label(form.password.first, 'Choisissez un mot de passe', {'label_attr': {'class': 'form-label small fw-bold text-muted'}}) }}
+                {{ form_widget(form.password.first, {'attr': {'class': 'form-control'}}) }}
+            </div>
+            
+            <div class="mb-4">
+                {{ form_label(form.password.second, 'Confirmez-le juste ici', {'label_attr': {'class': 'form-label small fw-bold text-muted'}}) }}
+                {{ form_widget(form.password.second, {'attr': {'class': 'form-control'}}) }}
+            </div>
+
+            {{ form_widget(form.submit, {'label': 'S\'inscrire 🚀', 'attr': {'class': 'btn btn-cute w-100 mb-3'}}) }}
+
+            <p class="text-center small text-muted mt-3">
+                Déjà un compte ? <a href="{{ path('app_login') }}" class="fw-bold text-decoration-none" style="color: var(--primary-soft)">Se connecter</a>
+            </p>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}

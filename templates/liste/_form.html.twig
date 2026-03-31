@@ -1,0 +1,75 @@
+{{ form_start(form) }}
+    <div class="form-card-container">
+        <div class="form-header">
+            <i class="fas fa-id-card"></i>
+            <h5 class="mb-0 fw-bold">Informations de l'adhérent</h5>
+        </div>
+
+        <div class="p-4" id="form-content">
+            <div class="row">
+                {% for field in form %}
+                    {% if field.vars.name != '_token' %}
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label">
+                                {# Mapping des icônes #}
+                                {% if 'nom' in field.vars.name %}<i class="fas fa-user"></i>
+                                {% elseif 'email' in field.vars.name %}<i class="fas fa-envelope"></i>
+                                {% elseif 'numero' in field.vars.name %}<i class="fas fa-phone"></i>
+                                {% elseif 'adresse' in field.vars.name %}<i class="fas fa-map-marker-alt"></i>
+                                {% elseif 'statut' in field.vars.name %}<i class="fas fa-user-tag"></i>
+                                {% elseif 'date' in field.vars.name %}<i class="fas fa-calendar-alt"></i>
+                                {% elseif 'montant' in field.vars.name %}<i class="fas fa-money-bill-wave"></i>
+                                {% else %}<i class="fas fa-info-circle"></i>
+                                {% endif %}
+                                
+                                {{ field.vars.label|default(field.vars.name|capitalize) }}
+                            </label>
+                            
+                            {{ form_widget(field, {'attr': {'class': 'form-control custom-input'}}) }}
+                            <div class="text-danger small mt-1">{{ form_errors(field) }}</div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {{ form_rest(form) }}
+
+            <div class="border-top mt-3 pt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-update">
+                    <i class="fas fa-save me-2"></i> {{ button_label|default('Mettre à jour') }}
+                </button>
+                <a href="{{ path('app_liste_index') }}" class="btn btn-cancel text-decoration-none">
+                    <i class="fas fa-times me-2"></i> Annuler
+                </a>
+            </div>
+        </div>
+    </div>
+{{ form_end(form) }}
+
+<script>
+document.addEventListener('change', function (e) {
+    if (e.target.id === 'liste_statutMenmbre') {
+        let formElement = e.target.closest('form');
+        let data = new FormData(formElement);
+
+        fetch(formElement.action || window.location.href, {
+            method: 'POST',
+            body: data,
+            headers: {
+                // Ce header est CRUCIAL pour le contrôleur
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            let parser = new DOMParser();
+            let doc = parser.parseFromString(html, 'text/html');
+            
+            let newContent = doc.getElementById('form-content');
+            if (newContent) {
+                document.getElementById('form-content').innerHTML = newContent.innerHTML;
+            }
+        });
+    }
+});
+</script>

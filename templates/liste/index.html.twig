@@ -1,0 +1,161 @@
+    {% extends 'base.html.twig' %}
+
+    {% block title %}Liste des inscrits{% endblock %}
+
+    {% block stylesheets %}
+        {{ parent() }}
+        <style>
+            :root {
+                --bg-soft: #f4f7ff;
+                --accent-soft: #e0e7ff;
+                --text-main: #475569;
+                --primary-soft: #6366f1;
+            }
+
+            .page-container {
+                padding: 3rem 1rem;
+                max-width: 1100px;
+                margin: 0 auto;
+            }
+
+            .header-section {
+                margin-bottom: 2.5rem;
+                border-left: 4px solid var(--primary-soft);
+                padding-left: 1.5rem;
+            }
+
+            .table-card {
+                background: rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(10px); /* Effet verre dépoli */
+                border-radius: 20px;
+                border: 1px solid rgba(226, 232, 240, 0.8);
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+                padding: 1rem;
+            }
+
+            .table thead th {
+                background-color: transparent;
+                color: #94a3b8;
+                font-weight: 600;
+                text-transform: none;
+                font-size: 0.85rem;
+                border-bottom: 2px solid var(--bg-soft);
+                padding: 1.2rem;
+            }
+
+            /* Effet de ligne au survol */
+            .table tbody tr {
+                transition: background-color 0.2s ease;
+            }
+
+            .table tbody tr:hover {
+                background-color: var(--bg-soft); /* Un bleu très très pâle au survol */
+            }
+
+            .table tbody td {
+                border-bottom: 1px solid #f8fafc;
+                padding: 1.2rem;
+                color: var(--text-main);
+                vertical-align: middle;
+            }
+
+            /* Boutons avec couleurs douces */
+            .btn-action {
+                border-radius: 12px;
+                padding: 6px 16px;
+                font-size: 0.85rem;
+                font-weight: 500;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                border: none;
+                display: inline-block;
+                text-decoration: none;
+            }
+
+            .btn-show {
+                background-color: #ecfdf5; /* Vert menthe doux */
+                color: #059669;
+            }
+
+            .btn-edit {
+                background-color: #fef2f2; /* Rose pâle doux */
+                color: #dc2626;
+                margin-left: 8px;
+            }
+
+            .btn-show:hover, .btn-edit:hover {
+                transform: scale(1.05);
+                filter: saturate(1.2);
+            }
+
+            .btn-create {
+                background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+                color: white;
+                padding: 10px 24px;
+                border-radius: 12px;
+                font-weight: 600;
+                text-decoration: none;
+                box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+            }
+        </style>
+    {% endblock %}
+
+    {% block body %}
+    <div class="page-container">
+        <div class="header-section d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold text-dark mb-1">Annuaire</h1>
+                <p class="text-muted mb-0 small">Gestion des membres et collaborateurs</p>
+            </div>
+            <a href="{{ path('app_liste_new') }}" class="btn-create">
+                + Nouveau membre
+            </a>
+        </div>
+
+        <div class="table-card">
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nom complet</th>
+                            <th>email</th>
+                            <th>Contact</th>
+                            <th>Localisation</th>
+                            <th class="text-end">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for liste in listes %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-dark">{{ liste.nom }}</div>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark">{{ liste.email }}</div>
+                            </td>
+                            <td>
+                                <div class="small">{{ liste.numero }}</div>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill fw-normal" style="background-color: #f1f5f9; color: #475569;">
+                                    {{ liste.adresse }}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ path('app_liste_show', {'id': liste.id}) }}" class="btn-action btn-show">Consulter</a>
+                                <a href="{{ path('app_liste_edit', {'id': liste.id}) }}" class="btn-action btn-edit">Éditer</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="50" class="opacity-25 mb-3"><br>
+                                <span class="text-muted">Aucune donnée disponible pour le moment</span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
