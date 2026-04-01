@@ -45,7 +45,7 @@ class ListeRepository extends ServiceEntityRepository
     {
         $qb = $this->createQueryBuilder('l');
         if ($term) {
-            $qb->andWhere('l.nom LIKE :q OR l.email LIKE :q OR l.activite LIKE :q OR l.numero LIKE :q OR l.adresse LIKE :q')
+            $qb->andWhere('l.nom LIKE :q OR l.email LIKE :q OR l.activite LIKE :q OR l.numero LIKE :q OR l.adresse LIKE :q OR l.statut LIKE :q')
                 ->setParameter('q', '%'.$term.'%');
         }
         return $qb->orderBy('l.nom', 'ASC')->getQuery()->getResult();

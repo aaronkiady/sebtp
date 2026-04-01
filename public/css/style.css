@@ -205,3 +205,10 @@ a:hover {
     height: 250px !important;
     max-height: 250px;
 }
+
+/** Footer **/
+.footer-modern {
+    text-align: center;
+    font-size: 17px;
+    opacity: 0.8;
+}

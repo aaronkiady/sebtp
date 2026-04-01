@@ -52,7 +52,7 @@ final class RegisterController extends AbstractController
                 $request
             );
             
-            return $this->redirectToRoute('app_liste');
+            return $this->redirectToRoute('app_home');
             
         }
 

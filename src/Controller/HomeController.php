@@ -25,11 +25,6 @@ public function index(
     $statsN = $listeRepo->getCotisationStats($anneeN);
     $statsN1 = $listeRepo->getCotisationStats($anneeN1);
 
-    // Calcul pour les événements (Projets payants)
-    // Ici on compte le nombre d'événements ayant un montant > 0
-    $totalEvents = $evenementRepo->count([]);
-    // Note: Si tu n'as pas de champ "statut" sur l'événement lui-même, 
-    // on peut simuler ou compter ceux qui ont un commentaire "terminé" par exemple.
     return $this->render('home/index.html.twig', [
         // Adhérents
         'nb_actifs'   => $listeRepo->countByStatut('Actif'),

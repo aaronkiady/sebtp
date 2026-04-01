@@ -79,7 +79,7 @@
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <div class="card-modern p-4 h-100">
-                        <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') }} (N)</h6>
+                        <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') }} </h6>
                         <canvas id="chartN" height="200"></canvas>
                         <div class="text-center mt-3 small text-muted">
                             Basé sur {{ statsN.total }} adhérents actifs
@@ -88,7 +88,7 @@
                 </div>
                 <div class="col-md-6">
                     <div class="card-modern p-4 h-100">
-                        <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') - 1 }} (N-1)</h6>
+                        <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') - 1 }}</h6>
                         <canvas id="chartN1" height="200"></canvas>
                         <div class="text-center mt-3 small text-muted">
                              Historique année passée
@@ -201,7 +201,7 @@
             labels: ['Payé', 'Impayé'],
             datasets: [{
                 data: [{{ statsN1.paye }}, {{ statsN1.impaye }}],
-                backgroundColor: ['#42a5f5', '#e5e7eb'],
+                backgroundColor: ['#42a5f5', '#ff0026'],
                 borderWidth: 0
             }]
         },
