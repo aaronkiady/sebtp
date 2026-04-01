@@ -41,7 +41,7 @@ class ListeRepository extends ServiceEntityRepository
     //        ;
     //    }
 
-    public function findBySearch(?string $term): array
+     public function findBySearch(?string $term): array
     {
         $qb = $this->createQueryBuilder('l');
         if ($term) {
@@ -55,9 +55,41 @@ class ListeRepository extends ServiceEntityRepository
 {
     return $this->createQueryBuilder('l')
         ->select('count(l.id)')
-        ->andWhere('l.statut = :s')
+        ->where('l.statut = :s')
         ->setParameter('s', $statut)
         ->getQuery()
         ->getSingleScalarResult();
 }
+
+public function getCotisationStats(string $year): array
+{
+    // On ne compte que pour les membres 'actifs'
+    $totalActifs = $this->createQueryBuilder('l')
+        ->select('count(l.id)')
+        ->where('l.statut = :s')
+        ->setParameter('s', 'actif')
+        ->getQuery()
+        ->getSingleScalarResult();
+
+    $paye = $this->createQueryBuilder('l')
+        ->select('count(l.id)')
+        ->innerJoin('l.cotisations', 'c')
+        ->where('l.statut = :statutAdherent')
+        ->andWhere('c.periode = :year')
+        ->andWhere('c.statut = :statutCotis')
+        ->setParameter('statutAdherent', 'actif')
+        ->setParameter('year', $year)
+        ->setParameter('statutCotis', 'payé')
+        ->getQuery()
+        ->getSingleScalarResult();
+
+    $impaye = $totalActifs - $paye;
+
+    return [
+        'paye' => $paye,
+        'impaye' => $impaye > 0 ? $impaye : 0,
+        'total' => $totalActifs
+    ];
+}
+
 }

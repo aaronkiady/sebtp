@@ -5,6 +5,7 @@
 {% block body %}
 <div class="container-fluid py-4">
 
+    {# 1. ENTÊTE DU DASHBOARD #}
     <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap mb-4">
         <div>
             <h2 class="fw-bold">
@@ -19,13 +20,13 @@
         </div>
     </div>
 
+    {# 2. CARTES DE STATISTIQUES GLOBALES #}
     <div class="row g-4 mb-4">
         <div class="col-md-4">
             <div class="stat-card rose">
                 <i class="fas fa-users"></i>
                 <div>
-                    {# Affiche le total des actifs par défaut ou la somme #}
-                    <h3>{{ nb_actifs + nb_inactifs + nb_radies }}</h3>
+                    <h3>{{ nb_actifs + nb_inactifs + nb_radies + nb_demande }}</h3>
                     <p>Adhérents au total</p>
                     <div class="mt-1">
                         <small class="badge bg-white text-success p-1">{{ nb_actifs }} actifs</small>
@@ -58,24 +59,41 @@
     </div>
 
     <div class="row g-4">
-
         <div class="col-lg-8">
-
+            
             <div class="card-modern p-4 mb-4">
                 <h5 class="fw-bold mb-3">Actions rapides ⚡</h5>
-
                 <div class="d-flex flex-wrap gap-3">
                     <a href="{{ path('app_liste_new') }}" class="btn btn-cute">
                         <i class="fas fa-user-plus me-2"></i> Ajouter adhérent
                     </a>
-
                     <a href="{{ path('app_evenement_new') }}" class="btn btn-light-modern border">
                         <i class="fas fa-calendar-plus me-2"></i> Créer évènement
                     </a>
-
                     <a href="{{ path('app_formation_index') }}" class="btn btn-light-modern border">
                         <i class="fas fa-book me-2"></i> Voir formations
                     </a>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="card-modern p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') }} (N)</h6>
+                        <canvas id="chartN" height="200"></canvas>
+                        <div class="text-center mt-3 small text-muted">
+                            Basé sur {{ statsN.total }} adhérents actifs
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card-modern p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') - 1 }} (N-1)</h6>
+                        <canvas id="chartN1" height="200"></canvas>
+                        <div class="text-center mt-3 small text-muted">
+                             Historique année passée
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -88,7 +106,6 @@
                         <a href="{{ path('app_liste_index') }}">Explorer l'annuaire →</a>
                     </div>
                 </div>
-
                 <div class="col-md-6">
                     <div class="module-card">
                         <i class="fas fa-calendar icon"></i>
@@ -98,17 +115,25 @@
                     </div>
                 </div>
             </div>
-
         </div>
 
         <div class="col-lg-4">
+            
+            <div class="card-modern p-3 mb-4 border-start border-warning border-4 shadow-sm">
+                <h6 class="text-muted small mb-1">En attente</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="fw-bold mb-0 text-warning">{{ nb_demande }} demandes</h4>
+                    <a href="{{ path('app_liste_index') }}?statut=demande" class="btn btn-light-modern btn-sm">
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
 
             <div class="card-dark p-4 mb-4 shadow-lg">
                 <h5 class="fw-bold">Plateforme SEBTP 📊</h5>
                 <p class="small text-white-50">
-                    Gérez efficacement vos adhérents, suivez les cotisations et analysez les formations depuis un tableau de bord centralisé et dynamique.
+                    Gérez efficacement vos adhérents et suivez les cotisations depuis un tableau de bord centralisé.
                 </p>
-
                 <div class="mt-4 small">
                     <div class="d-flex justify-content-between mb-2">
                         <span>👥 Gestion des membres</span>
@@ -118,22 +143,14 @@
                         <span>💰 Suivi des cotisations</span>
                         <span class="text-success">✔</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-2">
+                    <div class="d-flex justify-content-between">
                         <span>🎓 Suivi des formations</span>
                         <span class="text-success">✔</span>
                     </div>
-                    <div class="d-flex justify-content-between">
-                        <span>📈 Rapports & statistiques</span>
-                        <span class="text-success">✔</span>
-                    </div>
-                </div>
-
-                <div class="mt-4">
-                    <span class="badge bg-success">Données en temps réel</span>
-                    <span class="badge bg-info ms-2">Centralisé</span>
                 </div>
             </div>
-        <div class="card-modern p-4 border shadow-sm">
+
+            <div class="card-modern p-4 border shadow-sm">
                 <h6 class="fw-bold mb-3">Résumé des Adhérents</h6>
                 <div class="d-flex flex-column gap-2">
                     <div class="d-flex justify-content-between align-items-center">
@@ -148,11 +165,53 @@
                         <span class="small text-muted">Radiés</span>
                         <span class="badge bg-danger-soft text-danger rounded-pill">{{ nb_radies }}</span>
                     </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-1">
+                        <span class="small fw-bold">Total</span>
+                        <span class="small fw-bold">{{ nb_actifs + nb_inactifs + nb_radies + nb_demande }}</span>
+                    </div>
                 </div>
             </div>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            <script>
+    const chartOptions = {
+        plugins: { 
+            legend: { position: 'bottom' } 
+        },
+        cutout: '70%',
+        responsive: true,
+        maintainAspectRatio: false
+    };
 
+    new Chart(document.getElementById('chartN'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Payé', 'Impayé'],
+            datasets: [{
+                data: [{{ statsN.paye }}, {{ statsN.impaye }}],
+                backgroundColor: ['#10b981', '#fecaca'],
+                borderWidth: 0
+            }]
+        },
+        options: chartOptions
+    });
+
+    new Chart(document.getElementById('chartN1'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Payé', 'Impayé'],
+            datasets: [{
+                data: [{{ statsN1.paye }}, {{ statsN1.impaye }}],
+                backgroundColor: ['#42a5f5', '#e5e7eb'],
+                borderWidth: 0
+            }]
+        },
+        options: chartOptions
+    });
+</script>
         </div>
-
     </div>
 </div>
 {% endblock %}
+
+
+

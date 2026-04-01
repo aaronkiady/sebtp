@@ -1,7 +1,3 @@
-/* GLOBAL */
-body {
-    background: #f9fafc;
-}
 
 /* HEADER */
 .dashboard-header h1 {
@@ -201,4 +197,11 @@ a:hover {
 .text-danger {
     font-size: 0.85rem;
     font-weight: 500;
+}
+
+/** Pour chart.js (graphe stat) **/
+#chartN,
+#chartN1 {
+    height: 250px !important;
+    max-height: 250px;
 }

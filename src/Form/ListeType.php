@@ -35,6 +35,7 @@ class ListeType extends AbstractType
                     'Actif' => 'actif',
                     'Inactif' => 'inactif',
                     'Radié' => 'radie',
+                    'Demande d’adhésion' => 'demande',
                 ]
             ])
             ->add('siteweb', TextType::class, [
