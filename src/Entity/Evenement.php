@@ -16,104 +16,58 @@ class Evenement
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(length: 255)]
     private ?string $nom = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $date = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $montant = null;
+    #[ORM\Column(nullable: true)]
+    private ?float $montant = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(type: 'text', nullable: true)]
     private ?string $commentaire = null;
 
-    /**
-     * @var Collection<int, Liste>
-     */
-    #[ORM\ManyToMany(targetEntity: Liste::class, inversedBy: 'evenements')]
-    #[ORM\JoinTable(name: 'evenement_liste')]
-    private Collection $participants;
+    #[ORM\OneToMany(mappedBy: 'evenement', targetEntity: Participation::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $participations;
 
     public function __construct()
     {
-        $this->participants = new ArrayCollection();
+        $this->participations = new ArrayCollection();
     }
 
-    public function getId(): ?int
+    public function getId(): ?int { return $this->id; }
+
+    public function getNom(): ?string { return $this->nom; }
+    public function setNom(string $nom): static { $this->nom = $nom; return $this; }
+
+    public function getDate(): ?\DateTimeInterface { return $this->date; }
+    public function setDate(?\DateTimeInterface $date): static { $this->date = $date; return $this; }
+
+    public function getMontant(): ?float { return $this->montant; }
+    public function setMontant(?float $montant): static { $this->montant = $montant; return $this; }
+
+    public function getCommentaire(): ?string { return $this->commentaire; }
+    public function setCommentaire(?string $commentaire): static { $this->commentaire = $commentaire; return $this; }
+
+    public function getParticipations(): Collection { return $this->participations; }
+
+    public function addParticipation(Participation $participation): static
     {
-        return $this->id;
-    }
-
-    public function getNom(): ?string
-    {
-        return $this->nom;
-    }
-
-    public function setNom(?string $nom): static
-    {
-        $this->nom = $nom;
-
-        return $this;
-    }
-
-    public function getDate(): ?\DateTimeInterface
-    {
-        return $this->date;
-    }
-
-    public function setDate(?\DateTimeInterface $date): static
-    {
-        $this->date = $date;
-
-        return $this;
-    }
-
-    public function getMontant(): ?string
-    {
-        return $this->montant;
-    }
-
-    public function setMontant(?string $montant): static
-    {
-        $this->montant = $montant;
-
-        return $this;
-    }
-
-    public function getCommentaire(): ?string
-    {
-        return $this->commentaire;
-    }
-
-    public function setCommentaire(?string $commentaire): static
-    {
-        $this->commentaire = $commentaire;
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Liste>
-     */
-    public function getParticipants(): Collection
-    {
-        return $this->participants;
-    }
-
-    public function addParticipant(Liste $participant): static
-    {
-        if (!$this->participants->contains($participant)) {
-            $this->participants->add($participant);
+        if (!$this->participations->contains($participation)) {
+            $this->participations->add($participation);
+            $participation->setEvenement($this);
         }
-
         return $this;
     }
 
-    public function removeParticipant(Liste $participant): static
+    public function removeParticipation(Participation $participation): static
     {
-        $this->participants->removeElement($participant);
-
+        if ($this->participations->removeElement($participation)) {
+            if ($participation->getEvenement() === $this) {
+                $participation->setEvenement(null);
+            }
+        }
         return $this;
     }
 }

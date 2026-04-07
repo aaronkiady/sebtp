@@ -1,64 +1,199 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Détails Évènement{% endblock %}
+{% block title %}Détails de l'événement - {{ evenement.nom }}{% endblock %}
 
 {% block body %}
-<div class="main-wrapper">
-    <div class="form-card-wide">
-        <div class="card-header-modern">
-            <div class="header-icon">
-                <i class="fas fa-calendar-check"></i>
-            </div>
-            <div class="d-flex justify-content-between align-items-center w-100">
-                <div>
-                    <h4 class="mb-0 fw-800">{{ evenement.nom }}</h4>
-                    <p class="text-muted mb-0 small">Consultation des informations détaillées</p>
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_evenement_index') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-calendar-alt"></i>
                 </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}" class="btn-action btn-cute text-decoration-none">
-                        <i class="fas fa-edit"></i> Modifier
-                    </a>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">{{ evenement.nom }}</h1>
+                    <p class="text-muted mb-0">Détails de l'événement</p>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}" class="btn-action btn-cute text-decoration-none">
+                    <i class="fas fa-pen"></i> Modifier
+                </a>
+            </div>
+        </div>
+
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+
+        {% for message in app.flashes('error') %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted mb-3">
+                            <i class="fas fa-info-circle me-2"></i>Informations générales
+                        </h6>
+                        <div class="mb-3">
+                            <label class="text-muted small">Date</label>
+                            <div class="fw-bold">
+                                <i class="far fa-calendar-alt me-2"></i>
+                                {{ evenement.date ? evenement.date|date('d/m/Y H:i') : 'Non définie' }}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Montant</label>
+                            <div class="fw-bold text-primary">
+                                <i class="fas fa-money-bill-wave me-2"></i>
+                                {{ evenement.montant ? evenement.montant|number_format(0, '.', ' ') ~ ' MGA' : 'Gratuit' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted mb-3">
+                            <i class="fas fa-chart-line me-2"></i>Statistiques
+                        </h6>
+                        <div class="mb-3">
+                            <label class="text-muted small">Participants</label>
+                            <div class="fw-bold">
+                                <i class="fas fa-users me-2"></i>
+                                {{ evenement.participations|length }} participant(s)
+                            </div>
+                        </div>
+                        {% if evenement.participations|length > 0 %}
+                            <div class="mb-3">
+                                <label class="text-muted small">Taux de paiement</label>
+                                {% set payeCount = evenement.participations|filter(p => p.statutPaiement == 'paye')|length %}
+                                {% set total = evenement.participations|length %}
+                                {% set pourcentage = total > 0 ? (payeCount / total) * 100 : 0 %}
+                                <div class="fw-bold">
+                                    <i class="fas fa-percent me-2"></i>
+                                    {{ pourcentage|round(2) }}% ({{ payeCount }}/{{ total }})
+                                </div>
+                                <div class="progress mt-2" style="height: 8px;">
+                                    <div class="progress-bar bg-success" style="width: {{ pourcentage }}%"></div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if evenement.commentaire %}
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted mb-3">
+                            <i class="fas fa-comment me-2"></i>Commentaire
+                        </h6>
+                        <p class="mb-0">{{ evenement.commentaire }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-list me-2"></i>Liste des participants
+                        </h6>
+                        <div>
+                            <a href="{{ path('app_evenement_ajouter_participant', {'id': evenement.id}) }}" class="btn btn-sm btn-success me-2">
+                                <i class="fas fa-plus me-1"></i> Ajouter un participant
+                            </a>
+                            <a href="{{ path('app_evenement_gerer_participants', {'id': evenement.id}) }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-edit me-1"></i> Gérer tous les participants
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Nom</th>
+                                        <th>Statut de paiement</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for participation in evenement.participations %}
+                                    <tr>
+                                        <td class="fw-bold">
+                                            <a href="{{ path('app_liste_show', {'id': participation.adherent.id}) }}" class="text-decoration-none">
+                                                {{ participation.adherent.nom }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {% if participation.statutPaiement == 'paye' %}
+                                                <span class="badge bg-success rounded-pill px-3 py-2">
+                                                    <i class="fas fa-check-circle me-1"></i> Payé
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger rounded-pill px-3 py-2">
+                                                    <i class="fas fa-times-circle me-1"></i> Impayé
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ path('app_participation_toggle', {'id': participation.id}) }}" 
+                                                   class="btn btn-sm btn-outline-secondary">
+                                                    <i class="fas fa-exchange-alt"></i> Changer statut
+                                                </a>
+                                                <form method="post" action="{{ path('app_evenement_supprimer_participant', {'id': evenement.id, 'participation_id': participation.id}) }}" 
+                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir retirer ce participant ?');" 
+                                                      style="display: inline-block;">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ participation.id) }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-trash"></i> Retirer
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center py-5">
+                                            <div class="mb-3">
+                                                <i class="fas fa-users-slash fa-3x text-muted opacity-25"></i>
+                                            </div>
+                                            <p class="text-muted fw-bold mb-0">Aucun participant inscrit à cet événement</p>
+                                            <p class="text-muted small">Cliquez sur "Ajouter un participant" pour commencer</p>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="p-4 p-md-5">
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <label class="form-label text-uppercase small opacity-75">ID Évènement</label>
-                    <div class="p-3 bg-light rounded-3 fw-bold">#{{ evenement.id }}</div>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-uppercase small opacity-75">Date prévue</label>
-                    <div class="p-3 bg-light rounded-3">
-                        <i class="far fa-calendar text-primary me-2"></i>
-                        {{ evenement.date ? evenement.date|date('d/m/Y') : 'Non définie' }}
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-uppercase small opacity-75">Budget / Montant</label>
-                    <div class="p-3 bg-light rounded-3 fw-bold text-dark">
-                        {{ evenement.montant|number_format(0, '.', ' ') }} MGA
-                    </div>
-                </div>
-                <div class="col-12">
-                    <label class="form-label text-uppercase small opacity-75">Commentaire</label>
-                    <div class="p-4 border rounded-4 bg-white shadow-sm">
-                        {{ evenement.commentaire|default('Aucun commentaire supplémentaire.')|nl2br }}
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-5 pt-4 border-top d-flex justify-content-between align-items-center">
-                <a href="{{ path('app_evenement_index') }}" class="btn-action btn-cancel text-decoration-none">
-                    <i class="fas fa-chevron-left"></i> Retour à la liste
-                </a>
-                
-                {# Le delete est ici dans sa propre petite zone 
-                <div class="bg-danger-subtle p-2 rounded-3">
-                    {{ include('evenement/_delete_form.html.twig') }}
-                </div>#}
-            </div>
+        <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+            <a href="{{ path('app_evenement_index') }}" class="btn-action btn-cancel text-decoration-none">
+                <i class="fas fa-arrow-left"></i> Retour à la liste
+            </a>
+            {{ include('evenement/_delete_form.html.twig') }}
         </div>
     </div>
 </div>

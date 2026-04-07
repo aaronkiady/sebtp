@@ -78,11 +78,8 @@ class Liste
     #[ORM\OneToMany(mappedBy: 'adherent', targetEntity: Cotisation::class, orphanRemoval: true)]
     private Collection $cotisations;
 
-    /**
-     * @var Collection<int, Evenement>
-     */
-    #[ORM\ManyToMany(targetEntity: Evenement::class, mappedBy: 'participants')]
-    private Collection $evenements;
+    #[ORM\OneToMany(mappedBy: 'adherent', targetEntity: Participation::class, orphanRemoval: true)]
+    private Collection $participations;
 
     /**
      * @var Collection<int, Contact>
@@ -94,7 +91,6 @@ class Liste
     {
         $this->formations = new ArrayCollection();
         $this->cotisations = new ArrayCollection();
-        $this->evenements = new ArrayCollection();
         $this->contacts = new ArrayCollection();
     }
 
@@ -342,28 +338,32 @@ class Liste
         return $this;
     }
 
-    /**
-     * @return Collection<int, Evenement>
+   /**
+     * @return Collection<int, Participation>
      */
-    public function getEvenements(): Collection
+    public function getParticipations(): Collection
     {
-        return $this->evenements;
+        return $this->participations;
     }
 
-    public function addEvenement(Evenement $evenement): static
+    public function addParticipation(Participation $participation): static
     {
-        if (!$this->evenements->contains($evenement)) {
-            $this->evenements->add($evenement);
-            $evenement->addParticipant($this);
+        if (!$this->participations->contains($participation)) {
+            $this->participations->add($participation);
+            $participation->setAdherent($this);
         }
+
         return $this;
     }
 
-    public function removeEvenement(Evenement $evenement): static
+    public function removeParticipation(Participation $participation): static
     {
-        if ($this->evenements->removeElement($evenement)) {
-            $evenement->removeParticipant($this);
+        if ($this->participations->removeElement($participation)) {
+            if ($participation->getAdherent() === $this) {
+                $participation->setAdherent(null);
+            }
         }
+
         return $this;
     }
 
@@ -399,7 +399,6 @@ class Liste
     public function removeContact(Contact $contact): static
     {
         if ($this->contacts->removeElement($contact)) {
-            // set the owning side to null (unless already changed)
             if ($contact->getListe() === $this) {
                 $contact->setListe(null);
             }

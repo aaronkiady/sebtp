@@ -1,28 +1,121 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Modifier l'Évènement{% endblock %}
+{% block title %}Modifier l'événement{% endblock %}
 
 {% block body %}
-<div class="main-wrapper">
-    <div class="form-card-wide">
+<div class="main-wrapper mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ path('app_evenement_index') }}" class="btn btn-outline-secondary btn-sm mb-3">
+                <i class="fas fa-arrow-left"></i> Retour à la liste
+            </a>
+            <h1 class="h2 fw-bold text-dark">Modifier l'événement</h1>
+            <p class="text-muted">Modifiez les informations ci-dessous</p>
+        </div>
+    </div>
+
+    {{ form_start(form, {'attr': {'class': 'needs-validation'}}) }}
+    
+    <div class="form-card-wide mx-auto my-4">
         <div class="card-header-modern">
-            <div class="header-icon" style="background: #fff7ed; color: #f97316;">
-                <i class="fas fa-pen-fancy"></i>
+            <div class="header-icon">
+                <i class="fas fa-edit"></i>
             </div>
             <div>
-                <h4 class="mb-0 fw-800">Modifier l'évènement</h4>
-                <p class="text-muted mb-0 small">Mise à jour des informations de l'évènement #{{ evenement.id }}</p>
+                <h4 class="mb-0 fw-800">Modification de l'événement</h4>
+                <p class="text-muted mb-0 small">Mettez à jour les détails</p>
             </div>
         </div>
 
         <div class="p-4 p-md-5">
-            {{ include('evenement/_form.html.twig', {'button_label': 'Mettre à jour'}) }}
-            
-            {#<div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
-                <span class="text-muted small italic">Action irréversible :</span>
-                {{ include('evenement/_delete_form.html.twig') }}
-            </div>#}
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <i class="fas fa-tag me-2 opacity-50"></i>
+                        {{ form.nom.vars.label }}
+                    </label>
+                    {{ form_widget(form.nom, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.nom) }}</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <i class="fas fa-calendar-day me-2 opacity-50"></i>
+                        {{ form.date.vars.label }}
+                    </label>
+                    {{ form_widget(form.date, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.date) }}</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <i class="fas fa-money-bill-wave me-2 opacity-50"></i>
+                        {{ form.montant.vars.label }}
+                    </label>
+                    {{ form_widget(form.montant, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.montant) }}</div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">
+                        <i class="fas fa-comment me-2 opacity-50"></i>
+                        {{ form.commentaire.vars.label }}
+                    </label>
+                    {{ form_widget(form.commentaire, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.commentaire) }}</div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-users me-2 opacity-50"></i>
+                        {{ form.participantsTemp.vars.label }}
+                    </label>
+                    <div class="border rounded-3 p-3" style="max-height: 300px; overflow-y: auto;">
+                        {{ form_widget(form.participantsTemp, {'attr': {'class': 'participants-checkbox-list'}}) }}
+                    </div>
+                    <small class="text-muted">Sélectionnez les participants à cet événement</small>
+                    <div class="text-danger small mt-1">{{ form_errors(form.participantsTemp) }}</div>
+                </div>
+            </div>
+
+            {{ form_rest(form) }}
+
+            <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
+                <a href="{{ path('app_evenement_index') }}" class="btn-action btn-cancel text-decoration-none">
+                    <i class="fas fa-times me-2"></i> Annuler
+                </a>
+                <button type="submit" class="btn-action btn-update">
+                    <i class="fas fa-save me-2"></i> Enregistrer les modifications
+                </button>
+            </div>
         </div>
     </div>
+
+    {{ form_end(form) }}
 </div>
+
+<style>
+.participants-checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.participants-checkbox-list label {
+    margin-left: 10px;
+    cursor: pointer;
+}
+.participants-checkbox-list input[type="checkbox"] {
+    margin-right: 10px;
+    cursor: pointer;
+    transform: scale(1.1);
+}
+.participants-checkbox-list div {
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+.participants-checkbox-list div:hover {
+    background-color: #f8f9fa;
+}
+</style>
 {% endblock %}

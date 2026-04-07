@@ -1,0 +1,128 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Statistiques - {{ liste.nom }}{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <a href="{{ path('app_liste_show', {'id': liste.id}) }}" class="btn btn-outline-secondary btn-sm mb-2">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
+                <h2 class="fw-bold text-dark mb-0">Statistiques des événements</h2>
+                <p class="text-muted mb-0 small">{{ liste.nom }}</p>
+            </div>
+        </div>
+
+        {% if stats.total is defined and stats.total > 0 %}
+            <div class="row g-4">
+
+                {# 📊 Graphique #}
+                <div class="col-lg-5">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white fw-bold">
+                            <i class="fas fa-chart-pie me-2 text-primary"></i>Répartition des paiements
+                        </div>
+                        <div class="card-body d-flex align-items-center justify-content-center">
+                            <div style="width: 280px; max-width: 100%;">
+                                <canvas id="testChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# 📈 Résumé #}
+                <div class="col-lg-7">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white fw-bold">
+                            <i class="fas fa-chart-line me-2 text-success"></i>Résumé détaillé
+                        </div>
+                        <div class="card-body">
+
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Total participations</span>
+                                    <span class="fw-bold">{{ stats.total }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Payés</span>
+                                    <span class="fw-bold text-success">{{ stats.paye }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Impayés</span>
+                                    <span class="fw-bold text-danger">{{ stats.impaye }}</span>
+                                </div>
+                            </div>
+
+                            {# 📊 Progress bar améliorée #}
+                            <div class="progress mb-3" style="height: 22px; border-radius: 10px; overflow: hidden;">
+                                <div class="progress-bar bg-success fw-semibold"
+                                     style="width: {{ stats.pourcentagePaye }}%">
+                                    {{ stats.pourcentagePaye }}%
+                                </div>
+                                <div class="progress-bar bg-danger fw-semibold"
+                                     style="width: {{ stats.pourcentageImpaye }}%">
+                                    {{ stats.pourcentageImpaye }}%
+                                </div>
+                            </div>
+
+                            <div class="alert alert-light border mt-3 small">
+                                <i class="fas fa-info-circle me-2 text-primary"></i>
+                                <strong>{{ stats.pourcentagePaye }}%</strong> des participations sont réglées.
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# 🔗 Bouton 
+            <div class="mt-4 text-center">
+                <a href="{{ path('app_evenement_history', {'adherent_id': liste.id}) }}" class="btn btn-primary px-4">
+                    <i class="fas fa-list me-2"></i>Voir le détail
+                </a>
+            </div>#}
+
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-chart-line fa-4x text-muted opacity-25 mb-3"></i>
+                <p class="text-muted fw-bold">Aucune participation.</p>
+                <a href="{{ path('app_evenement_index') }}" class="btn btn-primary mt-2">
+                    <i class="fas fa-plus me-2"></i>Créer un événement
+                </a>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    const canvas = document.getElementById('testChart');
+
+    if (canvas) {
+        new Chart(canvas, {
+            type: 'doughnut',
+            data: {
+                labels: ['Payé', 'Impayé'],
+                datasets: [{
+                    data: [{{ stats.paye }}, {{ stats.impaye }}],
+                    backgroundColor: ['#10b981', '#fecaca'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+</script>
+
+{% endblock %}

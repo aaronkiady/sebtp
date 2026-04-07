@@ -1,47 +1,61 @@
 {{ form_start(form) }}
-    <div class="row g-4">
-        <div class="col-md-12">
-            <label class="form-label">Nom de l'évènement</label>
-            {{ form_widget(form.nom, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: Réunion annuelle'}}) }}
-        </div>
-        <div class="col-md-6">
-            <label class="form-label">Date</label>
-            {{ form_widget(form.date, {'attr': {'class': 'form-control custom-input'}}) }}
-        </div>
-        <div class="col-md-6">
-            <label class="form-label">Montant (MGA)</label>
-            {{ form_widget(form.montant, {'attr': {'class': 'form-control custom-input', 'placeholder': '0'}}) }}
-        </div>
-        <div class="col-md-12">
-            <label class="form-label">Commentaire</label>
-            {{ form_widget(form.commentaire, {'attr': {'class': 'form-control custom-input', 'rows': '4'}}) }}
-        </div>
+
+<div class="row g-4">
+    <div class="col-md-12">
+        <label class="form-label">Nom de l'évènement</label>
+        {{ form_widget(form.nom, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: Réunion annuelle'}}) }}
     </div>
 
-    <div class="mb-4">
+    <div class="col-md-6">
+        <label class="form-label">Date</label>
+        {{ form_widget(form.date, {'attr': {'class': 'form-control custom-input'}}) }}
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label">Montant (MGA)</label>
+        {{ form_widget(form.montant, {'attr': {'class': 'form-control custom-input', 'placeholder': '0'}}) }}
+    </div>
+
+    <div class="col-md-12">
+        <label class="form-label">Commentaire</label>
+        {{ form_widget(form.commentaire, {'attr': {'class': 'form-control custom-input', 'rows': '4'}}) }}
+    </div>
+</div>
+
+<div class="mb-4">
     <label class="form-label fw-bold text-dark mb-3">
-        <i class="fas fa-users me-2 text-primary"></i>{{ form_label(form.participants) }}
+        <i class="fas fa-users me-2 text-primary"></i>{{ form_label(form.participantsTemp) }}
     </label>
-    
+
     <div class="row g-3">
-        {% for child in form.participants %}
-            <div class="col-6 col-md-4 col-lg-3"> {# 2 par ligne sur mobile, 3 sur tablette, 4 sur desktop #}
-                <div class="participant-checkbox-card p-2 border rounded-3 bg-white shadow-sm h-100 transition-all">
+        {% for child in form.participantsTemp %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="participant-checkbox-card p-2 border rounded-3 bg-white shadow-sm h-100">
                     <div class="form-check d-flex align-items-center gap-2 mb-0">
                         {{ form_widget(child, {'attr': {'class': 'form-check-input mt-0'}}) }}
-                        {{ form_label(child, null, {'label_attr': {'class': 'form-check-label small fw-semibold text-truncate', 'style': 'cursor:pointer;'}}) }}
+                        {{ form_label(child, null, {
+                            'label_attr': {
+                                'class': 'form-check-label small fw-semibold text-truncate',
+                                'style': 'cursor:pointer;'
+                            }
+                        }) }}
                     </div>
                 </div>
             </div>
         {% endfor %}
     </div>
-    {{ form_errors(form.participants) }}
+
+    {{ form_errors(form.participantsTemp) }}
 </div>
 
-    <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
-        <a href="{{ path('app_evenement_index') }}" class="btn-action btn-cancel text-decoration-none">Annuler</a>
-        <button type="submit" class="btn-action btn-update">
-            <i class="fas fa-save me-2"></i> {{ button_label|default('Enregistrer') }}
-        </button>
-    </div>
+<div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
+    <a href="{{ path('app_evenement_index') }}" class="btn-action btn-cancel text-decoration-none">
+        Annuler
+    </a>
+
+    <button type="submit" class="btn-action btn-update">
+        <i class="fas fa-save me-2"></i> {{ button_label|default('Enregistrer') }}
+    </button>
+</div>
+
 {{ form_end(form) }}

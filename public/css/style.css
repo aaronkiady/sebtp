@@ -201,7 +201,8 @@ a:hover {
 
 /** Pour chart.js (graphe stat) **/
 #chartN,
-#chartN1 {
+#chartN1,
+#chartEvenementsGlobal {
     height: 250px !important;
     max-height: 250px;
 }

@@ -7,6 +7,7 @@ use App\Entity\Liste;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
+use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -14,71 +15,41 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class EvenementType extends AbstractType
 {
-    /**
-     * Construit le formulaire de gestion d'un événement.
-     *
-     * @param FormBuilderInterface $builder
-     * @param array $options
-     * @return void
-     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
             ->add('nom', TextType::class, [
                 'label' => 'Nom de l\'événement',
-                'attr' => [
-                    'placeholder' => 'Ex: Assemblée Générale, Cocktail annuel...',
-                    'class' => 'form-control'
-                ],
+                'attr' => ['class' => 'custom-input', 'placeholder' => 'Ex: Séminaire annuel']
             ])
             ->add('date', DateType::class, [
-                'label' => 'Date de l\'événement',
                 'widget' => 'single_text',
                 'required' => false,
-                'attr' => ['class' => 'form-control'],
+                'label' => 'Date',
+                'attr' => ['class' => 'custom-input']
             ])
-            ->add('montant', TextType::class, [
-                'label' => 'Montant / Frais de participation (MGA)',
+            ->add('montant', NumberType::class, [
                 'required' => false,
-                'attr' => [
-                    'placeholder' => 'Ex: 50 000',
-                    'class' => 'form-control'
-                ],
+                'label' => 'Montant (MGA)',
+                'attr' => ['class' => 'custom-input', 'placeholder' => '0']
             ])
             ->add('commentaire', TextareaType::class, [
-                'label' => 'Commentaires ou Observations',
                 'required' => false,
-                'attr' => [
-                    'rows' => 4,
-                    'placeholder' => 'Détails supplémentaires sur l\'événement...',
-                    'class' => 'form-control'
-                ],
+                'label' => 'Commentaire',
+                'attr' => ['class' => 'custom-input', 'rows' => 3]
             ])
-            /*->add('participants', EntityType::class, [
-                'class' => Liste::class,
-                'choice_label' => 'nom',
-                'multiple' => true,
-                'expanded' => false,
-                'by_reference' => false,
-                'attr' => [
-                    'class' => 'form-control select2',
-                ],
-            ]);*/
-            ->add('participants', EntityType::class, [
+            ->add('participantsTemp', EntityType::class, [
                 'class' => Liste::class,
                 'choice_label' => 'nom',
                 'multiple' => true,
                 'expanded' => true,
-                'label' => 'Sélectionner les participants',
+                'mapped' => false,
+                'required' => false,
+                'label' => 'Participants',
+                'attr' => ['class' => 'participants-checkbox-list']
             ]);
     }
 
-    /**
-     * Configure les options par défaut pour ce formulaire.
-     *
-     * @param OptionsResolver $resolver
-     * @return void
-     */
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([

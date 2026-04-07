@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Liste;
 use App\Form\ListeType;
 use App\Repository\ListeRepository;
+use App\Repository\ParticipationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,7 +31,6 @@ final class ListeController extends AbstractController
         $form = $this->createForm(ListeType::class, $liste);
         $form->handleRequest($request);
 
-        // Si c'est une requête AJAX, on renvoie JUSTE le formulaire mis à jour (pour les champs qui s'affiche avec condition)
         if ($request->headers->get('X-Requested-With') === 'XMLHttpRequest') {
             return $this->render('liste/_form.html.twig', [
                 'form' => $form->createView(),
@@ -65,10 +65,10 @@ final class ListeController extends AbstractController
         $form->handleRequest($request);
 
         if ($request->headers->get('X-Requested-With') === 'XMLHttpRequest') {
-        return $this->render('liste/_form.html.twig', [
-            'form' => $form->createView(),
-        ]);
-    }
+            return $this->render('liste/_form.html.twig', [
+                'form' => $form->createView(),
+            ]);
+        }
 
         if ($form->isSubmitted() && $form->isValid()) {
             $entityManager->flush();
@@ -85,11 +85,34 @@ final class ListeController extends AbstractController
     #[Route('/{id}', name: 'app_liste_delete', methods: ['POST'])]
     public function delete(Request $request, Liste $liste, EntityManagerInterface $entityManager): Response
     {
-        if ($this->isCsrfTokenValid('delete'.$liste->getId(), $request->getPayload()->getString('_token'))) {
+        if ($this->isCsrfTokenValid('delete' . $liste->getId(), $request->getPayload()->getString('_token'))) {
             $entityManager->remove($liste);
             $entityManager->flush();
         }
 
         return $this->redirectToRoute('app_liste_index', [], Response::HTTP_SEE_OTHER);
+    }
+
+    #[Route('/{id}/stats', name: 'app_liste_stats', methods: ['GET'])]
+    public function stats(
+        int $id,
+        ParticipationRepository $repo,
+        EntityManagerInterface $em
+    ): Response {
+        $liste = $em->getRepository(Liste::class)->find($id);
+
+        if (!$liste) {
+            throw $this->createNotFoundException('Adhérent introuvable');
+        }
+
+        $stats = $repo->getStatsByAdherent($id);
+        
+        // Debug: afficher les stats dans les logs
+        $this->addFlash('info', 'Statistiques calculées: Total=' . $stats['total'] . ', Payé=' . $stats['paye'] . ', Impayé=' . $stats['impaye']);
+
+        return $this->render('liste/stats.html.twig', [
+            'liste' => $liste,
+            'stats' => $stats,
+        ]);
     }
 }
