@@ -1,0 +1,66 @@
+{{ form_start(form, {'attr': {'class': 'needs-validation'}}) }}
+    <div class="row g-4">
+        <div class="col-md-6">
+            <label class="form-label">
+                <i class="fas fa-tag me-2 opacity-50"></i>
+                {{ form.instance.vars.label|default('Instance') }}
+            </label>
+            {{ form_widget(form.instance, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: Conseil d\'administration'}}) }}
+            <div class="text-danger small mt-1">{{ form_errors(form.instance) }}</div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">
+                <i class="fas fa-building me-2 opacity-50"></i>
+                {{ form.nomOrganisme.vars.label|default('Nom de l\'organisme') }}
+            </label>
+            {{ form_widget(form.nomOrganisme, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: SEBTP Région Centre'}}) }}
+            <div class="text-danger small mt-1">{{ form_errors(form.nomOrganisme) }}</div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">
+                <i class="fas fa-calendar-alt me-2 opacity-50"></i>
+                {{ form.mandat.vars.label|default('Mandat') }}
+            </label>
+            {{ form_widget(form.mandat, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: 2024-2028'}}) }}
+            <div class="text-danger small mt-1">{{ form_errors(form.mandat) }}</div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">
+                <i class="fas fa-user-tie me-2 opacity-50"></i>
+                {{ form.nomRepresentant.vars.label|default('Nom du représentant') }}
+            </label>
+            {{ form_widget(form.nomRepresentant, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: Jean Dupont'}}) }}
+            <div class="text-danger small mt-1">{{ form_errors(form.nomRepresentant) }}</div>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">
+                <i class="fas fa-comment me-2 opacity-50"></i>
+                {{ form.observation.vars.label|default('Observation') }}
+            </label>
+            {{ form_widget(form.observation, {'attr': {'class': 'form-control custom-input', 'rows': 3, 'placeholder': 'Informations complémentaires...'}}) }}
+            <div class="text-danger small mt-1">{{ form_errors(form.observation) }}</div>
+        </div>
+    </div>
+
+    {{ form_rest(form) }}
+
+    <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
+        <a href="{{ path('app_sebtp_index') }}" class="btn-action btn-cancel text-decoration-none">
+            <i class="fas fa-times me-2"></i> Annuler
+        </a>
+        <button type="submit" class="btn-action btn-update">
+            <i class="fas fa-save me-2"></i> {{ button_label|default('Enregistrer') }}
+        </button>
+    </div>
+{{ form_end(form) }}
+
+<style>
+.custom-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+</style>

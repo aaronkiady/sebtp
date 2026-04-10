@@ -1,0 +1,70 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Export des organismes SEBTP{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-building"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Export des organismes SEBTP</h1>
+                    <p class="text-muted mb-0">Générez un fichier Excel des organismes</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="get" action="{{ path('app_export_sebtp_excel') }}" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Instance</label>
+                        <select name="instance" class="form-select">
+                            <option value="">Toutes les instances</option>
+                            {% for instance in instances %}
+                                <option value="{{ instance }}">{{ instance }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Mandat</label>
+                        <select name="mandat" class="form-select">
+                            <option value="">Tous les mandats</option>
+                            {% for mandat in mandats %}
+                                <option value="{{ mandat }}">{{ mandat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Recherche</label>
+                        <input type="text" name="search" class="form-control" placeholder="Nom, instance, représentant...">
+                    </div>
+
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-file-excel me-2"></i>Exporter en Excel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-4">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Informations :</strong> L'export inclura les colonnes suivantes :
+            <ul class="mt-2 mb-0">
+                <li>Instance</li>
+                <li>Nom de l'organisme</li>
+                <li>Mandat</li>
+                <li>Nom du représentant</li>
+                <li>Observation</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Annuaire des adhérents{% endblock %}
+{% block title %}Gestion SEBTP | Organismes{% endblock %}
 
 {% block body %}
 <div class="main-wrapper mt-5">
@@ -11,19 +11,19 @@
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
-                    <i class="fas fa-users"></i>
+                    <i class="fas fa-building"></i>
                 </div>
                 <div>
-                    <h1 class="h2 fw-bold text-dark mb-0">Annuaire des adhérents</h1>
-                    <p class="text-muted mb-0">Gestion et suivi des membres</p>
+                    <h1 class="h2 fw-bold text-dark mb-0">Organismes SEBTP</h1>
+                    <p class="text-muted mb-0">Gestion des organismes et représentants</p>
                 </div>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ path('app_export_liste_form') }}" class="btn btn-outline-success">
-                    <i class="fas fa-file-excel me-2"></i>Exporter
+                <a href="{{ path('app_export_sebtp_form') }}" class="btn btn-outline-info">
+                    <i class="fas fa-download me-2"></i>Exporter la liste
                 </a>
-                <a href="{{ path('app_liste_new') }}" class="btn btn-cute">
-                    <i class="fas fa-plus me-2"></i>Ajouter adhérent
+                <a href="{{ path('app_sebtp_new') }}" class="btn btn-cute">
+                    <i class="fas fa-plus me-2"></i>Nouvel organisme
                 </a>
             </div>
         </div>
@@ -34,7 +34,7 @@
                 <div class="mt-2">
                     <span class="badge bg-light text-dark">
                         Résultats pour : "{{ searchTerm }}"
-                        <a href="{{ path('app_liste_index') }}" class="text-decoration-none ms-1">&times;</a>
+                        <a href="{{ path('app_sebtp_index') }}" class="text-decoration-none ms-1">&times;</a>
                     </span>
                 </div>
             {% endif %}
@@ -45,41 +45,37 @@
                 <thead class="table-light">
                     <tr>
                         <th>ID</th>
-                        <th>Nom</th>
-                        <th>Email</th>
-                        <th>Téléphone</th>
-                        <th>Activité</th>
-                        <th>Statut</th>
+                        <th>Instance</th>
+                        <th>Organisme</th>
+                        <th>Mandat</th>
+                        <th>Représentant</th>
+                        <th>Observation</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                {% for liste in listes %}
+                {% for sebtp in sebtps %}
                     <tr>
-                        <td class="text-muted">#{{ liste.id }}</td>
-                        <td class="fw-bold">{{ liste.nom }}</td>
-                        <td>{{ liste.email }}</td>
-                        <td>{{ liste.numero }}</td>
-                        <td>{{ liste.activite }}</td>
+                        <td class="text-muted">#{{ sebtp.id }}</td>
                         <td>
-                            {% if liste.statut == 'actif' %}
-                                <span class="badge bg-success rounded-pill">Actif</span>
-                            {% elseif liste.statut == 'inactif' %}
-                                <span class="badge bg-warning rounded-pill">Inactif</span>
-                            {% elseif liste.statut == 'radie' %}
-                                <span class="badge bg-danger rounded-pill">Radié</span>
-                            {% else %}
-                                <span class="badge bg-secondary rounded-pill">{{ liste.statut }}</span>
-                            {% endif %}
+                            <span class="fw-bold text-primary">{{ sebtp.instance }}</span>
+                        </td>
+                        <td>{{ sebtp.nomOrganisme }}</td>
+                        <td>
+                            <span class="badge bg-info-soft text-info rounded-pill">{{ sebtp.mandat }}</span>
+                        </td>
+                        <td>{{ sebtp.nomRepresentant }}</td>
+                        <td>
+                            <span class="small text-muted">{{ sebtp.observation|default('Aucune')|slice(0, 50) }}</span>
                         </td>
                         <td class="text-end">
                             <div class="btn-group">
-                                <a href="{{ path('app_liste_show', {'id': liste.id}) }}" 
+                                <a href="{{ path('app_sebtp_show', {'id': sebtp.id}) }}" 
                                    class="btn btn-sm btn-outline-secondary border-0 bg-light" 
                                    title="Voir">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ path('app_liste_edit', {'id': liste.id}) }}" 
+                                <a href="{{ path('app_sebtp_edit', {'id': sebtp.id}) }}" 
                                    class="btn btn-sm btn-outline-secondary border-0 bg-light ms-1" 
                                    title="Modifier">
                                     <i class="fas fa-edit"></i>
@@ -91,17 +87,17 @@
                     <tr>
                         <td colspan="7" class="text-center py-5">
                             <div class="mb-3">
-                                <i class="fas fa-users fa-4x text-muted opacity-25"></i>
+                                <i class="fas fa-building fa-4x text-muted opacity-25"></i>
                             </div>
                             <p class="text-muted fw-bold">
                                 {% if searchTerm is defined and searchTerm %}
-                                    Aucun adhérent trouvé pour "{{ searchTerm }}"
+                                    Aucun organisme trouvé pour "{{ searchTerm }}"
                                 {% else %}
-                                    Aucun adhérent enregistré.
+                                    Aucun organisme enregistré.
                                 {% endif %}
                             </p>
-                            <a href="{{ path('app_liste_new') }}" class="btn btn-primary mt-2">
-                                <i class="fas fa-plus me-2"></i>Ajouter un adhérent
+                            <a href="{{ path('app_sebtp_new') }}" class="btn btn-primary mt-2">
+                                <i class="fas fa-plus me-2"></i>Ajouter un organisme
                             </a>
                         </td>
                     </tr>
@@ -111,4 +107,20 @@
         </div>
     </div>
 </div>
+
+<style>
+.bg-info-soft {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+.btn-outline-info {
+    color: #0284c7;
+    border-color: #0284c7;
+}
+.btn-outline-info:hover {
+    background-color: #0284c7;
+    color: white;
+    border-color: #0284c7;
+}
+</style>
 {% endblock %}

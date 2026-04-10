@@ -1,0 +1,8 @@
+<form method="post" action="{{ path('app_sebtp_delete', {'id': sebtp.id}) }}" 
+      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet organisme ? Cette action est irréversible.');"
+      class="d-inline">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ sebtp.id) }}">
+    <button type="submit" class="btn-action btn-delete">
+        <i class="fas fa-trash-alt me-2"></i> Supprimer
+    </button>
+</form>

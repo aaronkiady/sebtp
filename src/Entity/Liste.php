@@ -87,6 +87,18 @@ class Liste
     #[ORM\OneToMany(targetEntity: Contact::class, mappedBy: 'liste')]
     private Collection $contacts;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $raisonDepart = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $statutDemande = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $validationBureau = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $validationAG = null;
+
     public function __construct()
     {
         $this->formations = new ArrayCollection();
@@ -403,6 +415,54 @@ class Liste
                 $contact->setListe(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getRaisonDepart(): ?string
+    {
+        return $this->raisonDepart;
+    }
+
+    public function setRaisonDepart(?string $raisonDepart): static
+    {
+        $this->raisonDepart = $raisonDepart;
+
+        return $this;
+    }
+
+    public function getStatutDemande(): ?string
+    {
+        return $this->statutDemande;
+    }
+
+    public function setStatutDemande(?string $statutDemande): static
+    {
+        $this->statutDemande = $statutDemande;
+
+        return $this;
+    }
+
+    public function getValidationBureau(): ?string
+    {
+        return $this->validationBureau;
+    }
+
+    public function setValidationBureau(?string $validationBureau): static
+    {
+        $this->validationBureau = $validationBureau;
+
+        return $this;
+    }
+
+    public function getValidationAG(): ?string
+    {
+        return $this->validationAG;
+    }
+
+    public function setValidationAG(?string $validationAG): static
+    {
+        $this->validationAG = $validationAG;
 
         return $this;
     }
