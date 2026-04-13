@@ -218,4 +218,50 @@ class ListeRepository extends ServiceEntityRepository
             'statuts' => $statuts,
         ];
     }
+
+    /**
+     * Récupère les cotisations pour l'export Excel
+     * Cette méthode joint les cotisations aux adhérents
+     */
+    public function getCotisationsForExport(?string $annee = null, ?string $statut = null, ?string $statutAdherent = null): array
+    {
+        $qb = $this->createQueryBuilder('l')
+            ->select('l.nom as adherent_nom')
+            ->addSelect('l.email as adherent_email')
+            ->addSelect('l.numero as adherent_telephone')
+            ->addSelect('l.adresse as adherent_adresse')
+            ->addSelect('c.id as cotisation_id')
+            ->addSelect('c.periode as cotisation_periode')
+            ->addSelect('c.montant as cotisation_montant')
+            ->addSelect('c.statut as cotisation_statut')
+            ->addSelect('c.reference as cotisation_reference')
+            ->addSelect('c.observation as cotisation_observation')
+            ->addSelect('c.datePaiement as cotisation_date_paiement')
+            ->addSelect('c.modePaiement as cotisation_mode_paiement')
+            ->leftJoin('l.cotisations', 'c');
+
+        // Filtre par année
+        if ($annee && $annee !== 'tous' && $annee !== '') {
+            $qb->andWhere('c.periode = :annee')
+               ->setParameter('annee', $annee);
+        }
+
+        // Filtre par statut de cotisation
+        if ($statut && $statut !== 'tous') {
+            $statutValue = $statut === 'paye' ? 'payé' : 'impayé';
+            $qb->andWhere('c.statut = :statut')
+               ->setParameter('statut', $statutValue);
+        }
+
+        // Filtre par statut d'adhérent
+        if ($statutAdherent && $statutAdherent !== 'tous') {
+            $qb->andWhere('l.statut = :statutAdherent')
+               ->setParameter('statutAdherent', $statutAdherent);
+        }
+
+        return $qb->orderBy('l.nom', 'ASC')
+                  ->addOrderBy('c.periode', 'DESC')
+                  ->getQuery()
+                  ->getResult();
+    }
 }

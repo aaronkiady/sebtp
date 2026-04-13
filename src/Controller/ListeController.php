@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/liste')]
+#[Route('/adherents')]
 final class ListeController extends AbstractController
 {
     #[Route(name: 'app_liste_index', methods: ['GET'])]

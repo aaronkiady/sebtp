@@ -12,7 +12,7 @@ use App\Repository\EvenementRepository;
 
 final class HomeController extends AbstractController
 {
-    #[Route('/home', name: 'app_home')]
+    #[Route('/dashboard', name: 'app_home')]
     public function index(
         ListeRepository $listeRepo, 
         FormationRepository $formationRepo, 
