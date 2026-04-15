@@ -9,6 +9,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 
 class ContactType extends AbstractType
 {
@@ -18,8 +19,12 @@ class ContactType extends AbstractType
             ->add('nom', TextType::class, [
                 'attr' => ['placeholder' => 'Nom et Prénom']
             ])
-            ->add('fonction', TextType::class, [
-                'attr' => ['placeholder' => 'Ex: Responsable RH']
+            ->add('fonction', ChoiceType::class, [
+                'label' => 'Fonction',
+                'choices' => [
+                    'Compta' => 'Compta',
+                    'RH' => 'RH',
+                ]
             ])
             ->add('email', EmailType::class, [
                 'attr' => ['placeholder' => 'email@entreprise.mg']

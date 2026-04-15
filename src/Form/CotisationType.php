@@ -41,7 +41,7 @@ class CotisationType extends AbstractType
             ->add('statut', ChoiceType::class, [
                 'choices' => [
                     'Payé' => 'payé',
-                    'En attente' => 'impayer',
+                    'En attente' => 'impayé',
                 ],
                 'attr' => ['class' => 'form-select']
             ])

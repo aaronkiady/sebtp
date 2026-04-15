@@ -9,9 +9,9 @@
     <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap mb-4">
         <div>
             <h2 class="fw-bold">
-                Bonjour, <span class="text-gradient">{{ app.user.nom }}</span> 👋
+                Bonjour, <span class="text-gradient">{{ app.user.nom|default('Admin') }}</span> 👋
             </h2>
-            <p class="text-muted mb-0">Voici ce qui se passe aujourd’hui dans votre organisation.</p>
+            <p class="text-muted mb-0">Voici ce qui se passe aujourd'hui dans votre organisation.</p>
         </div>
         <div class="text-end d-none d-md-block">
             <span class="badge bg-light text-dark border p-2 rounded-3">
@@ -20,150 +20,41 @@
         </div>
     </div>
 
-    {# 2. CARTES DE STATISTIQUES GLOBALES #}
-    <div class="row g-4 mb-4">
-        <div class="col-md-4">
-            <div class="stat-card rose">
-                <i class="fas fa-users"></i>
-                <div>
-                    <h3>{{ nb_actifs + nb_inactifs + nb_radies + nb_demande }}</h3>
-                    <p>Adhérents au total</p>
-                    <div class="mt-1">
-                        <small class="badge bg-white text-success p-1">{{ nb_actifs }} actifs</small>
+    {# 2. LIGNE HAUTE : Plateforme SEBTP | Résumé adhérents | Total + Demandes #}
+    <div class="row g-3 mb-4">
+        {# Col 1: Plateforme SEBTP #}
+        <div class="col-md-4 col-lg-4">
+            <div class="card-modern p-3 h-100">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                        <i class="fas fa-building"></i>
                     </div>
+                    <h6 class="fw-bold mb-0">Plateforme SEBTP</h6>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="stat-card blue">
-                <i class="fas fa-calendar-alt"></i>
-                <div>
-                    <h3>{{ total_evenements }}</h3>
-                    <p>Évènements</p>
-                    <small class="text-white-50">Programmés en base</small>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="stat-card purple">
-                <i class="fas fa-graduation-cap"></i>
-                <div>
-                    <h3>{{ total_formations }}</h3>
-                    <p>Formations</p>
-                    <small class="text-white-50">Modules enregistrés</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <div class="col-lg-8">
-            
-            <div class="card-modern p-4 mb-4">
-                <h5 class="fw-bold mb-3">Actions rapides ⚡</h5>
-                <div class="d-flex flex-wrap gap-3">
-                    <a href="{{ path('app_liste_new') }}" class="btn btn-cute">
-                        <i class="fas fa-user-plus me-2"></i> Ajouter adhérent
-                    </a>
-                    <a href="{{ path('app_evenement_new') }}" class="btn btn-light-modern border">
-                        <i class="fas fa-calendar-plus me-2"></i> Créer évènement
-                    </a>
-                    <a href="{{ path('app_formation_index') }}" class="btn btn-light-modern border">
-                        <i class="fas fa-book me-2"></i> Voir formations
-                    </a>
-                </div>
-            </div>
-
-            {# 3 LIGNES DES GRAPHIQUES COTISATIONS + ÉVÉNEMENTS #}
-            <div class="row g-4 mb-4">
-                <div class="col-md-4">
-                    <div class="card-modern p-4 h-100">
-                        <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') }} </h6>
-                        <canvas id="chartN" height="200"></canvas>
-                        <div class="text-center mt-3 small text-muted">
-                            Basé sur {{ statsN.total }} adhérents actifs
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card-modern p-4 h-100">
-                        <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') - 1 }}</h6>
-                        <canvas id="chartN1" height="200"></canvas>
-                        <div class="text-center mt-3 small text-muted">
-                             Historique année passée
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card-modern p-4 h-100">
-                        <h6 class="fw-bold mb-4 text-center">
-                            Événements
-                        </h6>
-                        <canvas id="chartEvenementsGlobal" height="200"></canvas>
-                        <div class="text-center mt-3 small text-muted">
-                            Total évènement: <strong>{{ statsGlobalEvenements.total }}</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <div class="module-card">
-                        <i class="fas fa-users icon"></i>
-                        <h5>Annuaire Adhérents</h5>
-                        <p>Filtrer par statut ({{ nb_actifs }} actifs actuellement).</p>
-                        <a href="{{ path('app_liste_index') }}">Explorer l'annuaire →</a>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="module-card">
-                        <i class="fas fa-calendar icon"></i>
-                        <h5>Gestion Évènements</h5>
-                        <p>Consulter les {{ total_evenements }} évènements.</p>
-                        <a href="{{ path('app_evenement_index') }}">Voir le calendrier →</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            
-            <div class="card-modern p-3 mb-4 border-start border-warning border-4 shadow-sm">
-                <h6 class="text-muted small mb-1">En attente</h6>
-                <div class="d-flex justify-content-between align-items-center">
-                    <h4 class="fw-bold mb-0 text-warning">{{ nb_demande }} demandes</h4>
-                    <a href="{{ path('app_liste_index') }}?statut=demande" class="btn btn-light-modern btn-sm">
-                        <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            </div>
-
-            <div class="card-dark p-4 mb-4 shadow-lg">
-                <h5 class="fw-bold">Plateforme SEBTP 📊</h5>
-                <p class="small text-white-50">
-                    Gérez efficacement vos adhérents et suivez les cotisations depuis un tableau de bord centralisé.
+                <p class="small text-muted mb-2">
+                    Gérez vos adhérents et suivez les cotisations depuis ce tableau de bord.
                 </p>
-                <div class="mt-4 small">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>👥 Gestion des membres</span>
-                        <span class="text-success">✔</span>
+                <div class="mt-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small">👥 Gestion des membres</span>
+                        <span class="text-success small">✔</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>💰 Suivi des cotisations</span>
-                        <span class="text-success">✔</span>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small">💰 Suivi des cotisations</span>
+                        <span class="text-success small">✔</span>
                     </div>
                     <div class="d-flex justify-content-between">
-                        <span>🎓 Suivi des formations et autres évènements</span>
-                        <span class="text-success">✔</span>
+                        <span class="small">🎓 Suivi des formations</span>
+                        <span class="text-success small">✔</span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="card-modern p-4 border shadow-sm">
-                <h6 class="fw-bold mb-3">Résumé des Adhérents</h6>
+        {# Col 2: Résumé des adhérents #}
+        <div class="col-md-4 col-lg-4">
+            <div class="card-modern p-3 h-100">
+                <h6 class="fw-bold mb-3 text-center">Résumé des Adhérents</h6>
                 <div class="d-flex flex-column gap-2">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="small text-muted">Actifs</span>
@@ -177,10 +68,145 @@
                         <span class="small text-muted">Radiés</span>
                         <span class="badge bg-danger-soft text-danger rounded-pill">{{ nb_radies }}</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-1">
+                    <div class="d-flex justify-content-between align-items-center pt-2 mt-1 border-top">
                         <span class="small fw-bold">Total</span>
-                        <span class="small fw-bold">{{ nb_actifs + nb_inactifs + nb_radies + nb_demande }}</span>
+                        <span class="fw-bold">{{ nb_actifs + nb_inactifs + nb_radies + nb_demande }}</span>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        {# Col 3: Carte rose + Demandes #}
+        <div class="col-md-4 col-lg-4 d-flex flex-column gap-3">
+            <div class="stat-card rose p-3 flex-fill">
+                <i class="fas fa-users"></i>
+                <div>
+                    <h3>{{ nb_actifs + nb_inactifs + nb_radies + nb_demande }}</h3>
+                    <p>Adhérents au total</p>
+                    <small class="badge bg-white text-success mt-1">{{ nb_actifs }} actifs</small>
+                </div>
+            </div>
+            <div class="card-modern p-3 border-start border-warning border-4 shadow-sm">
+                <h6 class="text-muted small mb-1">En attente</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-warning">{{ nb_demande }} demandes</span>
+                    <a href="{{ path('app_liste_index') }}?statut=demande" class="btn btn-light-modern btn-sm">
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    {# 4. LIGNE : Actions rapides | Cartes Évènements et Formations | Annuaire #}
+    <div class="row g-3 mb-4">
+        {# Col 1: Actions rapides #}
+        <div class="col-md-4">
+            <div class="card-modern p-3 h-100">
+                <h6 class="fw-bold mb-3">Actions rapides ⚡</h6>
+                <div class="d-flex flex-column gap-2">
+                    <a href="{{ path('app_liste_new') }}" class="btn btn-cute w-100 text-start">
+                        <i class="fas fa-user-plus me-2"></i> Ajouter adhérent
+                    </a>
+                    <a href="{{ path('app_evenement_new') }}" class="btn btn-light-modern border w-100 text-start">
+                        <i class="fas fa-calendar-plus me-2"></i> Créer évènement
+                    </a>
+                    <a href="{{ path('app_formation_index') }}" class="btn btn-light-modern border w-100 text-start">
+                        <i class="fas fa-book me-2"></i> Voir formations
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {# Col 2: Cartes Évènements et Formations #}
+        <div class="col-md-4">
+            <div class="row g-3 h-100">
+                <div class="col-12">
+                    <div class="stat-card blue p-3 h-100">
+                        <i class="fas fa-calendar-alt"></i>
+                        <div>
+                            <h3>{{ total_evenements|default(0) }}</h3>
+                            <p>Évènements</p>
+                            <small class="text-white-50">Programmés en base</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="stat-card purple p-3 h-100">
+                        <i class="fas fa-graduation-cap"></i>
+                        <div>
+                            <h3>{{ total_formations|default(0) }}</h3>
+                            <p>Formations</p>
+                            <small class="text-white-50">Modules enregistrés</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Col 3: Annuaire Adhérents #}
+        <div class="col-md-4">
+            <div class="module-card p-3 h-100">
+                <i class="fas fa-address-book icon mb-2"></i>
+                <h6 class="fw-bold">Annuaire Adhérents</h6>
+                <p class="small text-muted mb-2">{{ nb_actifs + nb_inactifs + nb_radies + nb_demande }} membres</p>
+                <a href="{{ path('app_liste_index') }}" class="btn btn-light-modern w-100 mt-2">Explorer l'annuaire →</a>
+            </div>
+        </div>
+    </div>
+    {# 3. LIGNE DES GRAPHIQUES COTISATIONS #}
+    {% set total_n  = statsN.total|default(0) %}
+    {% set total_n1 = statsN1.total|default(0) %}
+    {% set total_ev = statsGlobalEvenements.total|default(0) %}
+
+    {% set pct_n_paye   = total_n  > 0 ? ((statsN.paye|default(0)  / total_n)  * 100)|round : 0 %}
+    {% set pct_n_impaye = total_n  > 0 ? ((statsN.impaye|default(0) / total_n)  * 100)|round : 0 %}
+
+    {% set pct_n1_paye   = total_n1 > 0 ? ((statsN1.paye|default(0)  / total_n1) * 100)|round : 0 %}
+    {% set pct_n1_impaye = total_n1 > 0 ? ((statsN1.impaye|default(0) / total_n1) * 100)|round : 0 %}
+
+    {% set pct_ev_paye   = total_ev > 0 ? ((statsGlobalEvenements.paye|default(0)   / total_ev) * 100)|round : 0 %}
+    {% set pct_ev_impaye = total_ev > 0 ? ((statsGlobalEvenements.impaye|default(0)  / total_ev) * 100)|round : 0 %}
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card-modern p-4 h-100">
+                <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') }}</h6>
+                <canvas id="chartN" height="200"></canvas>
+                <div class="text-center mt-3">
+                    <span class="badge bg-success me-2">Payé : {{ pct_n_paye }}%</span>
+                    <span class="badge bg-danger">Impayé : {{ pct_n_impaye }}%</span>
+                </div>
+                <div class="text-center mt-2 small text-muted">
+                    Basé sur {{ total_n }} adhérents actifs
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-modern p-4 h-100">
+                <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') - 1 }}</h6>
+                <canvas id="chartN1" height="200"></canvas>
+                <div class="text-center mt-3">
+                    <span class="badge bg-success me-2">Payé : {{ pct_n1_paye }}%</span>
+                    <span class="badge bg-danger">Impayé : {{ pct_n1_impaye }}%</span>
+                </div>
+                <div class="text-center mt-2 small text-muted">
+                    Historique année passée
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-modern p-4 h-100">
+                <h6 class="fw-bold mb-4 text-center">Événements (tous adhérents)</h6>
+                <canvas id="chartEvenementsGlobal" height="200"></canvas>
+                <div class="text-center mt-3">
+                    <span class="badge bg-success me-2">Payé : {{ pct_ev_paye }}%</span>
+                    <span class="badge bg-danger">Impayé : {{ pct_ev_impaye }}%</span>
+                </div>
+                <div class="text-center mt-2 small text-muted">
+                    Total participations : <strong>{{ total_ev }}</strong>
                 </div>
             </div>
         </div>
@@ -190,65 +216,38 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const chartOptions = {
-        plugins: { 
-            legend: { position: 'bottom' } 
-        },
+        plugins: { legend: { position: 'bottom' } },
         cutout: '70%',
         responsive: true,
         maintainAspectRatio: false
     };
 
-    // Graphique cotisations année en cours
     new Chart(document.getElementById('chartN'), {
         type: 'doughnut',
         data: {
             labels: ['Payé', 'Impayé'],
-            datasets: [{
-                data: [{{ statsN.paye }}, {{ statsN.impaye }}],
-                backgroundColor: ['#10b981', '#fecaca'],
-                borderWidth: 0
-            }]
+            datasets: [{ data: [{{ statsN.paye|default(0) }}, {{ statsN.impaye|default(0) }}], backgroundColor: ['#10b981', '#fecaca'], borderWidth: 0 }]
         },
         options: chartOptions
     });
 
-    // Graphique cotisations année précédente
     new Chart(document.getElementById('chartN1'), {
         type: 'doughnut',
         data: {
             labels: ['Payé', 'Impayé'],
-            datasets: [{
-                data: [{{ statsN1.paye }}, {{ statsN1.impaye }}],
-                backgroundColor: ['#42a5f5', '#ff0026'],
-                borderWidth: 0
-            }]
+            datasets: [{ data: [{{ statsN1.paye|default(0) }}, {{ statsN1.impaye|default(0) }}], backgroundColor: ['#42a5f5', '#ff0026'], borderWidth: 0 }]
         },
         options: chartOptions
     });
 
-    // Graphique global des événements (tous adhérents)
-    {% if statsGlobalEvenements.total > 0 %}
+    {% if total_ev > 0 %}
     new Chart(document.getElementById('chartEvenementsGlobal'), {
         type: 'doughnut',
         data: {
             labels: ['Payé', 'Impayé'],
-            datasets: [{
-                data: [{{ statsGlobalEvenements.paye }}, {{ statsGlobalEvenements.impaye }}],
-                backgroundColor: ['#10b981', '#fecaca'],
-                borderWidth: 0
-            }]
+            datasets: [{ data: [{{ statsGlobalEvenements.paye|default(0) }}, {{ statsGlobalEvenements.impaye|default(0) }}], backgroundColor: ['#10b981', '#fecaca'], borderWidth: 0 }]
         },
-        options: {
-            plugins: { 
-                legend: { 
-                    position: 'bottom',
-                    labels: { font: { size: 11 } }
-                } 
-            },
-            cutout: '70%',
-            responsive: true,
-            maintainAspectRatio: false
-        }
+        options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, cutout: '70%', responsive: true, maintainAspectRatio: false }
     });
     {% endif %}
 </script>

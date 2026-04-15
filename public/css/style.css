@@ -213,3 +213,128 @@ a:hover {
     font-size: 17px;
     opacity: 0.8;
 }
+
+/* Badges colorés pour les statistiques */
+.bg-success-soft {
+    background-color: #d1fae5;
+    color: #059669;
+}
+.bg-warning-soft {
+    background-color: #fed7aa;
+    color: #ea580c;
+}
+.bg-danger-soft {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+/* Icône dans le header */
+.header-icon {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    font-size: 1.3rem;
+}
+
+:root {
+    --primary: #ec407a;
+    --primary-light: #fce4ec;
+}
+
+/* Badges colorés pour les statistiques */
+.bg-success-soft {
+    background-color: #d1fae5;
+    color: #059669;
+}
+.bg-warning-soft {
+    background-color: #fed7aa;
+    color: #ea580c;
+}
+.bg-danger-soft {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+/* Header icon plus petit */
+.header-icon {
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 1rem;
+}
+
+/* Stat cards plus compactes */
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 16px;
+    color: white;
+    font-weight: bold;
+}
+
+.stat-card i {
+    font-size: 20px;
+}
+
+.stat-card h3, .stat-card h4 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.stat-card p {
+    margin: 0;
+    font-size: 0.7rem;
+}
+
+.stat-card.rose { background: linear-gradient(135deg, #ec407a, #f06292); }
+.stat-card.blue { background: linear-gradient(135deg, #42a5f5, #64b5f6); }
+.stat-card.purple { background: linear-gradient(135deg, #ab47bc, #ba68c8); }
+
+/* Card moderne compact */
+.card-modern {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+/* Module card compact */
+.module-card {
+    background: white;
+    border-radius: 16px;
+    transition: 0.2s;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.module-card:hover {
+    transform: translateY(-2px);
+}
+
+.module-card .icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: #ec407a;
+}
+
+/* Boutons plus petits */
+.btn-cute {
+    background: linear-gradient(135deg, #ec407a, #42a5f5);
+    color: white;
+    border-radius: 10px;
+    padding: 5px 12px;
+    font-size: 0.75rem;
+    border: none;
+}
+
+.btn-light-modern {
+    background: #f1f3f5;
+    border-radius: 10px;
+    padding: 5px 12px;
+    font-size: 0.75rem;
+}

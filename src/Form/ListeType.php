@@ -65,7 +65,7 @@ class ListeType extends AbstractType
                 'label' => 'Nombre d\'employés',
             ])
             ->add('cotFMTP', ChoiceType::class, [
-                'label' => 'Cotisation FMTP',
+                'label' => 'Cotisation FMFP',
                 'choices' => [
                     'Oui' => 'Oui',
                     'Non' => 'Non',
