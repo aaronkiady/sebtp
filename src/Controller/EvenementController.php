@@ -66,8 +66,6 @@ final class EvenementController extends AbstractController
             $em->persist($evenement);
             $em->flush();
 
-            $this->addFlash('success', 'Événement créé avec succès!');
-
             return $this->redirectToRoute('app_evenement_index');
         }
 
@@ -92,7 +90,6 @@ final class EvenementController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $entityManager->flush();
-            $this->addFlash('success', 'Événement modifié avec succès!');
 
             return $this->redirectToRoute('app_evenement_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -156,7 +153,6 @@ final class EvenementController extends AbstractController
             }
             
             $em->flush();
-            $this->addFlash('success', 'La liste des participants a été mise à jour avec succès!');
             
             return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
         }
@@ -258,7 +254,7 @@ final class EvenementController extends AbstractController
     #[Route('/participation/{id}/toggle', name: 'app_participation_toggle', methods: ['GET', 'POST'])]
     public function toggle(Participation $participation, EntityManagerInterface $em): Response
     {
-        $newStatus = $participation->getStatutPaiement() === 'paye' ? 'impaye' : 'paye';
+        $newStatus = $participation->getStatutPaiement() === 'paye' ? 'impayé' : 'payé';
         $participation->setStatutPaiement($newStatus);
         $em->flush();
 

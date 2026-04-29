@@ -3,7 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\CotisationRepository;
-use Doctrine\DBAL\Types\Types;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: CotisationRepository::class)]
@@ -14,53 +15,103 @@ class Cotisation
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
-    private ?string $montant = null;
+    #[ORM\ManyToOne(inversedBy: 'cotisations')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Liste $adherent = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
-    private ?\DateTime $datePaiement = null;
+    #[ORM\Column]
+    private ?float $montant = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column]
+    private ?float $montantPaye = null;
+
+    #[ORM\Column(length: 10)]
+    private ?string $periode = null;
+
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    private ?\DateTimeInterface $datePaiement = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
     private ?string $modePaiement = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(length: 100, nullable: true)]
     private ?string $reference = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $statut = null;
-
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $periode = null;
+    #[ORM\Column(length: 20)]
+    private ?string $statut = 'impaye';
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $observation = null;
 
-    #[ORM\ManyToOne(inversedBy: 'cotisations')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Liste $adherent = null;
+    /**
+     * @var Collection<int, Paiement>
+     */
+    #[ORM\OneToMany(mappedBy: 'cotisation', targetEntity: Paiement::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $paiements;
+
+    public function __construct()
+    {
+        $this->montantPaye = 0;
+        $this->statut = 'impaye';
+        $this->paiements = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getMontant(): ?string
+    public function getAdherent(): ?Liste
+    {
+        return $this->adherent;
+    }
+
+    public function setAdherent(?Liste $adherent): static
+    {
+        $this->adherent = $adherent;
+        return $this;
+    }
+
+    public function getMontant(): ?float
     {
         return $this->montant;
     }
 
-    public function setMontant(?string $montant): static
+    public function setMontant(float $montant): static
     {
         $this->montant = $montant;
         return $this;
     }
 
-    public function getDatePaiement(): ?\DateTime
+    public function getMontantPaye(): ?float
+    {
+        return $this->montantPaye;
+    }
+
+    public function setMontantPaye(float $montantPaye): static
+    {
+        $this->montantPaye = $montantPaye;
+        $this->updateStatut();
+        return $this;
+    }
+
+    public function getPeriode(): ?string
+    {
+        return $this->periode;
+    }
+
+    public function setPeriode(string $periode): static
+    {
+        $this->periode = $periode;
+        return $this;
+    }
+
+    public function getDatePaiement(): ?\DateTimeInterface
     {
         return $this->datePaiement;
     }
 
-    public function setDatePaiement(?\DateTime $datePaiement): static
+    public function setDatePaiement(?\DateTimeInterface $datePaiement): static
     {
         $this->datePaiement = $datePaiement;
         return $this;
@@ -98,18 +149,7 @@ class Cotisation
         $this->statut = $statut;
         return $this;
     }
-
-    public function getPeriode(): ?string
-    {
-        return $this->periode;
-    }
-
-    public function setPeriode(?string $periode): static
-    {
-        $this->periode = $periode;
-        return $this;
-    }
-
+    
     public function getObservation(): ?string
     {
         return $this->observation;
@@ -121,14 +161,55 @@ class Cotisation
         return $this;
     }
 
-    public function getAdherent(): ?Liste
+    public function updateStatut(): void
     {
-        return $this->adherent;
+        if ($this->montantPaye >= $this->montant) {
+            $this->statut = 'paye';
+        } elseif ($this->montantPaye > 0) {
+            $this->statut = 'partiel';
+        } else {
+            $this->statut = 'impaye';
+        }
     }
 
-    public function setAdherent(?Liste $adherent): static
+    public function isPaye(): bool
     {
-        $this->adherent = $adherent;
+        return $this->statut === 'paye';
+    }
+
+    public function getResteAPayer(): float
+    {
+        return max(0, $this->montant - $this->montantPaye);
+    }
+
+    /**
+     * @return Collection<int, Paiement>
+     */
+    public function getPaiements(): Collection
+    {
+        return $this->paiements;
+    }
+
+    public function addPaiement(Paiement $paiement): static
+    {
+        if (!$this->paiements->contains($paiement)) {
+            $this->paiements->add($paiement);
+            $paiement->setCotisation($this);
+            $this->montantPaye += $paiement->getMontant();
+            $this->updateStatut();
+        }
+        return $this;
+    }
+
+    public function removePaiement(Paiement $paiement): static
+    {
+        if ($this->paiements->removeElement($paiement)) {
+            if ($paiement->getCotisation() === $this) {
+                $paiement->setCotisation(null);
+            }
+            $this->montantPaye -= $paiement->getMontant();
+            $this->updateStatut();
+        }
         return $this;
     }
 }

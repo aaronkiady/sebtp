@@ -98,7 +98,48 @@
         </div>
     </div>
 
-    
+    {# 3. LIGNE DES GRAPHIQUES COTISATIONS #}
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card-modern p-4 h-100">
+                <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') }}</h6>
+                <canvas id="chartN" height="200"></canvas>
+                <div class="text-center mt-3">
+                    <span class="badge bg-success me-2">Payé : {{ statsN.pourcentagePaye|default(0) }}%</span>
+                    <span class="badge bg-danger">Impayé : {{ statsN.pourcentageImpaye|default(0) }}%</span>
+                </div>
+                <div class="text-center mt-2 small text-muted">
+                    Basé sur {{ statsN.total|default(0) }} adhérents actifs
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-modern p-4 h-100">
+                <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') - 1 }}</h6>
+                <canvas id="chartN1" height="200"></canvas>
+                <div class="text-center mt-3">
+                    <span class="badge bg-success me-2">Payé : {{ statsN1.pourcentagePaye|default(0) }}%</span>
+                    <span class="badge bg-danger">Impayé : {{ statsN1.pourcentageImpaye|default(0) }}%</span>
+                </div>
+                <div class="text-center mt-2 small text-muted">
+                    Historique année passée
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-modern p-4 h-100">
+                <h6 class="fw-bold mb-4 text-center">Événements (tous adhérents)</h6>
+                <canvas id="chartEvenementsGlobal" height="200"></canvas>
+                <div class="text-center mt-3">
+                    <span class="badge bg-success me-2">Payé : {{ statsGlobalEvenements.pourcentagePaye|default(0) }}%</span>
+                    <span class="badge bg-danger">Impayé : {{ statsGlobalEvenements.pourcentageImpaye|default(0) }}%</span>
+                </div>
+                <div class="text-center mt-2 small text-muted">
+                    Total participations : <strong>{{ statsGlobalEvenements.total|default(0) }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {# 4. LIGNE : Actions rapides | Cartes Évènements et Formations | Annuaire #}
     <div class="row g-3 mb-4">
@@ -156,61 +197,6 @@
             </div>
         </div>
     </div>
-    {# 3. LIGNE DES GRAPHIQUES COTISATIONS #}
-    {% set total_n  = statsN.total|default(0) %}
-    {% set total_n1 = statsN1.total|default(0) %}
-    {% set total_ev = statsGlobalEvenements.total|default(0) %}
-
-    {% set pct_n_paye   = total_n  > 0 ? ((statsN.paye|default(0)  / total_n)  * 100)|round : 0 %}
-    {% set pct_n_impaye = total_n  > 0 ? ((statsN.impaye|default(0) / total_n)  * 100)|round : 0 %}
-
-    {% set pct_n1_paye   = total_n1 > 0 ? ((statsN1.paye|default(0)  / total_n1) * 100)|round : 0 %}
-    {% set pct_n1_impaye = total_n1 > 0 ? ((statsN1.impaye|default(0) / total_n1) * 100)|round : 0 %}
-
-    {% set pct_ev_paye   = total_ev > 0 ? ((statsGlobalEvenements.paye|default(0)   / total_ev) * 100)|round : 0 %}
-    {% set pct_ev_impaye = total_ev > 0 ? ((statsGlobalEvenements.impaye|default(0)  / total_ev) * 100)|round : 0 %}
-
-    <div class="row g-4 mb-4">
-        <div class="col-md-4">
-            <div class="card-modern p-4 h-100">
-                <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') }}</h6>
-                <canvas id="chartN" height="200"></canvas>
-                <div class="text-center mt-3">
-                    <span class="badge bg-success me-2">Payé : {{ pct_n_paye }}%</span>
-                    <span class="badge bg-danger">Impayé : {{ pct_n_impaye }}%</span>
-                </div>
-                <div class="text-center mt-2 small text-muted">
-                    Basé sur {{ total_n }} adhérents actifs
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card-modern p-4 h-100">
-                <h6 class="fw-bold mb-4 text-center">Cotisations {{ "now"|date('Y') - 1 }}</h6>
-                <canvas id="chartN1" height="200"></canvas>
-                <div class="text-center mt-3">
-                    <span class="badge bg-success me-2">Payé : {{ pct_n1_paye }}%</span>
-                    <span class="badge bg-danger">Impayé : {{ pct_n1_impaye }}%</span>
-                </div>
-                <div class="text-center mt-2 small text-muted">
-                    Historique année passée
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card-modern p-4 h-100">
-                <h6 class="fw-bold mb-4 text-center">Événements (tous adhérents)</h6>
-                <canvas id="chartEvenementsGlobal" height="200"></canvas>
-                <div class="text-center mt-3">
-                    <span class="badge bg-success me-2">Payé : {{ pct_ev_paye }}%</span>
-                    <span class="badge bg-danger">Impayé : {{ pct_ev_impaye }}%</span>
-                </div>
-                <div class="text-center mt-2 small text-muted">
-                    Total participations : <strong>{{ total_ev }}</strong>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -222,32 +208,57 @@
         maintainAspectRatio: false
     };
 
+    // Graphique cotisations année en cours
     new Chart(document.getElementById('chartN'), {
         type: 'doughnut',
         data: {
             labels: ['Payé', 'Impayé'],
-            datasets: [{ data: [{{ statsN.paye|default(0) }}, {{ statsN.impaye|default(0) }}], backgroundColor: ['#10b981', '#fecaca'], borderWidth: 0 }]
+            datasets: [{
+                data: [{{ statsN.paye|default(0) }}, {{ statsN.impaye|default(0) }}],
+                backgroundColor: ['#10b981', '#fecaca'],
+                borderWidth: 0
+            }]
         },
         options: chartOptions
     });
 
+    // Graphique cotisations année précédente
     new Chart(document.getElementById('chartN1'), {
         type: 'doughnut',
         data: {
             labels: ['Payé', 'Impayé'],
-            datasets: [{ data: [{{ statsN1.paye|default(0) }}, {{ statsN1.impaye|default(0) }}], backgroundColor: ['#42a5f5', '#ff0026'], borderWidth: 0 }]
+            datasets: [{
+                data: [{{ statsN1.paye|default(0) }}, {{ statsN1.impaye|default(0) }}],
+                backgroundColor: ['#42a5f5', '#ff0026'],
+                borderWidth: 0
+            }]
         },
         options: chartOptions
     });
 
-    {% if total_ev > 0 %}
+    // Graphique global des événements
+    {% if statsGlobalEvenements.total|default(0) > 0 %}
     new Chart(document.getElementById('chartEvenementsGlobal'), {
         type: 'doughnut',
         data: {
             labels: ['Payé', 'Impayé'],
-            datasets: [{ data: [{{ statsGlobalEvenements.paye|default(0) }}, {{ statsGlobalEvenements.impaye|default(0) }}], backgroundColor: ['#10b981', '#fecaca'], borderWidth: 0 }]
+            datasets: [{
+                data: [{{ statsGlobalEvenements.paye|default(0) }}, {{ statsGlobalEvenements.impaye|default(0) }}],
+                backgroundColor: ['#10b981', '#fecaca'],
+                borderWidth: 0
+            }]
         },
-        options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, cutout: '70%', responsive: true, maintainAspectRatio: false }
+        options: {
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { font: { size: 11 } }
+                }
+            },
+            cutout: '70%',
+            responsive: true,
+            maintainAspectRatio: false
+        }
     });
     {% endif %}
 </script>

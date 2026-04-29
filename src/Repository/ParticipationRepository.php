@@ -6,9 +6,6 @@ use App\Entity\Participation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<Participation>
- */
 class ParticipationRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -16,7 +13,7 @@ class ParticipationRepository extends ServiceEntityRepository
         parent::__construct($registry, Participation::class);
     }
 
-     public function getStatsByAdherent(int $adherentId): array
+    public function getStatsByAdherent(int $adherentId): array
     {
         $qb = $this->createQueryBuilder('p')
             ->select('COUNT(p.id) as total')
@@ -27,13 +24,13 @@ class ParticipationRepository extends ServiceEntityRepository
             ->setParameter('paye', 'paye')
             ->setParameter('impaye', 'impaye')
             ->getQuery();
-            
+
         $result = $qb->getSingleResult();
-        
+
         $total = (int) $result['total'];
         $paye = (int) $result['paye'];
         $impaye = (int) $result['impaye'];
-        
+
         return [
             'total' => $total,
             'paye' => $paye,
@@ -43,7 +40,7 @@ class ParticipationRepository extends ServiceEntityRepository
         ];
     }
 
-     public function getGlobalStats(): array
+    public function getGlobalStats(): array
     {
         $qb = $this->createQueryBuilder('p')
             ->select('COUNT(p.id) as total')
@@ -52,13 +49,13 @@ class ParticipationRepository extends ServiceEntityRepository
             ->setParameter('paye', 'paye')
             ->setParameter('impaye', 'impaye')
             ->getQuery();
-            
+
         $result = $qb->getSingleResult();
-        
+
         $total = (int) $result['total'];
         $paye = (int) $result['paye'];
         $impaye = (int) $result['impaye'];
-        
+
         return [
             'total' => $total,
             'paye' => $paye,

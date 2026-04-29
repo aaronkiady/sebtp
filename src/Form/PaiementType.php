@@ -2,7 +2,7 @@
 
 namespace App\Form;
 
-use App\Entity\Cotisation;
+use App\Entity\Paiement;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
@@ -11,12 +11,12 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
-class CotisationType extends AbstractType
+class PaiementType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('montantPaye', NumberType::class, [
+            ->add('montant', NumberType::class, [
                 'label' => 'Montant payé (MGA)',
                 'attr' => ['class' => 'form-control custom-input', 'step' => '1000'],
                 'required' => true,
@@ -54,7 +54,7 @@ class CotisationType extends AbstractType
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'data_class' => Cotisation::class,
+            'data_class' => Paiement::class,
         ]);
     }
 }

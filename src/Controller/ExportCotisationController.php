@@ -100,7 +100,7 @@ final class ExportCotisationController extends AbstractController
             if ($statutValue === 'payé') {
                 $sheet->getStyle('I' . $row)->getFont()->getColor()->setARGB('FF10B981');
                 $sheet->getStyle('I' . $row)->getFont()->setBold(true);
-            } elseif ($statutValue === 'impayé') {
+            } elseif ($statutValue === 'partiel') {
                 $sheet->getStyle('I' . $row)->getFont()->getColor()->setARGB('FFEF4444');
                 $sheet->getStyle('I' . $row)->getFont()->setBold(true);
             }

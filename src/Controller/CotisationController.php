@@ -4,8 +4,10 @@ namespace App\Controller;
 
 use App\Entity\Cotisation;
 use App\Entity\Liste;
-use App\Form\CotisationType;
+use App\Entity\Paiement;
+use App\Form\PaiementType;
 use App\Repository\CotisationRepository;
+use App\Service\CotisationCalculator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,44 +17,47 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/cotisation')]
 final class CotisationController extends AbstractController
 {
-    #[Route(name: 'app_cotisation_index', methods: ['GET'])]
-    public function index(CotisationRepository $cotisationRepository): Response
+    #[Route('/', name: 'app_cotisation_index', methods: ['GET'])]
+    public function index(CotisationRepository $repo, CotisationCalculator $calculator): Response
     {
+        $cotisations = $repo->findBy([], ['periode' => 'DESC']);
+        
         return $this->render('cotisation/index.html.twig', [
-            'cotisations' => $cotisationRepository->findAll(),
+            'cotisations' => $cotisations,
+            'calculator' => $calculator,
         ]);
     }
 
-    #[Route('/new/{adherent_id?}', name: 'app_cotisation_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, int $adherent_id, EntityManagerInterface $entityManager): Response
+    #[Route('/history/{adherent_id}', name: 'app_cotisation_history')]
+    public function history(int $adherent_id, EntityManagerInterface $em, CotisationCalculator $calculator): Response
     {
-        $adherent = $entityManager->getRepository(Liste::class)->find($adherent_id);
+        $adherent = $em->getRepository(Liste::class)->find($adherent_id);
         
         if (!$adherent) {
-            throw $this->createNotFoundException("Adhérent non trouvé");
+            throw $this->createNotFoundException('Adhérent non trouvé');
         }
 
-        $cotisation = new Cotisation();
-        $cotisation->setAdherent($adherent);
-
-        $form = $this->createForm(CotisationType::class, $cotisation);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($cotisation);
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_liste_show', ['id' => $adherent->getId()], Response::HTTP_SEE_OTHER);
+        $cotisations = $adherent->getCotisations();
+        $montantAttendu = $calculator->calculateMontant($adherent);
+        $totalPaye = 0;
+        
+        foreach ($cotisations as $cotisation) {
+            $totalPaye += $cotisation->getMontantPaye();
         }
+        
+        $statut = $totalPaye >= $montantAttendu ? 'paye' : 'impaye';
 
-        return $this->render('cotisation/new.html.twig', [
-            'cotisation' => $cotisation,
+        return $this->render('cotisation/history.html.twig', [
             'adherent' => $adherent,
-            'form' => $form,
+            'cotisations' => $cotisations,
+            'montantAttendu' => $montantAttendu,
+            'totalPaye' => $totalPaye,
+            'statut' => $statut,
+            'calculator' => $calculator,
         ]);
     }
 
-    #[Route('/{id}', name: 'app_cotisation_show', methods: ['GET'])]
+    #[Route('/show/{id}', name: 'app_cotisation_show', methods: ['GET'])]
     public function show(Cotisation $cotisation): Response
     {
         return $this->render('cotisation/show.html.twig', [
@@ -60,51 +65,139 @@ final class CotisationController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/edit', name: 'app_cotisation_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Cotisation $cotisation, EntityManagerInterface $entityManager): Response
-    {
-        $form = $this->createForm(CotisationType::class, $cotisation);
+    #[Route('/paiement/new/{adherent_id}', name: 'app_paiement_new', methods: ['GET', 'POST'])]
+    public function newPaiement(
+        int $adherent_id,
+        Request $request,
+        EntityManagerInterface $em,
+        CotisationCalculator $calculator
+    ): Response {
+        $adherent = $em->getRepository(Liste::class)->find($adherent_id);
+        
+        if (!$adherent) {
+            throw $this->createNotFoundException('Adhérent non trouvé');
+        }
+
+        $currentYear = date('Y');
+        $montantAttendu = $calculator->calculateMontant($adherent);
+        
+        // Vérifier si une cotisation existe pour cette année
+        $cotisation = $em->getRepository(Cotisation::class)
+            ->findOneBy([
+                'adherent' => $adherent,
+                'periode' => $currentYear
+            ]);
+        
+        // Si aucune cotisation n'existe, la créer
+        if (!$cotisation) {
+            $cotisation = new Cotisation();
+            $cotisation->setAdherent($adherent);
+            $cotisation->setPeriode($currentYear);
+            $cotisation->setMontant($montantAttendu);
+            $cotisation->setMontantPaye(0);
+            $em->persist($cotisation);
+            $em->flush();
+        }
+
+        $paiement = new Paiement();
+        $paiement->setCotisation($cotisation);
+        
+        $form = $this->createForm(PaiementType::class, $paiement);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
+            $em->persist($paiement);
+            
+            // Mettre à jour le montant payé de la cotisation
+            $cotisation->setMontantPaye($cotisation->getMontantPaye() + $paiement->getMontant());
+            
+            $em->flush();
 
-            return $this->redirectToRoute('app_liste_show', ['id' => $cotisation->getAdherent()->getId()], Response::HTTP_SEE_OTHER);
+            return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherent_id]);
         }
 
-        return $this->render('cotisation/edit.html.twig', [
-            'cotisation' => $cotisation,
-            'form' => $form,
-        ]);
-    }
-
-    #[Route('/{id}', name: 'app_cotisation_delete', methods: ['POST'])]
-    public function delete(Request $request, Cotisation $cotisation, EntityManagerInterface $entityManager): Response
-    {
-        $adherentId = $cotisation->getAdherent()->getId();
-        if ($this->isCsrfTokenValid('delete'.$cotisation->getId(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($cotisation);
-            $entityManager->flush();
-        }
-
-        return $this->redirectToRoute('app_liste_show', ['id' => $adherentId], Response::HTTP_SEE_OTHER);
-    }
-
-    #[Route('/historique/{adherent_id}', name: 'app_cotisation_history', methods: ['GET'])]
-    public function history(int $adherent_id, EntityManagerInterface $entityManager): Response
-    {
-        $adherent = $entityManager->getRepository(Liste::class)->find($adherent_id);
-
-        if (!$adherent) {
-            throw $this->createNotFoundException("Adhérent non trouvé");
-        }
-
-        // On récupère les cotisations de cet adhérent uniquement
-        $cotisations = $adherent->getCotisations();
-
-        return $this->render('cotisation/history.html.twig', [
+        return $this->render('paiement/new.html.twig', [
+            'form' => $form->createView(),
             'adherent' => $adherent,
-            'cotisations' => $cotisations,
+            'montantAttendu' => $montantAttendu,
+            'resteAPayer' => $cotisation->getResteAPayer(),
+            'calculator' => $calculator,
         ]);
+    }
+
+    #[Route('/paiement/{id}/edit', name: 'app_paiement_edit', methods: ['GET', 'POST'])]
+    public function editPaiement(Request $request, Paiement $paiement, EntityManagerInterface $em): Response
+    {
+        $cotisation = $paiement->getCotisation();
+        $adherent = $cotisation->getAdherent();
+        $ancienMontant = $paiement->getMontant();
+        
+        $form = $this->createForm(PaiementType::class, $paiement);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            // Mettre à jour le montant payé de la cotisation
+            $nouveauMontant = $paiement->getMontant();
+            $difference = $nouveauMontant - $ancienMontant;
+            $cotisation->setMontantPaye($cotisation->getMontantPaye() + $difference);
+            
+            $em->flush();
+
+            return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherent->getId()]);
+        }
+
+        return $this->render('paiement/edit.html.twig', [
+            'form' => $form->createView(),
+            'paiement' => $paiement,
+            'adherent' => $adherent,
+        ]);
+    }
+
+    #[Route('/paiement/{id}/delete', name: 'app_paiement_delete', methods: ['POST'])]
+    public function deletePaiement(Request $request, Paiement $paiement, EntityManagerInterface $em): Response
+    {
+        $cotisation = $paiement->getCotisation();
+        $adherentId = $cotisation->getAdherent()->getId();
+        
+        if ($this->isCsrfTokenValid('delete_paiement_' . $paiement->getId(), $request->request->get('_token'))) {
+            // Mettre à jour le montant payé de la cotisation
+            $cotisation->setMontantPaye($cotisation->getMontantPaye() - $paiement->getMontant());
+            $em->remove($paiement);
+            $em->flush();
+        }
+
+        return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherentId]);
+    }
+
+    #[Route('/generate/{adherent_id}', name: 'app_cotisation_generate', methods: ['GET'])]
+    public function generate(int $adherent_id, EntityManagerInterface $em, CotisationCalculator $calculator): Response
+    {
+        $adherent = $em->getRepository(Liste::class)->find($adherent_id);
+        
+        if (!$adherent) {
+            throw $this->createNotFoundException('Adhérent non trouvé');
+        }
+
+        $currentYear = date('Y');
+        $existing = $em->getRepository(Cotisation::class)->findOneBy([
+            'adherent' => $adherent,
+            'periode' => $currentYear
+        ]);
+
+        if (!$existing) {
+            $montant = $calculator->calculateMontant($adherent);
+            $cotisation = new Cotisation();
+            $cotisation->setAdherent($adherent);
+            $cotisation->setPeriode($currentYear);
+            $cotisation->setMontant($montant);
+            $cotisation->setMontantPaye(0);
+            $em->persist($cotisation);
+            $em->flush();
+            $this->addFlash('success', 'Cotisation générée avec succès!');
+        } else {
+            $this->addFlash('info', 'Une cotisation existe déjà pour cette année.');
+        }
+
+        return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherent_id]);
     }
 }

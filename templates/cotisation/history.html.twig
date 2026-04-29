@@ -4,7 +4,6 @@
 
 {% block body %}
 <div class="container mt-5">
-    {# En-tête avec navigation #}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0 text-gray-800">Historique Financier</h1>
@@ -15,108 +14,142 @@
         </a>
     </div>
 
-    {# Statistiques rapides #}
+    {# Cartes de statistiques #}
     <div class="row mb-4">
-        {# Total Versé #}
-        <div class="col-md-4 mb-3">
-            <div class="card border-left-success shadow h-100 py-2">
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total encaissé</div>
-                            {% set totalEncasse = 0 %}
-                            {% for c in cotisations %}{% set totalEncasse = totalEncasse + c.montant %}{% endfor %}
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ totalEncasse|number_format(0, '.', ' ') }} MGA</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Montant attendu</div>
+                    <div class="h5 mb-0 font-weight-bold">{{ montantAttendu|number_format(0, '.', ' ') }} MGA</div>
+                    <small class="text-muted">
+                        {% if adherent.statutMenmbre == 'sponsor' %}
+                            Membre sponsor
+                        elseif adherent.type == 'ong' or 'ONG' in adherent.activite %}
+                            Tarif ONG
+                        else %}
+                            {{ calculator.getTrancheEmployes(adherent.nbEmployes) }}
+                        {% endif %}
+                    </small>
                 </div>
             </div>
         </div>
-
-        {# Statut Année en Cours #}
-        <div class="col-md-4 mb-3">
-            <div class="card border-left-{{ adherent.isAjour ? 'primary' : 'danger' }} shadow h-100 py-2">
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-{{ adherent.isAjour ? 'primary' : 'danger' }} text-uppercase mb-1">Statut {{ "now"|date("Y") }}</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ adherent.isAjour ? 'À JOUR' : 'IMPAYÉ' }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas {{ adherent.isAjour ? 'fa-check-circle text-primary' : 'fa-exclamation-triangle text-danger' }} fa-2x"></i>
-                        </div>
+                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total payé</div>
+                    <div class="h5 mb-0 font-weight-bold text-success">{{ totalPaye|number_format(0, '.', ' ') }} MGA</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Reste à payer</div>
+                    <div class="h5 mb-0 font-weight-bold text-warning">{{ (montantAttendu - totalPaye)|number_format(0, '.', ' ') }} MGA</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-{{ statut == 'paye' ? 'success' : 'danger' }} shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-{{ statut == 'paye' ? 'success' : 'danger' }} text-uppercase mb-1">Statut</div>
+                    <div class="h5 mb-0 font-weight-bold">
+                        {% if statut == 'paye' %}
+                            <span class="text-success">✓ À JOUR</span>
+                        {% else %}
+                            <span class="text-danger">✘ IMPAYÉ</span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {# Tableau des Cotisations #}
+    {# Liste des paiements #}
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white">
-            <h6 class="m-0 font-weight-bold text-primary">Détails des règlements</h6>
-            <a href="{{ path('app_cotisation_new', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-primary shadow-sm">
-                <i class="fas fa-plus"></i> Enregistrer un paiement
-            </a>
+            <h6 class="m-0 font-weight-bold text-primary">Historique des paiements</h6>
+            <div>
+                {% if cotisations|length == 0 %}
+                    <a href="{{ path('app_cotisation_generate', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-info shadow-sm me-2">
+                        <i class="fas fa-plus"></i> Générer la cotisation {{ "now"|date('Y') }}
+                    </a>
+                {% endif %}
+                <a href="{{ path('app_paiement_new', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-primary shadow-sm">
+                    <i class="fas fa-plus"></i> Enregistrer un paiement
+                </a>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover" width="100%" cellspacing="0">
+                <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
+                            <th>Date</th>
                             <th>Période</th>
-                            <th>Montant</th>
-                            <th>Date de paiement</th>
-                            <th>Mode & Réf</th>
-                            <th class="text-center">Statut</th>
+                            <th>Montant payé</th>
+                            <th>Mode de paiement</th>
+                            <th>Référence</th>
+                            <th>Observation</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                     {% for cotisation in cotisations %}
-                        <tr>
-                            <td class="align-middle">
-                                <span class="badge bg-light text-dark border px-3 py-2">{{ cotisation.periode }}</span>
-                            </td>
-                            <td class="align-middle fw-bold">
-                                {{ cotisation.montant|number_format(0, '.', ' ') }} MGA
-                            </td>
-                            <td class="align-middle">
-                                {{ cotisation.datePaiement ? cotisation.datePaiement|date('d/m/Y') : '-' }}
-                            </td>
-                            <td class="align-middle text-muted small">
-                                <i class="fas fa-credit-card"></i> {{ cotisation.modePaiement }}<br>
-                                <span class="text-xs">Ref: {{ cotisation.reference|default('N/A') }}</span>
-                            </td>
-                            <td class="align-middle text-center">
-                                {% if cotisation.statut == 'payé' %}
-                                    <span class="badge rounded-pill bg-success-soft text-success border border-success">
-                                        <i class="fas fa-check"></i> PAYÉ
-                                    </span>
-                                {% else %}
-                                    <span class="badge rounded-pill bg-danger-soft text-danger border border-danger">
-                                        <i class="fas fa-clock"></i> EN ATTENTE
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td class="align-middle text-center">
-                                <div class="btn-group">
-                                    <a href="{{ path('app_cotisation_edit', {'id': cotisation.id}) }}" class="btn btn-sm btn-outline-warning" title="Modifier">
-                                        <i class="fas fa-edit"></i>
+                        {% set paiements = cotisation.paiements %}
+                        {% if paiements|length > 0 %}
+                            {% for paiement in paiements %}
+                                <tr>
+                                    <td>{{ paiement.datePaiement|date('d/m/Y') }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border px-2 py-1">{{ cotisation.periode }}</span>
+                                    </td>
+                                    <td class="fw-bold text-success">{{ paiement.montant|number_format(0, '.', ' ') }} MGA</td>
+                                    <td>{{ paiement.modePaiement|default('-') }}</td>
+                                    <td>
+                                        <span class="text-muted small">{{ paiement.reference|default('-') }}</span>
+                                    </td>
+                                    <td>{{ paiement.observation|default('-') }}</td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a href="{{ path('app_paiement_edit', {'id': paiement.id}) }}" 
+                                               class="btn btn-sm btn-outline-warning" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="post" 
+                                                  action="{{ path('app_paiement_delete', {'id': paiement.id}) }}" 
+                                                  onsubmit="return confirm('Supprimer ce paiement ?')" 
+                                                  style="display:inline">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('delete_paiement_' ~ paiement.id) }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-3 text-muted">
+                                    <i class="fas fa-info-circle me-1"></i> 
+                                    Aucun paiement pour l'année {{ cotisation.periode }}
+                                    <a href="{{ path('app_paiement_new', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-link">
+                                        Ajouter un paiement
                                     </a>
-                                </div>
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
+                        {% endif %}
                     {% else %}
                         <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
+                            <td colspan="7" class="text-center py-5 text-muted">
                                 <i class="fas fa-folder-open fa-3x mb-3 d-block opacity-25"></i>
-                                Aucune cotisation trouvée pour cet adhérent.
+                                Aucune cotisation trouvée.
+                                <div class="mt-3">
+                                    <a href="{{ path('app_cotisation_generate', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-plus me-1"></i> Générer la cotisation {{ "now"|date('Y') }}
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
@@ -125,21 +158,61 @@
             </div>
         </div>
     </div>
+
+    {# Récapitulatif par année #}
+    {% if cotisations|length > 0 %}
+    <div class="card shadow">
+        <div class="card-header bg-white">
+            <h6 class="m-0 font-weight-bold text-primary">Récapitulatif par année</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for cotisation in cotisations %}
+                    <div class="col-md-3 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <h6 class="fw-bold mb-2">{{ cotisation.periode }}</h6>
+                            <div class="small">
+                                <div class="d-flex justify-content-between">
+                                    <span>Dû:</span>
+                                    <strong>{{ cotisation.montant|number_format(0, '.', ' ') }} MGA</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <span>Payé:</span>
+                                    <strong class="text-success">{{ cotisation.montantPaye|number_format(0, '.', ' ') }} MGA</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <span>Reste:</span>
+                                    <strong class="{% if cotisation.getResteAPayer > 0 %}text-danger{% else %}text-success{% endif %}">
+                                        {{ cotisation.getResteAPayer|number_format(0, '.', ' ') }} MGA
+                                    </strong>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                {% if cotisation.statut == 'paye' %}
+                                    <span class="badge bg-success">Payé</span>
+                                {% elseif cotisation.statut == 'partiel' %}
+                                    <span class="badge bg-warning">Partiel</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Impayé</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block stylesheets %}
-    {{ parent() }}
-    <style>
-        .border-left-primary { border-left: 0.25rem solid #4e73df !important; }
-        .border-left-success { border-left: 0.25rem solid #1cc88a !important; }
-        .border-left-danger { border-left: 0.25rem solid #e74a3b !important; }
-        
-        .bg-success-soft { background-color: #eafaf1; }
-        .bg-danger-soft { background-color: #fdedec; }
-        
-        .text-xs { font-size: .75rem; text-transform: uppercase; }
-        .table-hover tbody tr:hover { background-color: rgba(0,0,0,.02); }
-        .badge { font-weight: 600; }
-    </style>
+{{ parent() }}
+<style>
+    .border-left-primary { border-left: 0.25rem solid #4e73df !important; }
+    .border-left-success { border-left: 0.25rem solid #1cc88a !important; }
+    .border-left-warning { border-left: 0.25rem solid #f6c23e !important; }
+    .border-left-danger { border-left: 0.25rem solid #e74a3b !important; }
+    .text-xs { font-size: .7rem; text-transform: uppercase; }
+</style>
 {% endblock %}

@@ -3,89 +3,95 @@
 {% block title %}Gestion des Cotisations{% endblock %}
 
 {% block body %}
-<div class="container mt-5">
-    <a href="{{ path('app_home') }}" class="btn btn-outline-secondary shadow-sm">
-        <i class="fas fa-arrow-left"></i> Retour au dashboard
-    </a>
-    <a href="{{ path('app_export_cotisations_form') }}" class="btn btn-outline-success">
-        <i class="fas fa-file-excel me-2"></i>Exporter les cotisations
-    </a>
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a href="{{ path('app_home') }}" class="btn btn-outline-secondary shadow-sm">
+            <i class="fas fa-arrow-left"></i> Retour au dashboard
+        </a>
+        <a href="{{ path('app_export_cotisations_form') }}" class="btn btn-outline-success">
+            <i class="fas fa-file-excel me-2"></i>Exporter les cotisations
+        </a>
+    </div>
 </div>
-<div class="main-wrapper">
+
+<div class="main-wrapper mt-3">
     <div class="form-card-wide p-4">
-        {# En-tête de la page avec titre et bouton d'action #}
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="h2 fw-bold text-dark">Cotisations</h1>
                 <p class="text-muted">Flux financier et suivi des paiements</p>
             </div>
-            {#<a href="{{ path('app_cotisation_new') }}" class="btn btn-cute">
-                <i class="fas fa-plus me-2"></i>Nouveau Paiement
-            </a>#}
         </div>
 
-        {# Tableau des cotisations stylisé #}
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
                         <th>Adhérent</th>
-                        <th>Montant</th>
-                        <th>Date</th>
+                        <th>Période</th>
+                        <th>Montant attendu</th>
+                        <th>Montant payé</th>
+                        <th>Reste à payer</th>
                         <th>Statut</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                 {% for cotisation in cotisations %}
+                    {% set adherent = cotisation.adherent %}
+                    {% set paye = cotisation.montantPaye %}
+                    {% set reste = cotisation.getResteAPayer %}
+                    {% set statut = cotisation.statut %}
                     <tr>
                         <td class="fw-bold">
                             <i class="fas fa-user-circle me-2 text-primary opacity-50"></i>
-                            {{ cotisation.adherent.nom|default('N/A') }}
-                        </td>
-                        <td class="fw-bold text-dark">
-                            {{ cotisation.montant|number_format(0, '.', ' ') }} MGA
-                        </td>
-                        <td class="text-muted">
-                            <i class="far fa-calendar-alt me-1"></i>
-                            {{ cotisation.datePaiement ? cotisation.datePaiement|date('d/m/Y') : '-' }}
+                            {{ adherent.nom }}
                         </td>
                         <td>
-                            {% if cotisation.statut == 'payé' %}
-                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2">
+                            <span class="badge bg-light text-dark border px-3 py-2">{{ cotisation.periode }}</span>
+                        </td>
+                        <td>{{ cotisation.montant|number_format(0, '.', ' ') }} MGA</td>
+                        <td class="text-success fw-bold">{{ paye|number_format(0, '.', ' ') }} MGA</td>
+                        <td class="{% if reste > 0 %}text-danger{% else %}text-success{% endif %} fw-bold">
+                            {{ reste|number_format(0, '.', ' ') }} MGA
+                        </td>
+                        <td>
+                            {% if statut == 'paye' %}
+                                <span class="badge bg-success rounded-pill px-3 py-2">
                                     <i class="fas fa-check me-1"></i> Payé
                                 </span>
+                            {% elseif statut == 'partiel' %}
+                                <span class="badge bg-warning rounded-pill px-3 py-2">
+                                    <i class="fas fa-clock me-1"></i> Partiel
+                                </span>
                             {% else %}
-                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-2">
-                                    <i class="fas fa-clock me-1"></i> En attente
+                                <span class="badge bg-danger rounded-pill px-3 py-2">
+                                    <i class="fas fa-times me-1"></i> Impayé
                                 </span>
                             {% endif %}
                         </td>
                         <td class="text-end">
                             <div class="btn-group">
                                 <a href="{{ path('app_cotisation_show', {'id': cotisation.id}) }}" 
-                                   class="btn btn-sm btn-outline-secondary border-0 bg-light" 
-                                   title="Détails">
+                                   class="btn btn-sm btn-outline-secondary border-0 bg-light" title="Détails">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ path('app_cotisation_edit', {'id': cotisation.id}) }}" 
-                                   class="btn btn-sm btn-outline-secondary border-0 bg-light ms-1" 
-                                   title="Modifier">
-                                    <i class="fas fa-edit"></i>
+                                <a href="{{ path('app_cotisation_history', {'adherent_id': adherent.id}) }}" 
+                                   class="btn btn-sm btn-outline-secondary border-0 bg-light ms-1" title="Historique">
+                                    <i class="fas fa-history"></i>
                                 </a>
                             </div>
                         </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="5" class="text-center py-5">
+                        <td colspan="7" class="text-center py-5">
                             <div class="mb-3">
                                 <i class="fas fa-wallet fa-3x opacity-25 text-muted"></i>
                             </div>
-                            <p class="text-muted fw-bold">Aucun enregistrement trouvé.</p>
-                            <a href="{{ path('app_cotisation_new') }}" class="btn btn-sm btn-link text-decoration-none" style="color: var(--primary-soft)">
-                                Enregistrer un premier paiement
-                            </a>
+                            <p class="text-muted fw-bold">Aucune cotisation trouvée.</p>
+                            <p class="text-muted small">Générez les cotisations avec la commande :</p>
+                            <code class="bg-light p-2 rounded">php bin/console app:generer-cotisations {{ "now"|date('Y') }}</code>
                         </td>
                     </tr>
                 {% endfor %}

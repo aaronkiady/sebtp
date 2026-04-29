@@ -16,50 +16,69 @@
         </div>
 
         <div class="p-4 p-md-5">
-            <div class="alert alert-info mb-4">
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Montant attendu : {{ montantAttendu|number_format(0, '.', ' ') }} MGA</strong><br>
-                <small>Tarif appliqué : 
-                    {% if adherent.statutMenmbre == 'sponsor' %}
-                        Membre sponsor
-                    {% elseif adherent.type == 'ong' or 'ONG' in adherent.activite %}
-                        Tarif ONG
-                    {% else %}
-                        Entreprise ({{ calculator.getTrancheEmployes(adherent.nbEmployes) }})
-                    {% endif %}
-                </small>
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Montant attendu :</strong> {{ montantAttendu|number_format(0, '.', ' ') }} MGA
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        <strong>Reste à payer :</strong> {{ resteAPayer|number_format(0, '.', ' ') }} MGA
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-secondary mb-0">
+                        <i class="fas fa-tag me-2"></i>
+                        <strong>Tarif appliqué :</strong>
+                        {% if adherent.statutMenmbre == 'sponsor' %}
+                            Membre sponsor
+                        {% elseif adherent.type == 'ong' or 'ONG' in adherent.activite %}
+                            Tarif ONG
+                        {% else %}
+                            Entreprise ({{ calculator.getTrancheEmployes(adherent.nbEmployes) }})
+                        {% endif %}
+                    </div>
+                </div>
             </div>
 
             {{ form_start(form) }}
                 <div class="row g-4">
                     <div class="col-md-6">
-                        <label class="form-label">{{ form.montantPaye.vars.label }}</label>
-                        {{ form_widget(form.montantPaye, {'attr': {'class': 'form-control custom-input'}}) }}
+                        <label class="form-label">{{ form.montant.vars.label }}</label>
+                        {{ form_widget(form.montant, {'attr': {'class': 'form-control custom-input'}}) }}
+                        <div class="text-danger small mt-1">{{ form_errors(form.montant) }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">{{ form.datePaiement.vars.label }}</label>
                         {{ form_widget(form.datePaiement, {'attr': {'class': 'form-control custom-input'}}) }}
+                        <div class="text-danger small mt-1">{{ form_errors(form.datePaiement) }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">{{ form.modePaiement.vars.label }}</label>
                         {{ form_widget(form.modePaiement, {'attr': {'class': 'form-select custom-input'}}) }}
+                        <div class="text-danger small mt-1">{{ form_errors(form.modePaiement) }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">{{ form.reference.vars.label }}</label>
                         {{ form_widget(form.reference, {'attr': {'class': 'form-control custom-input'}}) }}
+                        <div class="text-danger small mt-1">{{ form_errors(form.reference) }}</div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">{{ form.observation.vars.label }}</label>
                         {{ form_widget(form.observation, {'attr': {'class': 'form-control custom-input'}}) }}
+                        <div class="text-danger small mt-1">{{ form_errors(form.observation) }}</div>
                     </div>
                 </div>
 
                 <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
                     <a href="{{ path('app_cotisation_history', {'adherent_id': adherent.id}) }}" class="btn-action btn-cancel text-decoration-none">
-                        Annuler
+                        <i class="fas fa-times me-2"></i> Annuler
                     </a>
                     <button type="submit" class="btn-action btn-update">
-                        <i class="fas fa-save me-2"></i> Enregistrer
+                        <i class="fas fa-save me-2"></i> Enregistrer le paiement
                     </button>
                 </div>
             {{ form_end(form) }}

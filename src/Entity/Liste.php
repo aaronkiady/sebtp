@@ -75,7 +75,7 @@ class Liste
     /**
      * @var Collection<int, Cotisation>
      */
-    #[ORM\OneToMany(mappedBy: 'adherent', targetEntity: Cotisation::class, orphanRemoval: true)]
+    #[ORM\OneToMany(mappedBy: 'adherent', targetEntity: Cotisation::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $cotisations;
 
     #[ORM\OneToMany(mappedBy: 'adherent', targetEntity: Participation::class, orphanRemoval: true)]
@@ -98,6 +98,9 @@ class Liste
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $validationAG = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $type = null;
 
     public function __construct()
     {
@@ -463,6 +466,18 @@ class Liste
     public function setValidationAG(?string $validationAG): static
     {
         $this->validationAG = $validationAG;
+
+        return $this;
+    }
+
+    public function getType(): ?string
+    {
+        return $this->type;
+    }
+
+    public function setType(?string $type): static
+    {
+        $this->type = $type;
 
         return $this;
     }

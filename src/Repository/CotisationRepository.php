@@ -6,9 +6,6 @@ use App\Entity\Cotisation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<Cotisation>
- */
 class CotisationRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -16,28 +13,26 @@ class CotisationRepository extends ServiceEntityRepository
         parent::__construct($registry, Cotisation::class);
     }
 
-    //    /**
-    //     * @return Cotisation[] Returns an array of Cotisation objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('c')
-    //            ->andWhere('c.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('c.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    public function getTotalPayeByAdherent(int $adherentId): float
+    {
+        $result = $this->createQueryBuilder('c')
+            ->select('SUM(c.montantPaye) as total')
+            ->where('c.adherent = :adherentId')
+            ->setParameter('adherentId', $adherentId)
+            ->getQuery()
+            ->getSingleScalarResult();
+        
+        return (float) ($result ?? 0);
+    }
 
-    //    public function findOneBySomeField($value): ?Cotisation
-    //    {
-    //        return $this->createQueryBuilder('c')
-    //            ->andWhere('c.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    public function getCotisationByAdherentAndPeriode(int $adherentId, string $periode): ?Cotisation
+    {
+        return $this->createQueryBuilder('c')
+            ->where('c.adherent = :adherentId')
+            ->andWhere('c.periode = :periode')
+            ->setParameter('adherentId', $adherentId)
+            ->setParameter('periode', $periode)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

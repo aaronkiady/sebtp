@@ -21,45 +21,123 @@
         </div>
 
         <div class="p-4 p-md-5">
+            {# Séparer les contacts par fonction #}
+            {% set contactsCompta = [] %}
+            {% set contactsRH = [] %}
+            
+            {% for contact in liste.contacts %}
+                {% if contact.fonction == 'Compta' %}
+                    {% set contactsCompta = contactsCompta|merge([contact]) %}
+                {% elseif contact.fonction == 'RH' %}
+                    {% set contactsRH = contactsRH|merge([contact]) %}
+                {% else %}
+                    {# Pour les autres fonctions, les mettre à gauche par défaut #}
+                    {% set contactsCompta = contactsCompta|merge([contact]) %}
+                {% endif %}
+            {% endfor %}
+
             <div class="row g-4">
-                {% for contact in liste.contacts %}
-                    <div class="col-md-6">
-                        <div class="p-4 rounded-4 border bg-white shadow-sm hover-up transition-all">
-                            <div class="d-flex justify-content-between">
-                                <div class="d-flex gap-3">
-                                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary" style="width: 45px; height: 45px;">
-                                        <i class="fas fa-user-tie"></i>
-                                    </div>
-                                    <div>
-                                        <h5 class="fw-bold mb-1">{{ contact.nom }}</h5>
-                                        <span class="badge bg-primary-light text-primary mb-3">{{ contact.fonction }}</span>
-                                        
-                                        <div class="text-muted small mb-1">
-                                            <i class="fas fa-envelope me-2 opacity-50"></i>{{ contact.email }}
+                {# Colonne de gauche - Contacts Compta #}
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <i class="fas fa-chart-line me-2"></i>Comptabilité
+                        </h6>
+                    </div>
+                    {% if contactsCompta|length > 0 %}
+                        {% for contact in contactsCompta %}
+                            <div class="p-4 rounded-4 border bg-white shadow-sm hover-up transition-all mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <div class="d-flex gap-3">
+                                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary" style="width: 45px; height: 45px;">
+                                            <i class="fas fa-calculator"></i>
                                         </div>
-                                        {% if contact.telephone %}
-                                            <div class="text-muted small">
-                                                <i class="fas fa-phone me-2 opacity-50"></i>{{ contact.telephone }}
+                                        <div>
+                                            <h5 class="fw-bold mb-1">{{ contact.nom }}</h5>
+                                            <span class="badge bg-primary-light text-primary mb-3">{{ contact.fonction }}</span>
+                                            
+                                            <div class="text-muted small mb-1">
+                                                <i class="fas fa-envelope me-2 opacity-50"></i>{{ contact.email }}
                                             </div>
-                                        {% endif %}
+                                            {% if contact.telephone %}
+                                                <div class="text-muted small">
+                                                    <i class="fas fa-phone me-2 opacity-50"></i>{{ contact.telephone }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="dropdown">
-                                    <a class="dropdown-item" href="{{ path('app_contact_edit', {'id': contact.id}) }}"><i class="fas fa-pen me-2 small"></i>Modifier</a>            
+                                    <div class="dropdown">
+                                        <a class="dropdown-item" href="{{ path('app_contact_edit', {'id': contact.id}) }}">
+                                            <i class="fas fa-pen me-2 small"></i>Modifier
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4 border rounded-4 bg-light">
+                            <i class="fas fa-user-slash fa-2x text-muted opacity-50 mb-2"></i>
+                            <p class="small text-muted mb-0">Aucun contact comptabilité</p>
                         </div>
+                    {% endif %}
+                </div>
+
+                {# Colonne de droite - Contacts RH #}
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-success mb-3">
+                            <i class="fas fa-users me-2"></i>Ressources Humaines
+                        </h6>
                     </div>
-                {% else %}
-                    <div class="col-12 text-center py-5">
-                        <div class="opacity-25 mb-3">
-                            <i class="fas fa-address-book fa-4x"></i>
+                    {% if contactsRH|length > 0 %}
+                        {% for contact in contactsRH %}
+                            <div class="p-4 rounded-4 border bg-white shadow-sm hover-up transition-all mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <div class="d-flex gap-3">
+                                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-success" style="width: 45px; height: 45px;">
+                                            <i class="fas fa-user-friends"></i>
+                                        </div>
+                                        <div>
+                                            <h5 class="fw-bold mb-1">{{ contact.nom }}</h5>
+                                            <span class="badge bg-success-light text-success mb-3">{{ contact.fonction }}</span>
+                                            
+                                            <div class="text-muted small mb-1">
+                                                <i class="fas fa-envelope me-2 opacity-50"></i>{{ contact.email }}
+                                            </div>
+                                            {% if contact.telephone %}
+                                                <div class="text-muted small">
+                                                    <i class="fas fa-phone me-2 opacity-50"></i>{{ contact.telephone }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="dropdown">
+                                        <a class="dropdown-item" href="{{ path('app_contact_edit', {'id': contact.id}) }}">
+                                            <i class="fas fa-pen me-2 small"></i>Modifier
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4 border rounded-4 bg-light">
+                            <i class="fas fa-user-slash fa-2x text-muted opacity-50 mb-2"></i>
+                            <p class="small text-muted mb-0">Aucun contact RH</p>
                         </div>
-                        <h5 class="text-muted">Aucun contact enregistré</h5>
-                        <p class="small text-muted">Ajoutez les responsables RH ou Comptabilité de cette structure.</p>
-                    </div>
-                {% endfor %}
+                    {% endif %}
+                </div>
             </div>
+
+            {# Afficher un message si aucun contact du tout 
+            {% if liste.contacts|length == 0 %}
+                <div class="col-12 text-center py-5">
+                    <div class="opacity-25 mb-3">
+                        <i class="fas fa-address-book fa-4x"></i>
+                    </div>
+                    <h5 class="text-muted">Aucun contact enregistré</h5>
+                    <p class="small text-muted">Ajoutez les responsables RH ou Comptabilité de cette structure.</p>
+                </div>
+            {% endif %}#}
 
             <div class="mt-5 pt-4 border-top">
                 <a href="{{ path('app_liste_show', {'id': liste.id}) }}" class="text-muted text-decoration-none small">
@@ -69,4 +147,18 @@
         </div>
     </div>
 </div>
+
+<style>
+.bg-success-light {
+    background-color: #d1fae5;
+    color: #059669;
+}
+.hover-up {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-up:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important;
+}
+</style>
 {% endblock %}
