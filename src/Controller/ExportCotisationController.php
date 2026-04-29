@@ -8,6 +8,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Color;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -84,6 +85,10 @@ final class ExportCotisationController extends AbstractController
         $row = 6;
         $numero = 1;
         foreach ($cotisations as $cotisation) {
+            // Récupérer le statut et le normaliser
+            $statutValue = $cotisation['cotisation_statut'] ?? '';
+            $statutLibelle = $this->getStatutLibelle($statutValue);
+            
             $sheet->setCellValue('A' . $row, $numero);
             $sheet->setCellValue('B' . $row, $cotisation['adherent_nom']);
             $sheet->setCellValue('C' . $row, $cotisation['adherent_email']);
@@ -92,17 +97,20 @@ final class ExportCotisationController extends AbstractController
             $sheet->setCellValue('F' . $row, $cotisation['cotisation_periode'] ?? '-');
             $sheet->setCellValue('G' . $row, $cotisation['cotisation_montant'] ? number_format($cotisation['cotisation_montant'], 0, '.', ' ') : '0');
             $sheet->setCellValue('H' . $row, $cotisation['cotisation_reference'] ?? '-');
-            $sheet->setCellValue('I' . $row, $cotisation['cotisation_statut'] ?? 'Non renseigné');
+            $sheet->setCellValue('I' . $row, $statutLibelle);
             $sheet->setCellValue('J' . $row, $cotisation['cotisation_observation'] ?? '-');
 
-            // Colorer la ligne selon le statut
-            $statutValue = $cotisation['cotisation_statut'] ?? '';
-            if ($statutValue === 'payé') {
-                $sheet->getStyle('I' . $row)->getFont()->getColor()->setARGB('FF10B981');
-                $sheet->getStyle('I' . $row)->getFont()->setBold(true);
+            // Colorer la cellule du statut selon la valeur
+            $statutCell = 'I' . $row;
+            if ($statutValue === 'payé' || $statutValue === 'paye') {
+                $sheet->getStyle($statutCell)->getFont()->getColor()->setARGB('FF10B981');
+                $sheet->getStyle($statutCell)->getFont()->setBold(true);
             } elseif ($statutValue === 'partiel') {
-                $sheet->getStyle('I' . $row)->getFont()->getColor()->setARGB('FFEF4444');
-                $sheet->getStyle('I' . $row)->getFont()->setBold(true);
+                $sheet->getStyle($statutCell)->getFont()->getColor()->setARGB('FFF59E0B');
+                $sheet->getStyle($statutCell)->getFont()->setBold(true);
+            } elseif ($statutValue === 'impaye') {
+                $sheet->getStyle($statutCell)->getFont()->getColor()->setARGB('FFEF4444');
+                $sheet->getStyle($statutCell)->getFont()->setBold(true);
             }
 
             $row++;
@@ -145,5 +153,18 @@ final class ExportCotisationController extends AbstractController
         $writer->save($tempFile);
 
         return $this->file($tempFile, $fileName, ResponseHeaderBag::DISPOSITION_INLINE);
+    }
+
+    /**
+     * Retourne le libellé du statut en fonction de la valeur
+     */
+    private function getStatutLibelle(string $statut): string
+    {
+        return match ($statut) {
+            'payé', 'paye' => 'Payé',
+            'partiel' => 'Partiel',
+            'impaye' => 'Impayé',
+            default => 'Non renseigné',
+        };
     }
 }
