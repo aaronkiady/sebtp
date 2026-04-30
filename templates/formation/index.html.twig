@@ -18,9 +18,14 @@
                     <p class="text-muted mb-0 small">Gérez vos programmes de formation</p>
                 </div>
             </div>
-            <a href="{{ path('app_formation_new') }}" class="btn-action btn-update text-decoration-none">
-                <i class="fas fa-plus"></i> Nouveau
-            </a>
+            <div class="d-flex gap-2">
+                <a href="{{ path('app_export_formation_form') }}" class="btn btn-outline-success">
+                    <i class="fas fa-graduation-cap me-2"></i>Exporter
+                </a>
+                <a href="{{ path('app_formation_new') }}" class="btn btn-cute">
+                    <i class="fas fa-plus me-2"></i>Nouvel évènement
+                </a>
+            </div>
         </div>
 
         <div class="px-4">

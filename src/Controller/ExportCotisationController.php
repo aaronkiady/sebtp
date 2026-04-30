@@ -8,7 +8,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Color;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -89,13 +89,19 @@ final class ExportCotisationController extends AbstractController
             $statutValue = $cotisation['cotisation_statut'] ?? '';
             $statutLibelle = $this->getStatutLibelle($statutValue);
             
+            // Récupérer le montant (valeur numérique)
+            $montant = (float) ($cotisation['cotisation_montant'] ?? 0);
+            
             $sheet->setCellValue('A' . $row, $numero);
             $sheet->setCellValue('B' . $row, $cotisation['adherent_nom']);
             $sheet->setCellValue('C' . $row, $cotisation['adherent_email']);
             $sheet->setCellValue('D' . $row, $cotisation['adherent_telephone']);
             $sheet->setCellValue('E' . $row, $cotisation['adherent_adresse']);
             $sheet->setCellValue('F' . $row, $cotisation['cotisation_periode'] ?? '-');
-            $sheet->setCellValue('G' . $row, $cotisation['cotisation_montant'] ? number_format($cotisation['cotisation_montant'], 0, '.', ' ') : '0');
+            $sheet->setCellValue('G' . $row, $montant);
+            // Appliquer le format de nombre avec séparateur de milliers
+            $sheet->getStyle('G' . $row)->getNumberFormat()->setFormatCode('#,##0');
+            
             $sheet->setCellValue('H' . $row, $cotisation['cotisation_reference'] ?? '-');
             $sheet->setCellValue('I' . $row, $statutLibelle);
             $sheet->setCellValue('J' . $row, $cotisation['cotisation_observation'] ?? '-');
@@ -128,6 +134,7 @@ final class ExportCotisationController extends AbstractController
             $sheet->getStyle('G' . $row)->getFill()
                 ->setFillType(Fill::FILL_SOLID)
                 ->getStartColor()->setARGB('FFE5E7EB');
+            $sheet->getStyle('G' . $row)->getNumberFormat()->setFormatCode('#,##0');
         }
 
         // Ajuster la largeur des colonnes

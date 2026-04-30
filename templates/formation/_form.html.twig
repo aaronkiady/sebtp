@@ -1,65 +1,205 @@
 {{ form_start(form) }}
-    <div class="row g-4">
-        <div class="col-md-8">
-            <label class="form-label">
-                <i class="fas fa-graduation-cap me-2 opacity-50"></i>Nom de la formation
-            </label>
-            {{ form_widget(form.nom, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: Management de projet'}}) }}
-        </div>
-        
-        <div class="col-md-4">
-            <label class="form-label">
-                <i class="fas fa-tag me-2 opacity-50"></i>Type
-            </label>
-            {{ form_widget(form.type, {'attr': {'class': 'form-control custom-input'}}) }}
+    <div class="form-card-wide mx-auto my-4">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-800">Informations de la formation</h4>
+                <p class="text-muted mb-0 small">Renseignez les détails de la formation</p>
+            </div>
         </div>
 
-        <div class="col-md-6">
-            <label class="form-label">
-                <i class="far fa-calendar-plus me-2 opacity-50"></i>Date de début
-            </label>
-            {{ form_widget(form.dateDebut, {'attr': {'class': 'form-control custom-input'}}) }}
-        </div>
+        <div class="p-4 p-md-5" id="form-content">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.nom.vars.label }}</label>
+                    {{ form_widget(form.nom, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.nom) }}</div>
+                </div>
 
-        <div class="col-md-6">
-            <label class="form-label">
-                <i class="far fa-calendar-check me-2 opacity-50"></i>Date de fin
-            </label>
-            {{ form_widget(form.dateFin, {'attr': {'class': 'form-control custom-input'}}) }}
-        </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.reference.vars.label }}</label>
+                    {{ form_widget(form.reference, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.reference) }}</div>
+                </div>
 
-        <div class="col-md-12">
-            <label class="form-label">
-                <i class="fas fa-university me-2 opacity-50"></i>Organisateur
-            </label>
-            {{ form_widget(form.organisateur, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: Cabinet de formation X'}}) }}
-        </div>
-    </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.type.vars.label }}</label>
+                    {{ form_widget(form.type, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.type) }}</div>
+                </div>
 
-    <div class="mb-4">
-    <label class="form-label fw-bold text-dark mb-3">
-        <i class="fas fa-users me-2 text-primary"></i>{{ form_label(form.participants) }}
-    </label>
-    
-    <div class="row g-3">
-        {% for child in form.participants %}
-            <div class="col-6 col-md-4 col-lg-3"> {# 2 par ligne sur mobile, 3 sur tablette, 4 sur desktop #}
-                <div class="participant-checkbox-card p-2 border rounded-3 bg-white shadow-sm h-100 transition-all">
-                    <div class="form-check d-flex align-items-center gap-2 mb-0">
-                        {{ form_widget(child, {'attr': {'class': 'form-check-input mt-0'}}) }}
-                        {{ form_label(child, null, {'label_attr': {'class': 'form-check-label small fw-semibold text-truncate', 'style': 'cursor:pointer;'}}) }}
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.organisateur.vars.label }}</label>
+                    {{ form_widget(form.organisateur, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.organisateur) }}</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.dateDebut.vars.label }}</label>
+                    {{ form_widget(form.dateDebut, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.dateDebut) }}</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.dateFin.vars.label }}</label>
+                    {{ form_widget(form.dateFin, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.dateFin) }}</div>
+                </div>
+
+                <div class="col-md-12">
+                    <label class="form-label">{{ form.remarque.vars.label }}</label>
+                    {{ form_widget(form.remarque, {'attr': {'class': 'form-control custom-input', 'rows': 3}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.remarque) }}</div>
+                </div>
+
+                {# Sélection des participants #}
+                <div class="col-md-12">
+                    <label class="form-label fw-bold">{{ form.participants.vars.label }}</label>
+                    <div class="border rounded-3 p-3" style="max-height: 200px; overflow-y: auto;">
+                        {{ form_widget(form.participants, {'attr': {'class': 'participants-checkbox-list'}}) }}
+                    </div>
+                    <small class="text-muted">Sélectionnez les adhérents participants à cette formation</small>
+                    <div class="text-danger small mt-1">{{ form_errors(form.participants) }}</div>
+                </div>
+
+                {# Champs dynamiques pour les détails des participants #}
+                <div class="col-md-12" id="participants-details-container" style="display: none;">
+                    <div class="card border mt-3">
+                        <div class="card-header bg-white">
+                            <h6 class="fw-bold mb-0">
+                                <i class="fas fa-users me-2 text-primary"></i>
+                                Détails des participants (agents / représentants)
+                            </h6>
+                            <small class="text-muted">Précisez les noms des agents qui participeront pour chaque adhérent</small>
+                        </div>
+                        <div class="card-body" id="participants-details-list">
+                            {# Les champs seront ajoutés dynamiquement ici #}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Information :</strong> Après avoir sélectionné les participants, vous pourrez saisir les noms des agents pour chaque adhérent.
                     </div>
                 </div>
             </div>
-        {% endfor %}
-    </div>
-    {{ form_errors(form.participants) }}
-</div>
 
-    <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
-        <a href="{{ path('app_formation_index') }}" class="btn-action btn-cancel text-decoration-none">Annuler</a>
-        <button type="submit" class="btn-action btn-update">
-            <i class="fas fa-check-circle me-2"></i> {{ button_label|default('Enregistrer') }}
-        </button>
+            <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
+                <a href="{{ path('app_formation_index') }}" class="btn-action btn-cancel text-decoration-none">
+                    <i class="fas fa-times me-2"></i> Annuler
+                </a>
+                <button type="submit" class="btn-action btn-update">
+                    <i class="fas fa-save me-2"></i> {{ button_label|default('Enregistrer') }}
+                </button>
+            </div>
+        </div>
     </div>
 {{ form_end(form) }}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const participantsSelect = document.querySelector('[data-participants-select]');
+    const container = document.getElementById('participants-details-container');
+    const detailsList = document.getElementById('participants-details-list');
+    let existingDetails = {};
+
+    // Récupérer les détails existants (pour l'édition)
+    {% if form.vars.value.participantsDetails is defined and form.vars.value.participantsDetails %}
+        existingDetails = {{ form.vars.value.participantsDetails|json_encode|raw }};
+    {% endif %}
+
+    function updateParticipantsDetails() {
+        const selectedOptions = Array.from(participantsSelect.selectedOptions);
+        const selectedIds = selectedOptions.map(opt => opt.value);
+        const selectedNames = selectedOptions.map(opt => opt.text);
+        
+        // Vider le conteneur
+        detailsList.innerHTML = '';
+        
+        if (selectedIds.length > 0) {
+            container.style.display = 'block';
+            
+            for (let i = 0; i < selectedIds.length; i++) {
+                const id = selectedIds[i];
+                const name = selectedNames[i];
+                const existingValue = existingDetails[id] || '';
+                
+                const div = document.createElement('div');
+                div.className = 'mb-3 pb-3 border-bottom';
+                div.innerHTML = `
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold mb-0">
+                                <i class="fas fa-building me-1 text-primary"></i>
+                                ${name}
+                            </label>
+                            <input type="hidden" name="participant_id_${id}" value="${id}" class="participant-id">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small text-muted">Noms des agents / représentants</label>
+                            <input type="text" 
+                                   name="participant_detail_${id}" 
+                                   class="form-control participant-detail" 
+                                   placeholder="Ex: Jean Martin (DG), Marie Claire (RH)..."
+                                   value="${escapeHtml(existingValue)}">
+                            <small class="text-muted">Séparez les noms par des virgules si plusieurs agents</small>
+                        </div>
+                    </div>
+                `;
+                detailsList.appendChild(div);
+            }
+        } else {
+            container.style.display = 'none';
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Écouter les changements de sélection
+    if (participantsSelect) {
+        participantsSelect.addEventListener('change', updateParticipantsDetails);
+        updateParticipantsDetails();
+    }
+});
+</script>
+
+<style>
+.participants-checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.participants-checkbox-list label {
+    margin-left: 10px;
+    cursor: pointer;
+}
+.participants-checkbox-list input[type="checkbox"] {
+    margin-right: 10px;
+    cursor: pointer;
+    transform: scale(1.1);
+}
+.participants-checkbox-list div {
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+.participants-checkbox-list div:hover {
+    background-color: #f8f9fa;
+}
+.custom-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+</style>

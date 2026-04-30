@@ -1,0 +1,183 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Détails Formation - {{ formation.nom }}{% endblock %}
+
+{% block body %}
+<div class="main-wrapper">
+    <div class="form-card-wide">
+        <div class="card-header-modern justify-content-between">
+            <div class="d-flex align-items-center">
+                <div class="header-icon">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0 fw-800">{{ formation.nom }}</h4>
+                    <p class="text-muted mb-0 small">Détails complets de la formation</p>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ path('app_formation_edit', {'id': formation.id}) }}" class="btn-action btn-cute text-decoration-none">
+                    <i class="fas fa-pen me-1"></i> Modifier
+                </a>
+                {{ include('formation/_delete_form.html.twig') }}
+            </div>
+        </div>
+
+        <div class="p-4 p-md-5">
+            {# Informations générales #}
+            <div class="row g-4 mb-5">
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-4 bg-light">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">
+                            <i class="fas fa-tag me-1"></i> Type de formation
+                        </label>
+                        <span class="fw-bold">{{ formation.type }}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-4 bg-light">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">
+                            <i class="fas fa-building me-1"></i> Organisateur
+                        </label>
+                        <span class="fw-bold">{{ formation.organisateur }}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-4">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">
+                            <i class="far fa-calendar-alt me-1"></i> Date de début
+                        </label>
+                        <span class="text-primary fw-bold">{{ formation.dateDebut ? formation.dateDebut|date('d/m/Y') : 'Non définie' }}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-4">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">
+                            <i class="fas fa-calendar-check me-1"></i> Date de fin
+                        </label>
+                        <span class="text-success fw-bold">{{ formation.dateFin ? formation.dateFin|date('d/m/Y') : 'Non définie' }}</span>
+                    </div>
+                </div>
+                {% if formation.reference %}
+                <div class="col-md-12">
+                    <div class="p-3 border rounded-4 bg-light">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">
+                            <i class="fas fa-hashtag me-1"></i> Référence
+                        </label>
+                        <span class="fw-bold">{{ formation.reference }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                {% if formation.remarque %}
+                <div class="col-12">
+                    <div class="p-3 border rounded-4 bg-light">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">
+                            <i class="fas fa-comment me-1"></i> Remarque
+                        </label>
+                        <p class="mb-0">{{ formation.remarque }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {# Section Participants #}
+            <div class="border-top pt-4 mt-2">
+                <h5 class="fw-bold mb-4">
+                    <i class="fas fa-users me-2 text-primary"></i>
+                    Participants à la formation
+                    <span class="badge bg-primary ms-2 rounded-pill">{{ formation.participants|length }}</span>
+                </h5>
+
+                {% if formation.participants|length > 0 %}
+                    <div class="row g-4">
+                        {% for participant in formation.participants %}
+                            {% set agentDetail = formation.participantsDetails[participant.id] ?? null %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card border-0 shadow-sm h-100 hover-up">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-start mb-3">
+                                            <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                                                <i class="fas fa-building text-primary fs-5"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="fw-bold mb-1">{{ participant.nom }}</h6>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-envelope me-1"></i> {{ participant.email }}
+                                                </small>
+                                                <br>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-phone me-1"></i> {{ participant.numero }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        
+                                        {% if agentDetail %}
+                                            <div class="bg-light rounded-3 p-3 mt-2">
+                                                <div class="d-flex align-items-start">
+                                                    <i class="fas fa-user-check text-success me-2 mt-1"></i>
+                                                    <div>
+                                                        <span class="small text-muted text-uppercase fw-bold">Représentant(s):</span>
+                                                        <p class="mb-0 small fw-bold text-dark">{{ agentDetail }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <div class="bg-light rounded-3 p-3 mt-2">
+                                                <div class="d-flex align-items-start">
+                                                    <i class="fas fa-user-clock text-secondary me-2 mt-1"></i>
+                                                    <div>
+                                                        <span class="small text-muted text-uppercase fw-bold">Agents / Représentants</span>
+                                                        <p class="mb-0 small text-muted fst-italic">Non renseigné</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="mb-3">
+                            <i class="fas fa-user-slash fa-4x text-muted opacity-25"></i>
+                        </div>
+                        <p class="text-muted fw-bold">Aucun participant inscrit à cette formation</p>
+                        <a href="{{ path('app_formation_edit', {'id': formation.id}) }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus me-1"></i> Ajouter des participants
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center border-top pt-4 mt-4">
+                <a href="{{ path('app_formation_index') }}" class="btn-action btn-cancel text-decoration-none">
+                    <i class="fas fa-arrow-left me-1"></i> Retour à la liste
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-up {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-up:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+}
+@media print {
+    .btn-action, .btn-cute, .header-icon, .btn-group {
+        display: none !important;
+    }
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    body {
+        padding: 20px;
+    }
+}
+</style>
+{% endblock %}

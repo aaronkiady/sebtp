@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Export des événements{% endblock %}
+{% block title %}Export des formations{% endblock %}
 
 {% block body %}
 <div class="main-wrapper mt-5">
@@ -8,25 +8,25 @@
         <div class="d-flex justify-content-between align-items-start mb-4">
             <div class="d-flex align-items-center">
                 <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
-                    <i class="fas fa-calendar-alt"></i>
+                    <i class="fas fa-graduation-cap"></i>
                 </div>
                 <div>
-                    <h1 class="h2 fw-bold text-dark mb-0">Export des événements</h1>
-                    <p class="text-muted mb-0">Générez un fichier Excel des événements</p>
+                    <h1 class="h2 fw-bold text-dark mb-0">Export des formations</h1>
+                    <p class="text-muted mb-0">Générez un fichier Excel des formations</p>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm mb-4">
+       {#} <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <form method="get" action="{{ path('app_export_evenement_excel') }}" class="row g-3">
+                <form method="get" action="{{ path('app_export_formation_excel') }}" class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Année</label>
                         <select name="annee" class="form-select">
                             <option value="">Toutes les années</option>
                             {% set currentYear = "now"|date('Y') %}
                             <option value="{{ currentYear }}">{{ currentYear }} (Année en cours)</option>
-                            <option value="{{ currentYear - 1 }}">{{ currentYear - 1 }}</option>
+                            <option value="{{ currentYear - 1 }}">{{ currentYear - 1 }} (Année précédente)</option>
                             {% for year in years %}
                                 {% if year != currentYear and year != currentYear - 1 %}
                                     <option value="{{ year }}">{{ year }}</option>
@@ -36,8 +36,13 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label">Recherche</label>
-                        <input type="text" name="search" class="form-control" placeholder="Nom, commentaire...">
+                        <label class="form-label">Formation</label>
+                        <select name="formation_id" class="form-select">
+                            <option value="">Toutes les formations</option>
+                            {% for id, nom in formations %}
+                                <option value="{{ id }}">{{ nom }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
 
                     <div class="col-md-4 d-flex align-items-end">
@@ -47,18 +52,18 @@
                     </div>
                 </form>
             </div>
-        </div>
+        </div>#}
 
         <div class="card shadow-sm">
             <div class="card-body">
-                <form method="get" action="{{ path('app_export_evenement_detail_excel') }}" class="row g-3">
+                <form method="get" action="{{ path('app_export_formation_detail_excel') }}" class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Année</label>
                         <select name="annee" class="form-select">
                             <option value="">Toutes les années</option>
                             {% set currentYear = "now"|date('Y') %}
                             <option value="{{ currentYear }}">{{ currentYear }} (Année en cours)</option>
-                            <option value="{{ currentYear - 1 }}">{{ currentYear - 1 }}</option>
+                            <option value="{{ currentYear - 1 }}">{{ currentYear - 1 }} (Année précédente)</option>
                             {% for year in years %}
                                 {% if year != currentYear and year != currentYear - 1 %}
                                     <option value="{{ year }}">{{ year }}</option>
@@ -67,32 +72,23 @@
                         </select>
                     </div>
 
-                     <div class="col-md-4">
-                        <label class="form-label">Événement</label>
-                        <select name="evenement_id" class="form-select">
-                            <option value="">Tous les événements</option>
-                            {% for id, nom in evenements %}
+                    <div class="col-md-4">
+                        <label class="form-label">Formation</label>
+                        <select name="formation_id" class="form-select">
+                            <option value="">Toutes les formations</option>
+                            {% for id, nom in formations %}
                                 <option value="{{ id }}">{{ nom }}</option>
                             {% endfor %}
                         </select>
                     </div>
 
                     <div class="col-md-4 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-file-excel me-2"></i>Export détaillé (avec participants)
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-file-excel me-2"></i>Exporter
                         </button>
                     </div>
                 </form>
             </div>
-        </div>
-
-        <div class="alert alert-info mt-4">
-            <i class="fas fa-info-circle me-2"></i>
-            <strong>Informations :</strong> 
-            <ul class="mt-2 mb-0">
-                <li><strong>Export simple :</strong> Liste des événements avec nombre de participants</li>
-                <li><strong>Export détaillé :</strong> Liste de tous les participants par événement avec statut de paiement</li>
-            </ul>
         </div>
     </div>
 </div>

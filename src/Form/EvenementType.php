@@ -30,7 +30,7 @@ class EvenementType extends AbstractType
             ])
             ->add('montant', NumberType::class, [
                 'required' => false,
-                'label' => 'Montant (MGA)',
+                'label' => 'Montant unitaire (MGA)',
                 'attr' => ['class' => 'custom-input', 'placeholder' => '0']
             ])
             ->add('commentaire', TextareaType::class, [

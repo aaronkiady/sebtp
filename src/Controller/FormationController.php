@@ -15,10 +15,9 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/formation')]
 final class FormationController extends AbstractController
 {
-   #[Route(name: 'app_formation_index', methods: ['GET'])]
+    #[Route(name: 'app_formation_index', methods: ['GET'])]
     public function index(Request $request, FormationRepository $formationRepository): Response
     {
-        // Récupération du terme de recherche depuis l'URL (?q=...)
         $searchTerm = $request->query->get('q');
 
         return $this->render('formation/index.html.twig', [
@@ -38,7 +37,6 @@ final class FormationController extends AbstractController
         $searchTerm = $request->query->get('q');
         $formations = $adherent->getFormations();
 
-        // Filtrage de l'historique si une recherche est lancée
         if ($searchTerm) {
             $formations = $formations->filter(function(Formation $f) use ($searchTerm) {
                 return stripos($f->getNom(), $searchTerm) !== false || 
@@ -60,9 +58,23 @@ final class FormationController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $participantsDetails = [];
+            $participants = $formation->getParticipants();
+            
+            foreach ($participants as $participant) {
+                $detailKey = 'participant_detail_' . $participant->getId();
+                $detail = $request->request->get($detailKey);
+                if ($detail) {
+                    $participantsDetails[$participant->getId()] = $detail;
+                }
+            }
+            
+            $formation->setParticipantsDetails($participantsDetails);
+            
             $entityManager->persist($formation);
             $entityManager->flush();
 
+            $this->addFlash('success', 'Formation créée avec succès!');
             return $this->redirectToRoute('app_formation_index', [], Response::HTTP_SEE_OTHER);
         }
 
@@ -80,6 +92,14 @@ final class FormationController extends AbstractController
         ]);
     }
 
+    #[Route('/{id}/participants', name: 'app_formation_show_participants', methods: ['GET'])]
+    public function showParticipants(Formation $formation): Response
+    {
+        return $this->render('liste/show_formation.html.twig', [
+            'formation' => $formation,
+        ]);
+    }
+
     #[Route('/{id}/edit', name: 'app_formation_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, Formation $formation, EntityManagerInterface $entityManager): Response
     {
@@ -87,8 +107,22 @@ final class FormationController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $participantsDetails = [];
+            $participants = $formation->getParticipants();
+            
+            foreach ($participants as $participant) {
+                $detailKey = 'participant_detail_' . $participant->getId();
+                $detail = $request->request->get($detailKey);
+                if ($detail) {
+                    $participantsDetails[$participant->getId()] = $detail;
+                }
+            }
+            
+            $formation->setParticipantsDetails($participantsDetails);
+            
             $entityManager->flush();
 
+            $this->addFlash('success', 'Formation modifiée avec succès!');
             return $this->redirectToRoute('app_formation_index', [], Response::HTTP_SEE_OTHER);
         }
 

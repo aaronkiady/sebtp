@@ -126,4 +126,51 @@ class EvenementRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Récupère tous les événements pour la liste déroulante
+     * 
+     * @return array Tableau associatif avec id => nom
+     */
+    public function getAllForSelect(): array
+    {
+        $events = $this->createQueryBuilder('e')
+            ->select('e.id, e.nom')
+            ->orderBy('e.nom', 'ASC')
+            ->getQuery()
+            ->getResult();
+        
+        $result = [];
+        foreach ($events as $event) {
+            $result[$event['id']] = $event['nom'];
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Récupère les événements pour export avec filtres (modifié pour utiliser evenement_id)
+     */
+    public function getForExportWithEventId(
+        ?string $annee = null,
+        ?int $evenementId = null
+    ): array {
+        $qb = $this->createQueryBuilder('e');
+
+        if ($annee && $annee !== 'tous') {
+            $qb->andWhere('e.date BETWEEN :debut AND :fin')
+            ->setParameter('debut', $annee . '-01-01')
+            ->setParameter('fin', $annee . '-12-31');
+        }
+
+        if ($evenementId) {
+            $qb->andWhere('e.id = :evenementId')
+            ->setParameter('evenementId', $evenementId);
+        }
+
+        return $qb->orderBy('e.date', 'DESC')
+                ->addOrderBy('e.nom', 'ASC')
+                ->getQuery()
+                ->getResult();
+    }
 }

@@ -37,9 +37,22 @@ class Formation
     #[ORM\ManyToMany(targetEntity: Liste::class, inversedBy: 'formations')]
     private Collection $participants;
 
+    /**
+     * @var array Les détails des participants (noms des agents par adhérent)
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $participantsDetails = [];
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $reference = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $remarque = null;
+
     public function __construct()
     {
         $this->participants = new ArrayCollection();
+        $this->participantsDetails = [];
     }
 
     public function getId(): ?int
@@ -124,6 +137,58 @@ class Formation
         if ($this->participants->removeElement($participant)) {
             $participant->removeFormation($this);
         }
+        return $this;
+    }
+
+    public function getReference(): ?string
+    {
+        return $this->reference;
+    }
+
+    public function setReference(?string $reference): static
+    {
+        $this->reference = $reference;
+
+        return $this;
+    }
+
+    public function getRemarque(): ?string
+    {
+        return $this->remarque;
+    }
+
+    public function setRemarque(?string $remarque): static
+    {
+        $this->remarque = $remarque;
+
+        return $this;
+    }
+
+    public function getParticipantsDetails(): ?array
+    {
+        return $this->participantsDetails;
+    }
+
+    public function setParticipantsDetails(?array $participantsDetails): static
+    {
+        $this->participantsDetails = $participantsDetails;
+        return $this;
+    }
+
+    /**
+     * Récupère les détails pour un participant spécifique
+     */
+    public function getParticipantDetail(int $participantId): ?string
+    {
+        return $this->participantsDetails[$participantId] ?? null;
+    }
+
+    /**
+     * Ajoute un détail pour un participant
+     */
+    public function setParticipantDetail(int $participantId, string $detail): static
+    {
+        $this->participantsDetails[$participantId] = $detail;
         return $this;
     }
 }
