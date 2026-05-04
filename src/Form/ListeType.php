@@ -49,7 +49,8 @@ class ListeType extends AbstractType
                     'ONG' => 'ong',
                     'Simple entreprise' => 'entreprise',
                     'Sponsor' => 'sponsor'
-                ]
+                ],
+                'required' => false,
             ])
             // ↑ Les champs conditionnels liés à "statut" seront insérés ICI dynamiquement
             ->add('siteWeb', TextType::class, [

@@ -262,4 +262,95 @@ class ListeRepository extends ServiceEntityRepository
             'statuts' => $statuts,
         ];
     }
+
+     /**
+     * Recherche avec filtres avancés
+     */
+    public function findByFilters(
+        ?string $searchTerm = null,
+        ?string $statut = null,
+        ?string $filiere = null,
+        ?string $cotFMTP = null,
+        ?string $statutMenmbre = null,
+        ?string $type = null,
+        ?string $anneeAdhesion = null
+    ): array {
+        $qb = $this->createQueryBuilder('l');
+
+        // Recherche textuelle
+        if ($searchTerm) {
+            $qb->andWhere('l.nom LIKE :q OR l.email LIKE :q OR l.numero LIKE :q OR l.adresse LIKE :q OR l.activite LIKE :q')
+               ->setParameter('q', '%' . $searchTerm . '%');
+        }
+
+        // Filtre par statut
+        if ($statut && $statut !== 'tous') {
+            $qb->andWhere('l.statut = :statut')
+               ->setParameter('statut', $statut);
+        }
+
+        // Filtre par filière
+        if ($filiere && $filiere !== 'tous') {
+            $qb->andWhere('l.filiere = :filiere')
+               ->setParameter('filiere', $filiere);
+        }
+
+        // Filtre par cotisation FMTP
+        if ($cotFMTP && $cotFMTP !== 'tous') {
+            $qb->andWhere('l.cotFMTP = :cotFMTP')
+               ->setParameter('cotFMTP', $cotFMTP);
+        }
+
+        // Filtre par statut du membre
+        if ($statutMenmbre && $statutMenmbre !== 'tous') {
+            $qb->andWhere('l.statutMenmbre = :statutMenmbre')
+               ->setParameter('statutMenmbre', $statutMenmbre);
+        }
+
+        // Filtre par type (ONG, entreprise, sponsor)
+        if ($type && $type !== 'tous') {
+            $qb->andWhere('l.type = :type')
+               ->setParameter('type', $type);
+        }
+
+        // Filtre par année d'adhésion (basée sur la date de création ou première cotisation)
+        if ($anneeAdhesion && $anneeAdhesion !== 'tous') {
+            // Utiliser la date de validation bureau ou AG comme année d'adhésion
+            $qb->andWhere('(YEAR(l.validationBureau) = :annee OR YEAR(l.validationAG) = :annee)')
+               ->setParameter('annee', $anneeAdhesion);
+        }
+
+        return $qb->orderBy('l.nom', 'ASC')
+                  ->getQuery()
+                  ->getResult();
+    }
+
+    /**
+     * Récupère les années d'adhésion disponibles
+     */
+    public function getAvailableAdhesionYears(): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'SELECT DISTINCT YEAR(validation_bureau) as annee FROM liste WHERE validation_bureau IS NOT NULL 
+                UNION 
+                SELECT DISTINCT YEAR(validation_ag) as annee FROM liste WHERE validation_ag IS NOT NULL
+                ORDER BY annee DESC';
+        $stmt = $conn->prepare($sql);
+        $result = $stmt->executeQuery();
+        $results = $result->fetchAllAssociative();
+
+        $years = [];
+        foreach ($results as $row) {
+            if ($row['annee']) {
+                $years[] = (string) $row['annee'];
+            }
+        }
+        
+        // Ajouter l'année en cours par défaut
+        if (empty($years)) {
+            $years[] = date('Y');
+        }
+        
+        return $years;
+    }
 }

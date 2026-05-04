@@ -19,7 +19,7 @@
                 </div>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ path('app_export_liste_form') }}" class="btn btn-outline-success">
+                <a href="{{ path('app_export_liste_form') }}?{{ app.request.query.all|url_encode }}" class="btn btn-outline-success">
                     <i class="fas fa-file-excel me-2"></i>Exporter
                 </a>
                 <a href="{{ path('app_liste_new') }}" class="btn btn-cute">
@@ -28,17 +28,102 @@
             </div>
         </div>
 
-        <div class="px-2 mb-4">
-            {{ include('_search_bar.html.twig') }}
-            {% if searchTerm is defined and searchTerm %}
-                <div class="mt-2">
-                    <span class="badge bg-light text-dark">
-                        Résultats pour : "{{ searchTerm }}"
-                        <a href="{{ path('app_liste_index') }}" class="text-decoration-none ms-1">&times;</a>
-                    </span>
-                </div>
-            {% endif %}
-        </div>
+        {# Barre de recherche et filtres #}
+        <form method="get" action="{{ path('app_liste_index') }}">
+                    <div class="row g-3 mb-4">
+
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">
+                                    <i class="fas fa-search text-muted" style="font-size: 13px;"></i>
+                                </span>
+                                <input type="text" name="q" class="form-control border-start-0 ps-0"
+                                    placeholder="Nom, email, téléphone..."
+                                    value="{{ searchTerm }}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-2">
+                            <select name="statut" class="form-select">
+                                <option value="">Tous les statuts</option>
+                                <option value="actif"    {% if statut == 'actif'    %}selected{% endif %}>✅ Actif</option>
+                                <option value="inactif"  {% if statut == 'inactif'  %}selected{% endif %}>⚠️ Inactif</option>
+                                <option value="radie"    {% if statut == 'radie'    %}selected{% endif %}>🚫 Radié</option>
+                                <option value="demande"  {% if statut == 'demande'  %}selected{% endif %}>🕐 Demande</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <select name="filiere" class="form-select">
+                                <option value="">Toutes les filières</option>
+                                {% for fil in filieres %}
+                                    <option value="{{ fil }}" {% if filiere == fil %}selected{% endif %}>{{ fil }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <select name="cotFMTP" class="form-select">
+                                <option value="">Cotisation FMFP</option>
+                                <option value="Oui" {% if cotFMTP == 'Oui' %}selected{% endif %}>Oui</option>
+                                <option value="Non" {% if cotFMTP == 'Non' %}selected{% endif %}>Non</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <select name="statutMenmbre" class="form-select">
+                                <option value="">Statut membre</option>
+                                <option value="simple" {% if statutMenmbre == 'simple' %}selected{% endif %}>Simple membre</option>
+                                <option value="bureau" {% if statutMenmbre == 'bureau' %}selected{% endif %}>Membre du bureau</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <select name="type" class="form-select">
+                                <option value="">Tous types</option>
+                                <option value="ong"        {% if type == 'ong'        %}selected{% endif %}>ONG</option>
+                                <option value="entreprise" {% if type == 'entreprise' %}selected{% endif %}>Entreprise</option>
+                                <option value="sponsor"    {% if type == 'sponsor'    %}selected{% endif %}>Sponsor</option>
+                            </select>
+                        </div>
+
+                        {#<div class="col-md-2">
+                            <select name="anneeAdhesion" class="form-select">
+                                <option value="">Année adhésion</option>
+                                {% for year in adhesionYears %}
+                                    <option value="{{ year }}" {% if anneeAdhesion == year %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>#}
+
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-cute w-100">
+                                <i class="fas fa-filter me-1"></i> Filtrer
+                            </button>
+                        </div>
+
+                        <div class="col-md-2">
+                            <a href="{{ path('app_liste_index') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-undo me-1"></i> Réinitialiser
+                            </a>
+                        </div>
+
+                    </div>
+                </form>
+
+        {# Affichage des filtres actifs #}
+        {% if searchTerm or statut or filiere or cotFMTP or statutMenmbre or type or anneeAdhesion %}
+            <div class="mb-3">
+                <span class="text-muted small">Filtres actifs :</span>
+                {% if searchTerm %}<span class="badge bg-secondary me-1">Recherche: {{ searchTerm }}</span>{% endif %}
+                {% if statut %}<span class="badge bg-secondary me-1">Statut: {{ statut }}</span>{% endif %}
+                {% if filiere %}<span class="badge bg-secondary me-1">Filière: {{ filiere }}</span>{% endif %}
+                {% if cotFMTP %}<span class="badge bg-secondary me-1">Cotisation FMFP: {{ cotFMTP }}</span>{% endif %}
+                {% if statutMenmbre %}<span class="badge bg-secondary me-1">Statut membre: {{ statutMenmbre == 'simple' ? 'Simple membre' : 'Membre du bureau' }}</span>{% endif %}
+                {% if type %}<span class="badge bg-secondary me-1">Type: {{ type }}</span>{% endif %}
+                {% if anneeAdhesion %}<span class="badge bg-secondary me-1">Année adhésion: {{ anneeAdhesion }}</span>{% endif %}
+            </div>
+        {% endif %}
 
         <div class="table-responsive">
             <table class="table table-hover align-middle">
@@ -49,6 +134,7 @@
                         <th>Email</th>
                         <th>Téléphone</th>
                         <th>Activité</th>
+                        <th>Filière</th>
                         <th>Statut</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -61,6 +147,7 @@
                         <td>{{ liste.email }}</td>
                         <td>{{ liste.numero }}</td>
                         <td>{{ liste.activite }}</td>
+                        <td>{{ liste.filiere }}</td>
                         <td>
                             {% if liste.statut == 'actif' %}
                                 <span class="badge bg-success rounded-pill">Actif</span>
@@ -68,6 +155,8 @@
                                 <span class="badge bg-warning rounded-pill">Inactif</span>
                             {% elseif liste.statut == 'radie' %}
                                 <span class="badge bg-danger rounded-pill">Radié</span>
+                            {% elseif liste.statut == 'demande' %}
+                                <span class="badge bg-info rounded-pill">Demande</span>
                             {% else %}
                                 <span class="badge bg-secondary rounded-pill">{{ liste.statut }}</span>
                             {% endif %}
@@ -89,13 +178,13 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             <div class="mb-3">
                                 <i class="fas fa-users fa-4x text-muted opacity-25"></i>
                             </div>
                             <p class="text-muted fw-bold">
-                                {% if searchTerm is defined and searchTerm %}
-                                    Aucun adhérent trouvé pour "{{ searchTerm }}"
+                                {% if searchTerm or statut or filiere or cotFMTP or statutMenmbre or type or anneeAdhesion %}
+                                    Aucun adhérent ne correspond aux filtres sélectionnés.
                                 {% else %}
                                     Aucun adhérent enregistré.
                                 {% endif %}
@@ -104,10 +193,15 @@
                                 <i class="fas fa-plus me-2"></i>Ajouter un adhérent
                             </a>
                         </td>
-                    </tr>
+                    </table>
                 {% endfor %}
                 </tbody>
             </table>
+        </div>
+        
+        {# Affichage du nombre de résultats #}
+        <div class="mt-3 text-muted small">
+            <i class="fas fa-list me-1"></i> {{ listes|length }} adhérent(s) trouvé(s)
         </div>
     </div>
 </div>

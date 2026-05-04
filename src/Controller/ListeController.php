@@ -23,12 +23,44 @@ final class ListeController extends AbstractController
         $this->auditLogger = $auditLogger;
     }
 
-    #[Route(name: 'app_liste_index', methods: ['GET'])]
+     #[Route(name: 'app_liste_index', methods: ['GET'])]
     public function index(Request $request, ListeRepository $listeRepository): Response
     {
         $searchTerm = $request->query->get('q');
+        $statut = $request->query->get('statut');
+        $filiere = $request->query->get('filiere');
+        $cotFMTP = $request->query->get('cotFMTP');
+        $statutMenmbre = $request->query->get('statutMenmbre');
+        $type = $request->query->get('type');
+        $anneeAdhesion = $request->query->get('anneeAdhesion');
+
+        // Récupérer les listes pour les filtres
+        $filieres = $listeRepository->getDistinctFilieres();
+        $statutsMembres = $listeRepository->getDistinctStatutsMembres();
+        $adhesionYears = $listeRepository->getAvailableAdhesionYears();
+
+        $listes = $listeRepository->findByFilters(
+            $searchTerm,
+            $statut,
+            $filiere,
+            $cotFMTP,
+            $statutMenmbre,
+            $type,
+            $anneeAdhesion
+        );
+
         return $this->render('liste/index.html.twig', [
-            'listes' => $listeRepository->findBySearch($searchTerm),
+            'listes' => $listes,
+            'searchTerm' => $searchTerm,
+            'statut' => $statut,
+            'filiere' => $filiere,
+            'cotFMTP' => $cotFMTP,
+            'statutMenmbre' => $statutMenmbre,
+            'type' => $type,
+            'anneeAdhesion' => $anneeAdhesion,
+            'filieres' => $filieres,
+            'statutsMembres' => $statutsMembres,
+            'adhesionYears' => $adhesionYears,
         ]);
     }
 
