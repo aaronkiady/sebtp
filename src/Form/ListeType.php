@@ -43,6 +43,14 @@ class ListeType extends AbstractType
                     'Demande d\'adhésion' => 'demande',
                 ]
             ])
+            ->add('type', ChoiceType::class, [
+                'label' => 'Type',
+                'choices' => [
+                    'ONG' => 'ong',
+                    'Simple entreprise' => 'entreprise',
+                    'Sponsor' => 'sponsor'
+                ]
+            ])
             // ↑ Les champs conditionnels liés à "statut" seront insérés ICI dynamiquement
             ->add('siteWeb', TextType::class, [
                 'label' => 'Site Web',

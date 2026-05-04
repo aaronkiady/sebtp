@@ -3,12 +3,12 @@
 namespace App\Controller;
 
 use App\Repository\ListeRepository;
+use App\Service\AuditLogger;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,6 +18,13 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/export')]
 final class ExportCotisationController extends AbstractController
 {
+    private AuditLogger $auditLogger;
+
+    public function __construct(AuditLogger $auditLogger)
+    {
+        $this->auditLogger = $auditLogger;
+    }
+
     #[Route('/', name: 'app_export_cotisations_form', methods: ['GET'])]
     public function form(): Response
     {
@@ -32,6 +39,18 @@ final class ExportCotisationController extends AbstractController
         $statutAdherent = $request->query->get('statutAdherent', 'tous');
 
         $cotisations = $listeRepo->getCotisationsForExport($annee, $statut, $statutAdherent);
+
+        // Audit log
+        $this->auditLogger->logExport(
+            'Cotisation',
+            sprintf(
+                'Export Excel - Année: %s, Statut cotisation: %s, Statut adhérent: %s, Nb lignes: %d',
+                $annee ?: 'toutes',
+                $statut,
+                $statutAdherent,
+                count($cotisations)
+            )
+        );
 
         // Création du fichier Excel
         $spreadsheet = new Spreadsheet();
@@ -85,11 +104,8 @@ final class ExportCotisationController extends AbstractController
         $row = 6;
         $numero = 1;
         foreach ($cotisations as $cotisation) {
-            // Récupérer le statut et le normaliser
             $statutValue = $cotisation['cotisation_statut'] ?? '';
             $statutLibelle = $this->getStatutLibelle($statutValue);
-            
-            // Récupérer le montant (valeur numérique)
             $montant = (float) ($cotisation['cotisation_montant'] ?? 0);
             
             $sheet->setCellValue('A' . $row, $numero);
@@ -99,14 +115,12 @@ final class ExportCotisationController extends AbstractController
             $sheet->setCellValue('E' . $row, $cotisation['adherent_adresse']);
             $sheet->setCellValue('F' . $row, $cotisation['cotisation_periode'] ?? '-');
             $sheet->setCellValue('G' . $row, $montant);
-            // Appliquer le format de nombre avec séparateur de milliers
             $sheet->getStyle('G' . $row)->getNumberFormat()->setFormatCode('#,##0');
             
             $sheet->setCellValue('H' . $row, $cotisation['cotisation_reference'] ?? '-');
             $sheet->setCellValue('I' . $row, $statutLibelle);
             $sheet->setCellValue('J' . $row, $cotisation['cotisation_observation'] ?? '-');
 
-            // Colorer la cellule du statut selon la valeur
             $statutCell = 'I' . $row;
             if ($statutValue === 'payé' || $statutValue === 'paye') {
                 $sheet->getStyle($statutCell)->getFont()->getColor()->setARGB('FF10B981');
@@ -123,12 +137,9 @@ final class ExportCotisationController extends AbstractController
             $numero++;
         }
 
-        // Ajouter une ligne de total
         if ($row > 6) {
             $sheet->setCellValue('F' . $row, 'TOTAL:');
             $sheet->getStyle('F' . $row)->getFont()->setBold(true);
-            
-            // Formule pour calculer le total des montants
             $sheet->setCellValue('G' . $row, '=SUM(G6:G' . ($row - 1) . ')');
             $sheet->getStyle('G' . $row)->getFont()->setBold(true);
             $sheet->getStyle('G' . $row)->getFill()
@@ -137,12 +148,10 @@ final class ExportCotisationController extends AbstractController
             $sheet->getStyle('G' . $row)->getNumberFormat()->setFormatCode('#,##0');
         }
 
-        // Ajuster la largeur des colonnes
         foreach (range('A', 'J') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Ajouter des bordures au tableau
         $styleArray = [
             'borders' => [
                 'allBorders' => [
@@ -153,7 +162,6 @@ final class ExportCotisationController extends AbstractController
         ];
         $sheet->getStyle('A5:J' . ($row))->applyFromArray($styleArray);
 
-        // Création du fichier
         $writer = new Xlsx($spreadsheet);
         $fileName = sprintf('cotisations_%s_%s.xlsx', date('Ymd'), date('His'));
         $tempFile = tempnam(sys_get_temp_dir(), $fileName);
@@ -162,9 +170,6 @@ final class ExportCotisationController extends AbstractController
         return $this->file($tempFile, $fileName, ResponseHeaderBag::DISPOSITION_INLINE);
     }
 
-    /**
-     * Retourne le libellé du statut en fonction de la valeur
-     */
     private function getStatutLibelle(string $statut): string
     {
         return match ($statut) {

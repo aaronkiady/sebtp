@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Formation;
 use App\Repository\FormationRepository;
+use App\Service\AuditLogger;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -18,6 +19,13 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/export/formation')]
 class ExportFormationController extends AbstractController
 {
+    private AuditLogger $auditLogger;
+
+    public function __construct(AuditLogger $auditLogger)
+    {
+        $this->auditLogger = $auditLogger;
+    }
+
     #[Route('/', name: 'app_export_formation_form', methods: ['GET'])]
     public function form(FormationRepository $formationRepo): Response
     {
@@ -36,7 +44,6 @@ class ExportFormationController extends AbstractController
         $annee = $request->query->get('annee');
         $formationId = $request->query->get('formation_id');
         
-        // Convertir en null si vide ou non numérique
         if (empty($formationId) || !is_numeric($formationId)) {
             $formationId = null;
         } else {
@@ -45,37 +52,42 @@ class ExportFormationController extends AbstractController
 
         $formations = $formationRepo->getForExportWithFormationId($annee, $formationId);
 
+        // Audit log
+        $this->auditLogger->logExport(
+            'Formation',
+            sprintf(
+                'Export Excel - Année: %s, Formation ID: %s, Nb formations: %d',
+                $annee ?: 'toutes',
+                $formationId ?: 'tous',
+                count($formations)
+            )
+        );
+
         // Création du fichier Excel
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Titre du document
         $sheet->setCellValue('A1', 'SEBTP - Liste des formations');
         $sheet->mergeCells('A1:K1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        // Date d'export
         $sheet->setCellValue('A2', 'Date d\'export : ' . date('d/m/Y H:i:s'));
         $sheet->mergeCells('A2:K2');
         $sheet->getStyle('A2')->getFont()->setItalic(true);
 
-        // Filtres appliqués
         $row = 3;
         $sheet->setCellValue('A' . $row, 'Filtres :');
         $sheet->setCellValue('B' . $row, 'Année: ' . ($annee ?: 'Toutes'));
         
-        // Récupérer le nom de la formation sélectionnée
         $formationNom = '';
         if ($formationId) {
             $formation = $formationRepo->find($formationId);
             $formationNom = $formation ? $formation->getNom() : 'Non trouvé';
         }
         $sheet->setCellValue('D' . $row, 'Formation: ' . ($formationNom ?: 'Toutes'));
-        
         $sheet->getStyle('A' . $row)->getFont()->setBold(true);
 
-        // En-têtes du tableau
         $row = 5;
         $headers = [
             'A' => 'N°',
@@ -101,11 +113,9 @@ class ExportFormationController extends AbstractController
             $sheet->getStyle($col . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
-        // Variables pour les totaux
         $totalFormations = 0;
         $totalParticipants = 0;
         
-        // Données
         $row = 6;
         $numero = 1;
         foreach ($formations as $formation) {
@@ -124,18 +134,12 @@ class ExportFormationController extends AbstractController
             $sheet->setCellValue('F' . $row, $formation->getDateFin() ? $formation->getDateFin()->format('d/m/Y') : '-');
             $sheet->setCellValue('G' . $row, $formation->getOrganisateur());
             $sheet->setCellValue('H' . $row, $nbParticipants);
-            
-            // Liste des participants (entreprises)
             $sheet->setCellValue('I' . $row, $participantsList);
             $sheet->getStyle('I' . $row)->getAlignment()->setWrapText(true);
-            
-            // Liste des agents participants
             $sheet->setCellValue('J' . $row, $agentsList);
             $sheet->getStyle('J' . $row)->getAlignment()->setWrapText(true);
-            
             $sheet->setCellValue('K' . $row, $formation->getRemarque() ?? '-');
             
-            // Colorer selon le nombre de participants
             if ($nbParticipants == 0) {
                 $sheet->getStyle('H' . $row)->getFont()->getColor()->setARGB('FFEF4444');
             } elseif ($nbParticipants > 5) {
@@ -146,7 +150,6 @@ class ExportFormationController extends AbstractController
             $numero++;
         }
 
-        // Ajouter une ligne de total
         if ($row > 6) {
             $sheet->setCellValue('A' . $row, 'TOTAUX:');
             $sheet->mergeCells('A' . $row . ':B' . $row);
@@ -168,12 +171,10 @@ class ExportFormationController extends AbstractController
                 ->getStartColor()->setARGB('FFE5E7EB');
         }
 
-        // Ajuster la largeur des colonnes
         foreach (range('A', 'K') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Ajouter des bordures au tableau
         $styleArray = [
             'borders' => [
                 'allBorders' => [
@@ -184,7 +185,6 @@ class ExportFormationController extends AbstractController
         ];
         $sheet->getStyle('A5:K' . ($row))->applyFromArray($styleArray);
 
-        // Création du fichier
         $writer = new Xlsx($spreadsheet);
         $fileName = sprintf('formations_%s.xlsx', date('Ymd_His'));
         $tempFile = tempnam(sys_get_temp_dir(), $fileName);
@@ -199,7 +199,6 @@ class ExportFormationController extends AbstractController
         $annee = $request->query->get('annee');
         $formationId = $request->query->get('formation_id');
         
-        // Convertir en null si vide ou non numérique
         if (empty($formationId) || !is_numeric($formationId)) {
             $formationId = null;
         } else {
@@ -208,37 +207,41 @@ class ExportFormationController extends AbstractController
 
         $formations = $formationRepo->getForExportWithFormationId($annee, $formationId);
 
-        // Création du fichier Excel détaillé
+        // Audit log
+        $this->auditLogger->logExport(
+            'FormationDetail',
+            sprintf(
+                'Export Excel détaillé - Année: %s, Formation ID: %s, Nb formations: %d',
+                $annee ?: 'toutes',
+                $formationId ?: 'tous',
+                count($formations)
+            )
+        );
+
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Titre du document
         $sheet->setCellValue('A1', 'SEBTP - Détail des formations avec participants');
         $sheet->mergeCells('A1:H1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        // Date d'export
         $sheet->setCellValue('A2', 'Date d\'export : ' . date('d/m/Y H:i:s'));
         $sheet->mergeCells('A2:H2');
         $sheet->getStyle('A2')->getFont()->setItalic(true);
 
-        // Filtres appliqués
         $row = 3;
         $sheet->setCellValue('A' . $row, 'Filtres :');
         $sheet->setCellValue('B' . $row, 'Année: ' . ($annee ?: 'Toutes'));
         
-        // Récupérer le nom de la formation sélectionnée
         $formationNom = '';
         if ($formationId) {
             $formation = $formationRepo->find($formationId);
             $formationNom = $formation ? $formation->getNom() : 'Non trouvé';
         }
         $sheet->setCellValue('D' . $row, 'Formation: ' . ($formationNom ?: 'Toutes'));
-        
         $sheet->getStyle('A' . $row)->getFont()->setBold(true);
 
-        // En-têtes du tableau détaillé
         $row = 5;
         $headers = [
             'A' => 'N° formation',
@@ -261,11 +264,9 @@ class ExportFormationController extends AbstractController
             $sheet->getStyle($col . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
-        // Variables pour les totaux
         $totalParticipants = 0;
         $totalFormations = 0;
         
-        // Données détaillées
         $row = 6;
         $formationsTraitees = [];
         
@@ -290,7 +291,6 @@ class ExportFormationController extends AbstractController
                     $row++;
                 }
             } else {
-                // Formation sans participant
                 $sheet->setCellValue('A' . $row, $formation->getId());
                 $sheet->setCellValue('B' . $row, $formation->getNom());
                 $sheet->setCellValue('C' . $row, $formation->getDateDebut() ? $formation->getDateDebut()->format('d/m/Y') : '-');
@@ -304,7 +304,6 @@ class ExportFormationController extends AbstractController
             $formationsTraitees[$formation->getId()] = true;
         }
 
-        // Ajouter une ligne de total
         $sheet->setCellValue('A' . $row, 'TOTAUX:');
         $sheet->mergeCells('A' . $row . ':B' . $row);
         $sheet->getStyle('A' . $row . ':B' . $row)->getFont()->setBold(true);
@@ -324,12 +323,10 @@ class ExportFormationController extends AbstractController
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFE5E7EB');
 
-        // Ajuster la largeur des colonnes
         foreach (range('A', 'H') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Ajouter des bordures au tableau
         $styleArray = [
             'borders' => [
                 'allBorders' => [
@@ -340,7 +337,6 @@ class ExportFormationController extends AbstractController
         ];
         $sheet->getStyle('A5:H' . ($row))->applyFromArray($styleArray);
 
-        // Création du fichier
         $writer = new Xlsx($spreadsheet);
         $fileName = sprintf('formations_detail_%s.xlsx', date('Ymd_His'));
         $tempFile = tempnam(sys_get_temp_dir(), $fileName);
@@ -349,9 +345,6 @@ class ExportFormationController extends AbstractController
         return $this->file($tempFile, $fileName, ResponseHeaderBag::DISPOSITION_INLINE);
     }
 
-    /**
-     * Retourne la liste des participants (entreprises) sous forme de chaîne
-     */
     private function getParticipantsList(Formation $formation): string
     {
         $participants = [];
@@ -361,9 +354,6 @@ class ExportFormationController extends AbstractController
         return implode(', ', $participants);
     }
 
-    /**
-     * Retourne la liste des agents participants sous forme de chaîne
-     */
     private function getAgentsList(Formation $formation): string
     {
         $details = $formation->getParticipantsDetails() ?? [];

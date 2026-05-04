@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\ListeRepository;
+use App\Service\AuditLogger;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -17,6 +18,13 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/export/liste')]
 class ExportListeController extends AbstractController
 {
+    private AuditLogger $auditLogger;
+
+    public function __construct(AuditLogger $auditLogger)
+    {
+        $this->auditLogger = $auditLogger;
+    }
+
     #[Route('/', name: 'app_export_liste_form', methods: ['GET'])]
     public function form(ListeRepository $listeRepo): Response
     {
@@ -44,22 +52,33 @@ class ExportListeController extends AbstractController
 
         $adherents = $listeRepo->getForExport($statut, $statutMenmbre, $filiere, $activite, $search);
 
+        // Audit log
+        $this->auditLogger->logExport(
+            'Liste',
+            sprintf(
+                'Export Excel - Statut: %s, Statut membre: %s, Filière: %s, Activité: %s, Recherche: %s, Nb lignes: %d',
+                $statut ?: 'tous',
+                $statutMenmbre ?: 'tous',
+                $filiere ?: 'toutes',
+                $activite ?: 'toutes',
+                $search ?: 'aucune',
+                count($adherents)
+            )
+        );
+
         // Création du fichier Excel
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Titre du document
         $sheet->setCellValue('A1', 'SEBTP - Liste des adhérents');
         $sheet->mergeCells('A1:P1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        // Date d'export
         $sheet->setCellValue('A2', 'Date d\'export : ' . date('d/m/Y H:i:s'));
         $sheet->mergeCells('A2:P2');
         $sheet->getStyle('A2')->getFont()->setItalic(true);
 
-        // Filtres appliqués
         $row = 3;
         $sheet->setCellValue('A' . $row, 'Filtres :');
         $sheet->setCellValue('B' . $row, 'Statut: ' . ($statut ?: 'Tous'));
@@ -69,7 +88,6 @@ class ExportListeController extends AbstractController
         $sheet->setCellValue('J' . $row, 'Recherche: ' . ($search ?: 'Aucune'));
         $sheet->getStyle('A' . $row)->getFont()->setBold(true);
 
-        // En-têtes du tableau
         $row = 5;
         $headers = [
             'A' => 'N°',
@@ -100,7 +118,6 @@ class ExportListeController extends AbstractController
             $sheet->getStyle($col . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
-        // Données
         $row = 6;
         $numero = 1;
         foreach ($adherents as $adherent) {
@@ -121,7 +138,6 @@ class ExportListeController extends AbstractController
             $sheet->setCellValue('O' . $row, $adherent->getFonctionSEBTP() ?? '-');
             $sheet->setCellValue('P' . $row, $adherent->getMandat() ?? '-');
 
-            // Colorer la ligne selon le statut
             $statutValue = $adherent->getStatut();
             if ($statutValue === 'actif') {
                 $sheet->getStyle('M' . $row)->getFont()->getColor()->setARGB('FF10B981');
@@ -138,7 +154,6 @@ class ExportListeController extends AbstractController
             $numero++;
         }
 
-        // Ajouter une ligne de total
         if ($row > 6) {
             $sheet->setCellValue('A' . $row, 'TOTAL:');
             $sheet->mergeCells('A' . $row . ':B' . $row);
@@ -149,12 +164,10 @@ class ExportListeController extends AbstractController
                 ->getStartColor()->setARGB('FFE5E7EB');
         }
 
-        // Ajuster la largeur des colonnes
         foreach (range('A', 'P') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Ajouter des bordures au tableau
         $styleArray = [
             'borders' => [
                 'allBorders' => [
@@ -165,7 +178,6 @@ class ExportListeController extends AbstractController
         ];
         $sheet->getStyle('A5:P' . ($row))->applyFromArray($styleArray);
 
-        // Création du fichier
         $writer = new Xlsx($spreadsheet);
         $fileName = sprintf('adherents_%s.xlsx', date('Ymd_His'));
         $tempFile = tempnam(sys_get_temp_dir(), $fileName);

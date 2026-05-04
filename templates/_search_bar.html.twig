@@ -6,7 +6,7 @@
         <input type="text" name="q" value="{{ app.request.query.get('q') }}" 
                class="form-control border-start-0 rounded-end-4 custom-input" 
                placeholder="Rechercher...">
-        <button class="btn-action btn-update ms-2 rounded-4" type="submit">Filtrer</button>
+        <button class="btn-action btn-update ms-2 rounded-4" type="submit">Rechercher</button>
         {% if app.request.query.get('q') %}
             <a href="{{ app.request.pathInfo }}" class="btn-action btn-cancel ms-2 rounded-4 text-decoration-none">Effacer</a>
         {% endif %}

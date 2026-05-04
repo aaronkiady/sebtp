@@ -22,14 +22,12 @@ class AuditController extends AbstractController
         $dateFrom = $request->query->get('dateFrom') ? new \DateTime($request->query->get('dateFrom')) : null;
         $dateTo = $request->query->get('dateTo') ? new \DateTime($request->query->get('dateTo')) : null;
         
-        // Convertir entityId en int ou null
         if ($entityId !== null && $entityId !== '' && is_numeric($entityId)) {
             $entityId = (int) $entityId;
         } else {
             $entityId = null;
         }
         
-        // Convertir userId en null si vide
         if ($userId === '') {
             $userId = null;
         }
@@ -50,8 +48,14 @@ class AuditController extends AbstractController
     #[Route('/{id}', name: 'app_audit_show', methods: ['GET'])]
     public function show(AuditLog $auditLog): Response
     {
+        // Décoder les données JSON en tableau PHP
+        $oldData = $auditLog->getOldData() ? json_decode($auditLog->getOldData(), true) : null;
+        $newData = $auditLog->getNewData() ? json_decode($auditLog->getNewData(), true) : null;
+        
         return $this->render('audit/show.html.twig', [
             'log' => $auditLog,
+            'oldData' => $oldData,
+            'newData' => $newData,
         ]);
     }
 }

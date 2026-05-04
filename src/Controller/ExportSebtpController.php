@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\SebtpRepository;
+use App\Service\AuditLogger;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -17,6 +18,13 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/export/sebtp')]
 class ExportSebtpController extends AbstractController
 {
+    private AuditLogger $auditLogger;
+
+    public function __construct(AuditLogger $auditLogger)
+    {
+        $this->auditLogger = $auditLogger;
+    }
+
     #[Route('/', name: 'app_export_sebtp_form', methods: ['GET'])]
     public function form(SebtpRepository $sebtpRepo): Response
     {
@@ -38,22 +46,31 @@ class ExportSebtpController extends AbstractController
 
         $sebtps = $sebtpRepo->getForExport($instance, $mandat, $search);
 
+        // Audit log
+        $this->auditLogger->logExport(
+            'Sebtp',
+            sprintf(
+                'Export Excel - Instance: %s, Mandat: %s, Recherche: %s, Nb lignes: %d',
+                $instance ?: 'toutes',
+                $mandat ?: 'tous',
+                $search ?: 'aucune',
+                count($sebtps)
+            )
+        );
+
         // Création du fichier Excel
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Titre du document
         $sheet->setCellValue('A1', 'SEBTP - Liste des organismes');
         $sheet->mergeCells('A1:G1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        // Date d'export
         $sheet->setCellValue('A2', 'Date d\'export : ' . date('d/m/Y H:i:s'));
         $sheet->mergeCells('A2:G2');
         $sheet->getStyle('A2')->getFont()->setItalic(true);
 
-        // Filtres appliqués
         $row = 3;
         $sheet->setCellValue('A' . $row, 'Filtres :');
         $sheet->setCellValue('B' . $row, 'Instance: ' . ($instance ?: 'Toutes'));
@@ -61,7 +78,6 @@ class ExportSebtpController extends AbstractController
         $sheet->setCellValue('F' . $row, 'Recherche: ' . ($search ?: 'Aucune'));
         $sheet->getStyle('A' . $row)->getFont()->setBold(true);
 
-        // En-têtes du tableau
         $row = 5;
         $headers = [
             'A' => 'N°',
@@ -83,7 +99,6 @@ class ExportSebtpController extends AbstractController
             $sheet->getStyle($col . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
-        // Données
         $row = 6;
         $numero = 1;
         foreach ($sebtps as $sebtp) {
@@ -99,7 +114,6 @@ class ExportSebtpController extends AbstractController
             $numero++;
         }
 
-        // Ajouter une ligne de total
         if ($row > 6) {
             $sheet->setCellValue('A' . $row, 'TOTAL:');
             $sheet->mergeCells('A' . $row . ':B' . $row);
@@ -110,12 +124,10 @@ class ExportSebtpController extends AbstractController
                 ->getStartColor()->setARGB('FFE5E7EB');
         }
 
-        // Ajuster la largeur des colonnes
         foreach (range('A', 'G') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Ajouter des bordures au tableau
         $styleArray = [
             'borders' => [
                 'allBorders' => [
@@ -126,7 +138,6 @@ class ExportSebtpController extends AbstractController
         ];
         $sheet->getStyle('A5:G' . ($row))->applyFromArray($styleArray);
 
-        // Création du fichier
         $writer = new Xlsx($spreadsheet);
         $fileName = sprintf('sebtp_organismes_%s.xlsx', date('Ymd_His'));
         $tempFile = tempnam(sys_get_temp_dir(), $fileName);

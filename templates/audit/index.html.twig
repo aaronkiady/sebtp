@@ -64,7 +64,7 @@
 
         {# Statistiques #}
         <div class="row g-3 mb-4">
-            {% set colors = ['primary', 'success', 'danger', 'warning', 'info'] %}
+            {% set colors = ['success', 'primary', 'warning', 'info', 'danger'] %}
             {% set i = 0 %}
             {% for action, total in stats %}
                 <div class="col-md-2">
@@ -90,7 +90,7 @@
                         <th>ID</th>
                         <th>Label</th>
                         <th>Utilisateur</th>
-                        <th>IP</th>
+                        {#<th>IP</th>#}
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -115,7 +115,7 @@
                         <td>{{ log.entityId }}</td>
                         <td>{{ log.entityLabel|slice(0, 50) }}</td>
                         <td>{{ log.userEmail }}</td>
-                        <td>{{ log.userIp }}</td>
+                        {#<td>{{ log.userIp }}</td>#}
                         <td>
                             <a href="{{ path('app_audit_show', {'id': log.id}) }}" class="btn btn-sm btn-outline-secondary">
                                 <i class="fas fa-eye"></i>

@@ -3,7 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\EvenementRepository;
-use App\Repository\ParticipationRepository;
+use App\Service\AuditLogger;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -18,6 +18,13 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/export/evenement')]
 class ExportEvenementController extends AbstractController
 {
+    private AuditLogger $auditLogger;
+
+    public function __construct(AuditLogger $auditLogger)
+    {
+        $this->auditLogger = $auditLogger;
+    }
+
     #[Route('/', name: 'app_export_evenement_form', methods: ['GET'])]
     public function form(EvenementRepository $evenementRepo): Response
     {
@@ -36,7 +43,6 @@ class ExportEvenementController extends AbstractController
         $annee = $request->query->get('annee');
         $evenementId = $request->query->get('evenement_id');
         
-        // Convertir en null si vide ou non numérique
         if (empty($evenementId) || !is_numeric($evenementId)) {
             $evenementId = null;
         } else {
@@ -45,37 +51,42 @@ class ExportEvenementController extends AbstractController
 
         $evenements = $evenementRepo->getForExportWithEventId($annee, $evenementId);
 
+        // Audit log
+        $this->auditLogger->logExport(
+            'Evenement',
+            sprintf(
+                'Export Excel - Année: %s, Événement ID: %s, Nb événements: %d',
+                $annee ?: 'toutes',
+                $evenementId ?: 'tous',
+                count($evenements)
+            )
+        );
+
         // Création du fichier Excel
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Titre du document
         $sheet->setCellValue('A1', 'SEBTP - Liste des événements');
         $sheet->mergeCells('A1:H1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        // Date d'export
         $sheet->setCellValue('A2', 'Date d\'export : ' . date('d/m/Y H:i:s'));
         $sheet->mergeCells('A2:H2');
         $sheet->getStyle('A2')->getFont()->setItalic(true);
 
-        // Filtres appliqués
         $row = 3;
         $sheet->setCellValue('A' . $row, 'Filtres :');
         $sheet->setCellValue('B' . $row, 'Année: ' . ($annee ?: 'Toutes'));
         
-        // Récupérer le nom de l'événement sélectionné
         $evenementNom = '';
         if ($evenementId) {
             $evenement = $evenementRepo->find($evenementId);
             $evenementNom = $evenement ? $evenement->getNom() : 'Non trouvé';
         }
         $sheet->setCellValue('D' . $row, 'Événement: ' . ($evenementNom ?: 'Tous'));
-        
         $sheet->getStyle('A' . $row)->getFont()->setBold(true);
 
-        // En-têtes du tableau
         $row = 5;
         $headers = [
             'A' => 'N°',
@@ -98,12 +109,10 @@ class ExportEvenementController extends AbstractController
             $sheet->getStyle($col . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
-        // Variables pour les totaux
         $totalMontantUnitaire = 0;
         $totalMontantGlobal = 0;
         $totalParticipants = 0;
         
-        // Données
         $row = 6;
         $numero = 1;
         foreach ($evenements as $evenement) {
@@ -118,32 +127,23 @@ class ExportEvenementController extends AbstractController
             $sheet->setCellValue('A' . $row, $numero);
             $sheet->setCellValue('B' . $row, $evenement->getNom());
             $sheet->setCellValue('C' . $row, $evenement->getDate() ? $evenement->getDate()->format('d/m/Y') : 'Date non définie');
-            
-            // Montant unitaire
             $sheet->setCellValue('D' . $row, $montantUnitaire);
             $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
-            
-            // Montant total (unitaire * nb participants)
             $sheet->setCellValue('E' . $row, $montantTotal);
             $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode('#,##0');
-            
             $sheet->setCellValue('F' . $row, $evenement->getCommentaire() ?? '-');
-            
-            // Nombre de participants avec couleur
             $sheet->setCellValue('G' . $row, $nbParticipants);
             if ($nbParticipants == 0) {
                 $sheet->getStyle('G' . $row)->getFont()->getColor()->setARGB('FFEF4444');
             } elseif ($nbParticipants > 10) {
                 $sheet->getStyle('G' . $row)->getFont()->getColor()->setARGB('FF10B981');
             }
-            
             $sheet->setCellValue('H' . $row, $evenement->getId());
             
             $row++;
             $numero++;
         }
 
-        // Ajouter une ligne de total
         if ($row > 6) {
             $sheet->setCellValue('A' . $row, 'TOTAUX:');
             $sheet->mergeCells('A' . $row . ':C' . $row);
@@ -152,7 +152,6 @@ class ExportEvenementController extends AbstractController
                 ->setFillType(Fill::FILL_SOLID)
                 ->getStartColor()->setARGB('FFE5E7EB');
             
-            // Total montant unitaire
             $sheet->setCellValue('D' . $row, $totalMontantUnitaire);
             $sheet->getStyle('D' . $row)->getFont()->setBold(true);
             $sheet->getStyle('D' . $row)->getFill()
@@ -160,7 +159,6 @@ class ExportEvenementController extends AbstractController
                 ->getStartColor()->setARGB('FFE5E7EB');
             $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
             
-            // Total montant global
             $sheet->setCellValue('E' . $row, $totalMontantGlobal);
             $sheet->getStyle('E' . $row)->getFont()->setBold(true);
             $sheet->getStyle('E' . $row)->getFill()
@@ -168,7 +166,6 @@ class ExportEvenementController extends AbstractController
                 ->getStartColor()->setARGB('FFE5E7EB');
             $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode('#,##0');
             
-            // Total participants
             $sheet->setCellValue('G' . $row, $totalParticipants);
             $sheet->getStyle('G' . $row)->getFont()->setBold(true);
             $sheet->getStyle('G' . $row)->getFill()
@@ -176,12 +173,10 @@ class ExportEvenementController extends AbstractController
                 ->getStartColor()->setARGB('FFE5E7EB');
         }
 
-        // Ajuster la largeur des colonnes
         foreach (range('A', 'H') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Ajouter des bordures au tableau
         $styleArray = [
             'borders' => [
                 'allBorders' => [
@@ -192,7 +187,6 @@ class ExportEvenementController extends AbstractController
         ];
         $sheet->getStyle('A5:H' . ($row))->applyFromArray($styleArray);
 
-        // Création du fichier
         $writer = new Xlsx($spreadsheet);
         $fileName = sprintf('evenements_%s.xlsx', date('Ymd_His'));
         $tempFile = tempnam(sys_get_temp_dir(), $fileName);
@@ -207,7 +201,6 @@ class ExportEvenementController extends AbstractController
         $annee = $request->query->get('annee');
         $evenementId = $request->query->get('evenement_id');
         
-        // Convertir en null si vide ou non numérique
         if (empty($evenementId) || !is_numeric($evenementId)) {
             $evenementId = null;
         } else {
@@ -216,37 +209,41 @@ class ExportEvenementController extends AbstractController
 
         $evenements = $evenementRepo->getForExportWithEventId($annee, $evenementId);
 
-        // Création du fichier Excel détaillé
+        // Audit log
+        $this->auditLogger->logExport(
+            'EvenementDetail',
+            sprintf(
+                'Export Excel détaillé - Année: %s, Événement ID: %s, Nb événements: %d',
+                $annee ?: 'toutes',
+                $evenementId ?: 'tous',
+                count($evenements)
+            )
+        );
+
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Titre du document
         $sheet->setCellValue('A1', 'SEBTP - Détail des événements avec participants');
         $sheet->mergeCells('A1:J1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        // Date d'export
         $sheet->setCellValue('A2', 'Date d\'export : ' . date('d/m/Y H:i:s'));
         $sheet->mergeCells('A2:J2');
         $sheet->getStyle('A2')->getFont()->setItalic(true);
 
-        // Filtres appliqués
         $row = 3;
         $sheet->setCellValue('A' . $row, 'Filtres :');
         $sheet->setCellValue('B' . $row, 'Année: ' . ($annee ?: 'Toutes'));
         
-        // Récupérer le nom de l'événement sélectionné
         $evenementNom = '';
         if ($evenementId) {
             $evenement = $evenementRepo->find($evenementId);
             $evenementNom = $evenement ? $evenement->getNom() : 'Non trouvé';
         }
         $sheet->setCellValue('D' . $row, 'Événement: ' . ($evenementNom ?: 'Tous'));
-        
         $sheet->getStyle('A' . $row)->getFont()->setBold(true);
 
-        // En-têtes du tableau détaillé
         $row = 5;
         $headers = [
             'A' => 'N° événement',
@@ -271,13 +268,11 @@ class ExportEvenementController extends AbstractController
             $sheet->getStyle($col . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
-        // Variables pour les totaux
         $totalParticipants = 0;
         $totalPaye = 0;
         $totalImpaye = 0;
         $totalMontantGlobal = 0;
         
-        // Données détaillées
         $row = 6;
         
         foreach ($evenements as $evenement) {
@@ -292,16 +287,12 @@ class ExportEvenementController extends AbstractController
                     $sheet->setCellValue('A' . $row, $evenement->getId());
                     $sheet->setCellValue('B' . $row, $evenement->getNom());
                     $sheet->setCellValue('C' . $row, $evenement->getDate() ? $evenement->getDate()->format('d/m/Y') : 'Date non définie');
-                    
-                    // Montant unitaire
                     $sheet->setCellValue('D' . $row, $montantUnitaire);
                     $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
-                    
                     $sheet->setCellValue('E' . $row, $adherent ? $adherent->getNom() : '-');
                     $sheet->setCellValue('F' . $row, $adherent ? $adherent->getEmail() : '-');
                     $sheet->setCellValue('G' . $row, $adherent ? $adherent->getNumero() : '-');
                     
-                    // Statut paiement avec couleur
                     $statutLibelle = $statutPaiement === 'paye' ? 'Payé' : 'Impayé';
                     $sheet->setCellValue('H' . $row, $statutLibelle);
                     
@@ -321,7 +312,6 @@ class ExportEvenementController extends AbstractController
                     $row++;
                 }
             } else {
-                // Événement sans participant
                 $sheet->setCellValue('A' . $row, $evenement->getId());
                 $sheet->setCellValue('B' . $row, $evenement->getNom());
                 $sheet->setCellValue('C' . $row, $evenement->getDate() ? $evenement->getDate()->format('d/m/Y') : 'Date non définie');
@@ -337,7 +327,6 @@ class ExportEvenementController extends AbstractController
             }
         }
 
-        // Ajouter une ligne de total
         $sheet->setCellValue('A' . $row, 'TOTAUX:');
         $sheet->mergeCells('A' . $row . ':C' . $row);
         $sheet->getStyle('A' . $row . ':C' . $row)->getFont()->setBold(true);
@@ -345,7 +334,6 @@ class ExportEvenementController extends AbstractController
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFE5E7EB');
         
-        // Total montant global
         $sheet->setCellValue('D' . $row, $totalMontantGlobal);
         $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
         $sheet->getStyle('D' . $row)->getFont()->setBold(true);
@@ -353,14 +341,12 @@ class ExportEvenementController extends AbstractController
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFE5E7EB');
         
-        // Total participants
         $sheet->setCellValue('H' . $row, $totalParticipants);
         $sheet->getStyle('H' . $row)->getFont()->setBold(true);
         $sheet->getStyle('H' . $row)->getFill()
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFE5E7EB');
         
-        // Ajouter une ligne avec le détail payé/impayé
         $row++;
         $sheet->setCellValue('A' . $row, 'Détail des paiements:');
         $sheet->setCellValue('B' . $row, 'Payés: ' . $totalPaye);
@@ -373,12 +359,10 @@ class ExportEvenementController extends AbstractController
         $sheet->mergeCells('A' . $row . ':J' . $row);
         $sheet->getStyle('A' . $row)->getFont()->setItalic(true);
 
-        // Ajuster la largeur des colonnes
         foreach (range('A', 'J') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Ajouter des bordures au tableau
         $styleArray = [
             'borders' => [
                 'allBorders' => [
@@ -389,7 +373,6 @@ class ExportEvenementController extends AbstractController
         ];
         $sheet->getStyle('A5:J' . ($row - 2))->applyFromArray($styleArray);
 
-        // Création du fichier
         $writer = new Xlsx($spreadsheet);
         $fileName = sprintf('evenements_detail_%s.xlsx', date('Ymd_His'));
         $tempFile = tempnam(sys_get_temp_dir(), $fileName);

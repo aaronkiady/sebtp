@@ -71,14 +71,14 @@
                             <td>
                                 {% if formation.dateDebut and formation.dateFin %}
                                     {# Calcul simple de la durée en jours #}
-                                    {{ formation.dateFin.diff(formation.dateDebut).days }} jours
+                                    {{ formation.dateFin.diff(formation.dateDebut).days + 1 }} jours
                                 {% else %}
                                     -
                                 {% endif %}
                             </td>
                             <td class="text-center">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ path('app_formation_show_participants', {'id': formation.id}) }}" class="btn btn-sm btn-outline-primary" title="Voir participants">
+                                    <a href="{{ path('app_formation_show', {'id': formation.id}) }}" class="btn btn-sm btn-outline-primary" title="Voir participants">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     <a href="{{ path('app_formation_edit', {'id': formation.id}) }}" class="btn btn-sm btn-outline-warning" title="Modifier">
