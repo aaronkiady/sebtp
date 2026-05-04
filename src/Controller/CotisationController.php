@@ -7,6 +7,7 @@ use App\Entity\Liste;
 use App\Entity\Paiement;
 use App\Form\PaiementType;
 use App\Repository\CotisationRepository;
+use App\Service\AuditLogger;
 use App\Service\CotisationCalculator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,6 +18,13 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/cotisation')]
 final class CotisationController extends AbstractController
 {
+    private AuditLogger $auditLogger;
+
+    public function __construct(AuditLogger $auditLogger)
+    {
+        $this->auditLogger = $auditLogger;
+    }
+
     #[Route('/', name: 'app_cotisation_index', methods: ['GET'])]
     public function index(CotisationRepository $repo, CotisationCalculator $calculator): Response
     {
@@ -97,6 +105,18 @@ final class CotisationController extends AbstractController
             $cotisation->setMontantPaye(0);
             $em->persist($cotisation);
             $em->flush();
+
+            // Audit log pour la création de la cotisation
+            $this->auditLogger->logCreate(
+                'Cotisation',
+                $cotisation->getId(),
+                $adherent->getNom() . ' - ' . $currentYear,
+                [
+                    'adherent' => $adherent->getNom(),
+                    'periode' => $currentYear,
+                    'montant' => $montantAttendu
+                ]
+            );
         }
 
         $paiement = new Paiement();
@@ -109,9 +129,24 @@ final class CotisationController extends AbstractController
             $em->persist($paiement);
             
             // Mettre à jour le montant payé de la cotisation
+            $oldMontantPaye = $cotisation->getMontantPaye();
             $cotisation->setMontantPaye($cotisation->getMontantPaye() + $paiement->getMontant());
             
             $em->flush();
+
+            // Audit log pour le paiement
+            $this->auditLogger->logPayment(
+                'Paiement',
+                $paiement->getId(),
+                $adherent->getNom() . ' - ' . $currentYear,
+                [
+                    'adherent' => $adherent->getNom(),
+                    'montant' => $paiement->getMontant(),
+                    'mode_paiement' => $paiement->getModePaiement(),
+                    'ancien_montant_paye' => $oldMontantPaye,
+                    'nouveau_montant_paye' => $cotisation->getMontantPaye()
+                ]
+            );
 
             return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherent_id]);
         }
@@ -132,6 +167,12 @@ final class CotisationController extends AbstractController
         $adherent = $cotisation->getAdherent();
         $ancienMontant = $paiement->getMontant();
         
+        $oldData = [
+            'montant' => $paiement->getMontant(),
+            'mode_paiement' => $paiement->getModePaiement(),
+            'reference' => $paiement->getReference(),
+        ];
+        
         $form = $this->createForm(PaiementType::class, $paiement);
         $form->handleRequest($request);
 
@@ -142,6 +183,21 @@ final class CotisationController extends AbstractController
             $cotisation->setMontantPaye($cotisation->getMontantPaye() + $difference);
             
             $em->flush();
+
+            $newData = [
+                'montant' => $paiement->getMontant(),
+                'mode_paiement' => $paiement->getModePaiement(),
+                'reference' => $paiement->getReference(),
+            ];
+
+            // Audit log
+            $this->auditLogger->logUpdate(
+                'Paiement',
+                $paiement->getId(),
+                $adherent->getNom(),
+                $oldData,
+                $newData
+            );
 
             return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherent->getId()]);
         }
@@ -159,11 +215,25 @@ final class CotisationController extends AbstractController
         $cotisation = $paiement->getCotisation();
         $adherentId = $cotisation->getAdherent()->getId();
         
+        $paiementData = [
+            'montant' => $paiement->getMontant(),
+            'mode_paiement' => $paiement->getModePaiement(),
+            'reference' => $paiement->getReference(),
+        ];
+        
         if ($this->isCsrfTokenValid('delete_paiement_' . $paiement->getId(), $request->request->get('_token'))) {
             // Mettre à jour le montant payé de la cotisation
             $cotisation->setMontantPaye($cotisation->getMontantPaye() - $paiement->getMontant());
             $em->remove($paiement);
             $em->flush();
+
+            // Audit log
+            $this->auditLogger->logDelete(
+                'Paiement',
+                $paiement->getId(),
+                $cotisation->getAdherent()->getNom() . ' - ' . $cotisation->getPeriode(),
+                $paiementData
+            );
         }
 
         return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherentId]);
@@ -193,6 +263,19 @@ final class CotisationController extends AbstractController
             $cotisation->setMontantPaye(0);
             $em->persist($cotisation);
             $em->flush();
+            
+            // Audit log
+            $this->auditLogger->logCreate(
+                'Cotisation',
+                $cotisation->getId(),
+                $adherent->getNom() . ' - ' . $currentYear,
+                [
+                    'adherent' => $adherent->getNom(),
+                    'periode' => $currentYear,
+                    'montant' => $montant
+                ]
+            );
+            
             $this->addFlash('success', 'Cotisation générée avec succès!');
         } else {
             $this->addFlash('info', 'Une cotisation existe déjà pour cette année.');

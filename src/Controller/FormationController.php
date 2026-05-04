@@ -6,6 +6,7 @@ use App\Entity\Formation;
 use App\Entity\Liste;
 use App\Form\FormationType;
 use App\Repository\FormationRepository;
+use App\Service\AuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +16,13 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/formation')]
 final class FormationController extends AbstractController
 {
+    private AuditLogger $auditLogger;
+
+    public function __construct(AuditLogger $auditLogger)
+    {
+        $this->auditLogger = $auditLogger;
+    }
+
     #[Route(name: 'app_formation_index', methods: ['GET'])]
     public function index(Request $request, FormationRepository $formationRepository): Response
     {
@@ -74,6 +82,21 @@ final class FormationController extends AbstractController
             $entityManager->persist($formation);
             $entityManager->flush();
 
+            // Audit log
+            $this->auditLogger->logCreate(
+                'Formation',
+                $formation->getId(),
+                $formation->getNom(),
+                [
+                    'nom' => $formation->getNom(),
+                    'type' => $formation->getType(),
+                    'date_debut' => $formation->getDateDebut()?->format('Y-m-d'),
+                    'date_fin' => $formation->getDateFin()?->format('Y-m-d'),
+                    'organisateur' => $formation->getOrganisateur(),
+                    'nb_participants' => count($participants)
+                ]
+            );
+
             $this->addFlash('success', 'Formation créée avec succès!');
             return $this->redirectToRoute('app_formation_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -103,6 +126,15 @@ final class FormationController extends AbstractController
     #[Route('/{id}/edit', name: 'app_formation_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, Formation $formation, EntityManagerInterface $entityManager): Response
     {
+        $oldData = [
+            'nom' => $formation->getNom(),
+            'type' => $formation->getType(),
+            'date_debut' => $formation->getDateDebut()?->format('Y-m-d'),
+            'date_fin' => $formation->getDateFin()?->format('Y-m-d'),
+            'organisateur' => $formation->getOrganisateur(),
+            'participants_details' => $formation->getParticipantsDetails(),
+        ];
+
         $form = $this->createForm(FormationType::class, $formation);
         $form->handleRequest($request);
 
@@ -122,6 +154,24 @@ final class FormationController extends AbstractController
             
             $entityManager->flush();
 
+            $newData = [
+                'nom' => $formation->getNom(),
+                'type' => $formation->getType(),
+                'date_debut' => $formation->getDateDebut()?->format('Y-m-d'),
+                'date_fin' => $formation->getDateFin()?->format('Y-m-d'),
+                'organisateur' => $formation->getOrganisateur(),
+                'participants_details' => $formation->getParticipantsDetails(),
+            ];
+
+            // Audit log
+            $this->auditLogger->logUpdate(
+                'Formation',
+                $formation->getId(),
+                $formation->getNom(),
+                $oldData,
+                $newData
+            );
+
             $this->addFlash('success', 'Formation modifiée avec succès!');
             return $this->redirectToRoute('app_formation_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -135,9 +185,24 @@ final class FormationController extends AbstractController
     #[Route('/{id}', name: 'app_formation_delete', methods: ['POST'])]
     public function delete(Request $request, Formation $formation, EntityManagerInterface $entityManager): Response
     {
+        $formationData = [
+            'nom' => $formation->getNom(),
+            'type' => $formation->getType(),
+            'date_debut' => $formation->getDateDebut()?->format('Y-m-d'),
+            'date_fin' => $formation->getDateFin()?->format('Y-m-d'),
+        ];
+
         if ($this->isCsrfTokenValid('delete' . $formation->getId(), $request->getPayload()->getString('_token'))) {
             $entityManager->remove($formation);
             $entityManager->flush();
+
+            // Audit log
+            $this->auditLogger->logDelete(
+                'Formation',
+                $formation->getId(),
+                $formation->getNom(),
+                $formationData
+            );
         }
 
         return $this->redirectToRoute('app_formation_index', [], Response::HTTP_SEE_OTHER);

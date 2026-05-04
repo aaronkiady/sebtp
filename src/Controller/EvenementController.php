@@ -7,6 +7,7 @@ use App\Entity\Liste;
 use App\Entity\Participation;
 use App\Form\EvenementType;
 use App\Repository\EvenementRepository;
+use App\Service\AuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,6 +18,13 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/evenement')]
 final class EvenementController extends AbstractController
 {
+    private AuditLogger $auditLogger;
+
+    public function __construct(AuditLogger $auditLogger)
+    {
+        $this->auditLogger = $auditLogger;
+    }
+
     #[Route(name: 'app_evenement_index', methods: ['GET'])]
     public function index(Request $request, EvenementRepository $repo): Response
     {
@@ -50,7 +58,6 @@ final class EvenementController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Les participants sont optionnels, on peut en créer sans
             $participants = $form->get('participantsTemp')->getData();
             
             if (!empty($participants)) {
@@ -65,6 +72,19 @@ final class EvenementController extends AbstractController
 
             $em->persist($evenement);
             $em->flush();
+
+            // Audit log
+            $this->auditLogger->logCreate(
+                'Evenement',
+                $evenement->getId(),
+                $evenement->getNom(),
+                [
+                    'nom' => $evenement->getNom(),
+                    'date' => $evenement->getDate()?->format('Y-m-d'),
+                    'montant' => $evenement->getMontant(),
+                    'nb_participants' => count($participants ?? [])
+                ]
+            );
 
             return $this->redirectToRoute('app_evenement_index');
         }
@@ -85,11 +105,34 @@ final class EvenementController extends AbstractController
     #[Route('/{id}/edit', name: 'app_evenement_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, Evenement $evenement, EntityManagerInterface $entityManager): Response
     {
+        $oldData = [
+            'nom' => $evenement->getNom(),
+            'date' => $evenement->getDate()?->format('Y-m-d'),
+            'montant' => $evenement->getMontant(),
+            'commentaire' => $evenement->getCommentaire(),
+        ];
+
         $form = $this->createForm(EvenementType::class, $evenement);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $entityManager->flush();
+
+            $newData = [
+                'nom' => $evenement->getNom(),
+                'date' => $evenement->getDate()?->format('Y-m-d'),
+                'montant' => $evenement->getMontant(),
+                'commentaire' => $evenement->getCommentaire(),
+            ];
+
+            // Audit log
+            $this->auditLogger->logUpdate(
+                'Evenement',
+                $evenement->getId(),
+                $evenement->getNom(),
+                $oldData,
+                $newData
+            );
 
             return $this->redirectToRoute('app_evenement_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -125,9 +168,12 @@ final class EvenementController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $nouveauxParticipants = $form->get('participants')->getData();
+            $anciensIds = [];
+            $nouveauxIds = [];
             
             // Supprimer les participants qui ne sont plus sélectionnés
             foreach ($evenement->getParticipations() as $participation) {
+                $anciensIds[] = $participation->getAdherent()->getId();
                 if (!in_array($participation->getAdherent(), $nouveauxParticipants)) {
                     $em->remove($participation);
                 }
@@ -135,6 +181,7 @@ final class EvenementController extends AbstractController
             
             // Ajouter les nouveaux participants
             foreach ($nouveauxParticipants as $participant) {
+                $nouveauxIds[] = $participant->getId();
                 $existe = false;
                 foreach ($evenement->getParticipations() as $participation) {
                     if ($participation->getAdherent() === $participant) {
@@ -153,6 +200,16 @@ final class EvenementController extends AbstractController
             }
             
             $em->flush();
+
+            // Audit log
+            $this->auditLogger->logUpdate(
+                'Evenement',
+                $evenement->getId(),
+                $evenement->getNom(),
+                ['participants_ids' => $anciensIds],
+                ['participants_ids' => $nouveauxIds],
+                'Gestion des participants'
+            );
             
             return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
         }
@@ -199,6 +256,17 @@ final class EvenementController extends AbstractController
                 $participation->setStatutPaiement('impaye');
                 $em->persist($participation);
                 $em->flush();
+                
+                // Audit log
+                $this->auditLogger->logUpdate(
+                    'Evenement',
+                    $evenement->getId(),
+                    $evenement->getNom(),
+                    null,
+                    ['participant_ajoute' => $participant->getNom()],
+                    'Ajout d\'un participant'
+                );
+                
                 $this->addFlash('success', 'Participant ajouté avec succès!');
             } else {
                 $this->addFlash('warning', 'Ce participant est déjà inscrit à cet événement.');
@@ -208,7 +276,7 @@ final class EvenementController extends AbstractController
         }
 
         return $this->render('evenement/ajouter_participant.html.twig', [
-            'evenement' => $evenement,
+            'evenement' => $eventevenement,
             'form' => $form->createView(),
         ]);
     }
@@ -225,8 +293,20 @@ final class EvenementController extends AbstractController
         if ($participation && $participation->getEvenement() === $evenement) {
             $token = $request->request->get('_token');
             if ($this->isCsrfTokenValid('delete' . $participation_id, $token)) {
+                $adherentNom = $participation->getAdherent()?->getNom();
                 $em->remove($participation);
                 $em->flush();
+                
+                // Audit log
+                $this->auditLogger->logUpdate(
+                    'Evenement',
+                    $evenement->getId(),
+                    $evenement->getNom(),
+                    ['participant_supprime' => $adherentNom],
+                    null,
+                    'Suppression d\'un participant'
+                );
+                
                 $this->addFlash('success', 'Participant retiré avec succès!');
             } else {
                 $this->addFlash('error', 'Token CSRF invalide.');
@@ -243,8 +323,23 @@ final class EvenementController extends AbstractController
     {
         $token = $request->getPayload()->getString('_token');
         if ($this->isCsrfTokenValid('delete' . $evenement->getId(), $token)) {
+            $evenementData = [
+                'nom' => $evenement->getNom(),
+                'date' => $evenement->getDate()?->format('Y-m-d'),
+                'montant' => $evenement->getMontant(),
+            ];
+            
             $entityManager->remove($evenement);
             $entityManager->flush();
+            
+            // Audit log
+            $this->auditLogger->logDelete(
+                'Evenement',
+                $evenement->getId(),
+                $evenement->getNom(),
+                $evenementData
+            );
+            
             $this->addFlash('success', 'Événement supprimé avec succès!');
         }
 
@@ -254,9 +349,20 @@ final class EvenementController extends AbstractController
     #[Route('/participation/{id}/toggle', name: 'app_participation_toggle', methods: ['GET', 'POST'])]
     public function toggle(Participation $participation, EntityManagerInterface $em): Response
     {
-        $newStatus = $participation->getStatutPaiement() === 'paye' ? 'impayé' : 'payé';
+        $oldStatut = $participation->getStatutPaiement();
+        $newStatus = $oldStatut === 'paye' ? 'impayé' : 'payé';
         $participation->setStatutPaiement($newStatus);
         $em->flush();
+
+        // Audit log
+        $this->auditLogger->logUpdate(
+            'Participation',
+            $participation->getId(),
+            $participation->getAdherent()?->getNom(),
+            ['statut_paiement' => $oldStatut],
+            ['statut_paiement' => $newStatus],
+            'Changement de statut de paiement'
+        );
 
         $this->addFlash('success', 'Statut de paiement mis à jour avec succès!');
 

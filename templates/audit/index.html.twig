@@ -1,0 +1,140 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Journal d'audit{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Journal d'audit</h1>
+                    <p class="text-muted mb-0">Historique des actions critiques</p>
+                </div>
+            </div>
+        </div>
+
+        {# Filtres #}
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label">Action</label>
+                        <select name="action" class="form-select">
+                            <option value="">Toutes</option>
+                            {% for action in actions %}
+                                <option value="{{ action }}" {% if app.request.query.get('action') == action %}selected{% endif %}>
+                                    {{ action }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Entité</label>
+                        <select name="entityType" class="form-select">
+                            <option value="">Toutes</option>
+                            {% for entity in entityTypes %}
+                                <option value="{{ entity }}" {% if app.request.query.get('entityType') == entity %}selected{% endif %}>
+                                    {{ entity }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">ID entité</label>
+                        <input type="number" name="entityId" class="form-control" value="{{ app.request.query.get('entityId') }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Date début</label>
+                        <input type="date" name="dateFrom" class="form-control" value="{{ app.request.query.get('dateFrom') }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Date fin</label>
+                        <input type="date" name="dateTo" class="form-control" value="{{ app.request.query.get('dateTo') }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Filtrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {# Statistiques #}
+        <div class="row g-3 mb-4">
+            {% set colors = ['primary', 'success', 'danger', 'warning', 'info'] %}
+            {% set i = 0 %}
+            {% for action, total in stats %}
+                <div class="col-md-2">
+                    <div class="card text-center border-0 shadow-sm">
+                        <div class="card-body">
+                            <h3 class="mb-0 text-{{ colors[i % 5] }}">{{ total }}</h3>
+                            <small class="text-muted">{{ action }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% set i = i + 1 %}
+            {% endfor %}
+        </div>
+
+        {# Tableau des logs #}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Action</th>
+                        <th>Entité</th>
+                        <th>ID</th>
+                        <th>Label</th>
+                        <th>Utilisateur</th>
+                        <th>IP</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for log in logs %}
+                    <tr>
+                        <td>{{ log.createdAt|date('d/m/Y H:i:s') }}</td>
+                        <td>
+                            {% if log.action == 'CREATE' %}
+                                <span class="badge bg-success">Création</span>
+                            {% elseif log.action == 'UPDATE' %}
+                                <span class="badge bg-primary">Modification</span>
+                            {% elseif log.action == 'DELETE' %}
+                                <span class="badge bg-danger">Suppression</span>
+                            {% elseif log.action == 'EXPORT' %}
+                                <span class="badge bg-info">Export</span>
+                            {% elseif log.action == 'PAYMENT' %}
+                                <span class="badge bg-warning">Paiement</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.entityType }}</td>
+                        <td>{{ log.entityId }}</td>
+                        <td>{{ log.entityLabel|slice(0, 50) }}</td>
+                        <td>{{ log.userEmail }}</td>
+                        <td>{{ log.userIp }}</td>
+                        <td>
+                            <a href="{{ path('app_audit_show', {'id': log.id}) }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <div class="mb-3">
+                                <i class="fas fa-inbox fa-4x text-muted opacity-25"></i>
+                            </div>
+                            <p class="text-muted fw-bold">Aucun log trouvé</p>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
