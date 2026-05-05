@@ -222,4 +222,29 @@ final class ListeController extends AbstractController
             'stats' => $stats,
         ]);
     }
+
+    #[Route('/rapport/anciennete', name: 'app_liste_rapport_anciennete', methods: ['GET'])]
+    public function rapportAnciennete(ListeRepository $listeRepository): Response
+    {
+        $ancienneteData = $listeRepository->getAncienneteData();
+        $stats = $listeRepository->getAncienneteStats();
+        $ancienneteMoyenne = $listeRepository->getAncienneteMoyenne();
+        $plusAncien = $listeRepository->getAdherentLePlusAncien();
+        $plusRecent = $listeRepository->getAdherentLePlusRecent();
+
+        // Audit log
+        $this->auditLogger->logExport(
+            'RapportAnciennete',
+            sprintf('Export rapport d\'ancienneté - %d adhérents', count($ancienneteData))
+        );
+
+        return $this->render('liste/rapport_anciennete.html.twig', [
+            'ancienneteData' => $ancienneteData,
+            'stats' => $stats,
+            'ancienneteMoyenne' => $ancienneteMoyenne,
+            'plusAncien' => $plusAncien,
+            'plusRecent' => $plusRecent,
+            'totalAdherents' => count($ancienneteData),
+        ]);
+    }
 }

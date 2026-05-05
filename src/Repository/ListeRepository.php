@@ -353,4 +353,163 @@ class ListeRepository extends ServiceEntityRepository
         
         return $years;
     }
+
+     /**
+     * Calcule l'ancienneté de chaque adhérent
+     */
+    public function getAncienneteData(): array
+    {
+        $qb = $this->createQueryBuilder('l')
+            ->select('l.id, l.nom, l.validationBureau, l.validationAG, l.dateCreation')
+            ->where('l.statut = :statut')
+            ->setParameter('statut', 'actif')
+            ->getQuery();
+
+        $adherents = $qb->getResult();
+        $result = [];
+
+        foreach ($adherents as $adherent) {
+            $dateAdhesion = $this->getDateAdhesion($adherent);
+            if ($dateAdhesion) {
+                $anciennete = $this->calculateAnciennete($dateAdhesion);
+                $result[] = [
+                    'id' => $adherent['id'],
+                    'nom' => $adherent['nom'],
+                    'date_adhesion' => $dateAdhesion->format('d/m/Y'),
+                    'anciennete_annees' => $anciennete['annees'],
+                    'anciennete_mois' => $anciennete['mois'],
+                    'anciennete_jours' => $anciennete['jours'],
+                    'tranche' => $this->getTrancheAnciennete($anciennete['annees']),
+                ];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Récupère la date d'adhésion (priorité: validationBureau, validationAG, dateCreation)
+     */
+    private function getDateAdhesion(array $adherent): ?\DateTimeInterface
+    {
+        if (!empty($adherent['validationBureau'])) {
+            return $adherent['validationBureau'];
+        }
+        if (!empty($adherent['validationAG'])) {
+            return $adherent['validationAG'];
+        }
+        if (!empty($adherent['dateCreation'])) {
+            return $adherent['dateCreation'];
+        }
+        return null;
+    }
+
+    /**
+     * Calcule l'ancienneté en années, mois et jours
+     */
+    private function calculateAnciennete(\DateTimeInterface $dateAdhesion): array
+    {
+        $now = new \DateTime();
+        $diff = $now->diff($dateAdhesion);
+
+        return [
+            'annees' => $diff->y,
+            'mois' => $diff->m,
+            'jours' => $diff->d,
+        ];
+    }
+
+    /**
+     * Détermine la tranche d'ancienneté
+     */
+    private function getTrancheAnciennete(int $annees): string
+    {
+        if ($annees < 1) {
+            return 'Moins d\'1 an';
+        } elseif ($annees >= 1 && $annees < 3) {
+            return '1 à 3 ans';
+        } elseif ($annees >= 3 && $annees < 5) {
+            return '3 à 5 ans';
+        } elseif ($annees >= 5 && $annees < 10) {
+            return '5 à 10 ans';
+        } else {
+            return 'Plus de 10 ans';
+        }
+    }
+
+    /**
+     * Récupère les statistiques d'ancienneté par tranche
+     */
+    public function getAncienneteStats(): array
+    {
+        $adherents = $this->getAncienneteData();
+        $stats = [
+            'Moins d\'1 an' => 0,
+            '1 à 3 ans' => 0,
+            '3 à 5 ans' => 0,
+            '5 à 10 ans' => 0,
+            'Plus de 10 ans' => 0,
+        ];
+
+        foreach ($adherents as $adherent) {
+            $tranche = $adherent['tranche'];
+            if (isset($stats[$tranche])) {
+                $stats[$tranche]++;
+            }
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Récupère l'ancienneté moyenne en années
+     */
+    public function getAncienneteMoyenne(): float
+    {
+        $adherents = $this->getAncienneteData();
+        if (empty($adherents)) {
+            return 0;
+        }
+
+        $totalAnnees = 0;
+        foreach ($adherents as $adherent) {
+            $totalAnnees += $adherent['anciennete_annees'];
+        }
+
+        return round($totalAnnees / count($adherents), 2);
+    }
+
+    /**
+     * Récupère l'adhérent le plus ancien
+     */
+    public function getAdherentLePlusAncien(): ?array
+    {
+        $adherents = $this->getAncienneteData();
+        if (empty($adherents)) {
+            return null;
+        }
+
+        usort($adherents, function ($a, $b) {
+            return $b['anciennete_annees'] <=> $a['anciennete_annees'];
+        });
+
+        return $adherents[0];
+    }
+
+    /**
+     * Récupère l'adhérent le plus récent
+     */
+    public function getAdherentLePlusRecent(): ?array
+    {
+        $adherents = $this->getAncienneteData();
+        if (empty($adherents)) {
+            return null;
+        }
+
+        usort($adherents, function ($a, $b) {
+            return $a['anciennete_annees'] <=> $b['anciennete_annees'];
+        });
+
+        return $adherents[0];
+    }
 }

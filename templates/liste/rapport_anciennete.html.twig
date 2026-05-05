@@ -1,0 +1,265 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rapport d'ancienneté des adhérents{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_liste_index') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Rapport d'ancienneté</h1>
+                    <p class="text-muted mb-0">Analyse de l'ancienneté des adhérents actifs</p>
+                </div>
+            </div>
+            <div>
+                <button onclick="window.print();" class="btn btn-outline-secondary">
+                    <i class="fas fa-print me-2"></i>Imprimer
+                </button>
+            </div>
+        </div>
+
+        {# Cartes de synthèse #}
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card blue p-3">
+                    <i class="fas fa-users"></i>
+                    <div>
+                        <h3>{{ totalAdherents }}</h3>
+                        <p>Adhérents actifs</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card purple p-3">
+                    <i class="fas fa-calendar-alt"></i>
+                    <div>
+                        <h3>{{ ancienneteMoyenne }}</h3>
+                        <p>Années en moyenne</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card green p-3">
+                    <i class="fas fa-trophy"></i>
+                    <div>
+                        <h3>{{ plusAncien ? plusAncien.anciennete_annees : 0 }}</h3>
+                        <p>Années du plus ancien</p>
+                        <small class="text-white-50">{{ plusAncien.nom|default('-') }}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card orange p-3">
+                    <i class="fas fa-seedling"></i>
+                    <div>
+                        <h3>{{ plusRecent ? plusRecent.anciennete_annees : 0 }}</h3>
+                        <p>Années du plus récent</p>
+                        <small class="text-white-50">{{ plusRecent.nom|default('-') }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Graphique des tranches d'ancienneté #}
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">
+                        <i class="fas fa-chart-pie me-2 text-primary"></i>Répartition par tranche d'ancienneté
+                    </div>
+                    <div class="card-body">
+                        <canvas id="ancienneteChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">
+                        <i class="fas fa-chart-bar me-2 text-primary"></i>Détail des tranches
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Tranche d'ancienneté</th>
+                                        <th>Nombre d'adhérents</th>
+                                        <th>Pourcentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'] %}
+                                    {% for tranche, count in stats %}
+                                        {% set pourcentage = totalAdherents > 0 ? ((count / totalAdherents) * 100)|round : 0 %}
+                                        <tr>
+                                            <td>{{ tranche }}</td>
+                                            <td>
+                                                <strong>{{ count }}</strong>
+                                                <div class="progress mt-1" style="height: 6px;">
+                                                    <div class="progress-bar" style="width: {{ pourcentage }}%; background-color: {{ colors[loop.index0] }};"></div>
+                                                </div>
+                                            </td>
+                                            <td>{{ pourcentage }}%</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th>Total</th>
+                                        <th>{{ totalAdherents }}</th>
+                                        <th>100%</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Tableau détaillé des adhérents #}
+        <div class="card shadow-sm">
+            <div class="card-header bg-white fw-bold">
+                <i class="fas fa-list me-2 text-primary"></i>Détail par adhérent
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Adhérent</th>
+                                <th>Date d'adhésion</th>
+                                <th>Ancienneté</th>
+                                <th>Tranche</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for adherent in ancienneteData %}
+                            <tr>
+                                <td class="text-muted">{{ loop.index }}</td>
+                                <td class="fw-bold">{{ adherent.nom }}</td>
+                                <td>{{ adherent.date_adhesion }}</td>
+                                <td>
+                                    <span class="badge bg-primary">
+                                        {{ adherent.anciennete_annees }} ans
+                                        {% if adherent.anciennete_mois > 0 %}
+                                            ({{ adherent.anciennete_mois }} mois)
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if adherent.anciennete_annees < 1 %}
+                                        <span class="badge bg-success">Nouveau</span>
+                                    {% elseif adherent.anciennete_annees < 3 %}
+                                        <span class="badge bg-info">Junior</span>
+                                    {% elseif adherent.anciennete_annees < 5 %}
+                                        <span class="badge bg-warning">Confirmé</span>
+                                    {% elseif adherent.anciennete_annees < 10 %}
+                                        <span class="badge bg-secondary">Senior</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Vétéran</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{{ path('app_liste_show', {'id': adherent.id}) }}" class="btn btn-sm btn-outline-secondary" title="Voir">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <div class="mb-3">
+                                        <i class="fas fa-chart-line fa-4x text-muted opacity-25"></i>
+                                    </div>
+                                    <p class="text-muted fw-bold">Aucun adhérent actif trouvé</p>
+                                 </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-top">
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                L'ancienneté est calculée à partir de la date de validation par le bureau, 
+                la date de validation par l'AG ou la date de création de la fiche.
+            </small>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Graphique des tranches d'ancienneté
+    const ctx = document.getElementById('ancienneteChart').getContext('2d');
+    const statsData = {{ stats|json_encode|raw }};
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(statsData),
+            datasets: [{
+                data: Object.values(statsData),
+                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'],
+                borderWidth: 0,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 11 },
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = Object.values(statsData).reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+</script>
+
+<style>
+.stat-card.green { background: linear-gradient(135deg, #10b981, #059669); }
+.stat-card.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
+@media print {
+    .btn, .btn-outline-secondary, .btn-outline-primary, .header-icon, .btn-sm {
+        display: none !important;
+    }
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    body {
+        padding: 20px;
+    }
+}
+</style>
+{% endblock %}

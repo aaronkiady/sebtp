@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Liste;
 use App\Repository\ListeRepository;
 use App\Service\AuditLogger;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -71,12 +72,12 @@ class ExportListeController extends AbstractController
         $sheet = $spreadsheet->getActiveSheet();
 
         $sheet->setCellValue('A1', 'SEBTP - Liste des adhérents');
-        $sheet->mergeCells('A1:P1');
+        $sheet->mergeCells('A1:V1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         $sheet->setCellValue('A2', 'Date d\'export : ' . date('d/m/Y H:i:s'));
-        $sheet->mergeCells('A2:P2');
+        $sheet->mergeCells('A2:V2');
         $sheet->getStyle('A2')->getFont()->setItalic(true);
 
         $row = 3;
@@ -105,7 +106,13 @@ class ExportListeController extends AbstractController
             'M' => 'Statut',
             'N' => 'Statut membre',
             'O' => 'Fonction SEBTP',
-            'P' => 'Mandat'
+            'P' => 'Mandat',
+            'Q' => 'Contact RH - Nom',
+            'R' => 'Contact RH - Email',
+            'S' => 'Contact RH - Téléphone',
+            'T' => 'Contact Compta - Nom',
+            'U' => 'Contact Compta - Email',
+            'V' => 'Contact Compta - Téléphone'
         ];
 
         foreach ($headers as $col => $value) {
@@ -121,6 +128,20 @@ class ExportListeController extends AbstractController
         $row = 6;
         $numero = 1;
         foreach ($adherents as $adherent) {
+            // Récupérer les contacts par fonction
+            $contactRH = $this->getContactByFonction($adherent, 'RH');
+            $contactCompta = $this->getContactByFonction($adherent, 'Compta');
+            
+            // Données contact RH
+            $rhNom = $contactRH ? $contactRH->getNom() : '-';
+            $rhEmail = $contactRH ? $contactRH->getEmail() : '-';
+            $rhTelephone = $contactRH ? $contactRH->getTelephone() : '-';
+            
+            // Données contact Compta
+            $comptaNom = $contactCompta ? $contactCompta->getNom() : '-';
+            $comptaEmail = $contactCompta ? $contactCompta->getEmail() : '-';
+            $comptaTelephone = $contactCompta ? $contactCompta->getTelephone() : '-';
+            
             $sheet->setCellValue('A' . $row, $numero);
             $sheet->setCellValue('B' . $row, $adherent->getNom());
             $sheet->setCellValue('C' . $row, $adherent->getEmail() ?? '-');
@@ -137,7 +158,14 @@ class ExportListeController extends AbstractController
             $sheet->setCellValue('N' . $row, $adherent->getStatutMenmbre() ?? '-');
             $sheet->setCellValue('O' . $row, $adherent->getFonctionSEBTP() ?? '-');
             $sheet->setCellValue('P' . $row, $adherent->getMandat() ?? '-');
+            $sheet->setCellValue('Q' . $row, $rhNom);
+            $sheet->setCellValue('R' . $row, $rhEmail);
+            $sheet->setCellValue('S' . $row, $rhTelephone);
+            $sheet->setCellValue('T' . $row, $comptaNom);
+            $sheet->setCellValue('U' . $row, $comptaEmail);
+            $sheet->setCellValue('V' . $row, $comptaTelephone);
 
+            // Colorer la ligne selon le statut
             $statutValue = $adherent->getStatut();
             if ($statutValue === 'actif') {
                 $sheet->getStyle('M' . $row)->getFont()->getColor()->setARGB('FF10B981');
@@ -164,7 +192,7 @@ class ExportListeController extends AbstractController
                 ->getStartColor()->setARGB('FFE5E7EB');
         }
 
-        foreach (range('A', 'P') as $col) {
+        foreach (range('A', 'V') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -176,7 +204,7 @@ class ExportListeController extends AbstractController
                 ],
             ],
         ];
-        $sheet->getStyle('A5:P' . ($row))->applyFromArray($styleArray);
+        $sheet->getStyle('A5:V' . ($row))->applyFromArray($styleArray);
 
         $writer = new Xlsx($spreadsheet);
         $fileName = sprintf('adherents_%s.xlsx', date('Ymd_His'));
@@ -184,5 +212,18 @@ class ExportListeController extends AbstractController
         $writer->save($tempFile);
 
         return $this->file($tempFile, $fileName, ResponseHeaderBag::DISPOSITION_INLINE);
+    }
+
+    /**
+     * Récupère le contact d'un adhérent par fonction
+     */
+    private function getContactByFonction(Liste $adherent, string $fonction): ?\App\Entity\Contact
+    {
+        foreach ($adherent->getContacts() as $contact) {
+            if ($contact->getFonction() === $fonction) {
+                return $contact;
+            }
+        }
+        return null;
     }
 }
