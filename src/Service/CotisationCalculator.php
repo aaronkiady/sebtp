@@ -3,103 +3,151 @@
 namespace App\Service;
 
 use App\Entity\Liste;
+use App\Repository\BaremeRepository;
+use Doctrine\ORM\EntityManagerInterface;
 
 class CotisationCalculator
 {
-    // Barème des cotisations
-    private const BAREME = [
-        'entreprise' => [
-            '1-10' => 200000,
-            '11-50' => 400000,
-            '51+' => 1000000,
-        ],
-        'ong' => 400000,
-        'sponsor' => 10000000,
-    ];
+    private BaremeRepository $baremeRepository;
+    private EntityManagerInterface $entityManager;
 
-    public function calculateMontant(Liste $adherent): float
+    public function __construct(BaremeRepository $baremeRepository, EntityManagerInterface $entityManager)
     {
-        // Membre sponsor
+        $this->baremeRepository = $baremeRepository;
+        $this->entityManager = $entityManager;
+    }
+
+    /**
+     * Calcule le montant de la cotisation en fonction de l'adhérent et de la date
+     */
+    public function calculateMontant(Liste $adherent, ?\DateTimeInterface $date = null): float
+    {
+        $date = $date ?? new \DateTime();
+        
+        // Déterminer la catégorie et sous-catégorie
         if ($adherent->getStatutMenmbre() === 'sponsor') {
-            return self::BAREME['sponsor'];
+            $categorie = 'sponsor';
+            $sousCategorie = null;
+        } elseif ($this->isONG($adherent)) {
+            $categorie = 'ong';
+            $sousCategorie = null;
+        } else {
+            $categorie = 'entreprise';
+            $sousCategorie = $this->getTrancheEmployesKey($adherent->getNbEmployes());
         }
 
-        // Vérifier si c'est une ONG via le champ type ou activité
-        if ($this->isONG($adherent)) {
-            return self::BAREME['ong'];
+        $bareme = $this->baremeRepository->getBaremeActif($categorie, $sousCategorie, $date);
+        
+        if ($bareme) {
+            return $bareme->getMontant();
         }
 
-        // Entreprise : calcul basé sur le nombre d'employés
-        return $this->calculateEntrepriseMontant($adherent);
+        // Fallback : barème par défaut si aucun barème trouvé
+        return $this->getDefaultMontant($categorie, $sousCategorie);
+    }
+
+    /**
+     * Récupère le barème pour une cotisation existante (historique)
+     */
+    public function getMontantHistorique(Liste $adherent, string $periode): float
+    {
+        // Vérifier si une cotisation existe déjà avec un montant
+        foreach ($adherent->getCotisations() as $cotisation) {
+            if ($cotisation->getPeriode() === $periode) {
+                return $cotisation->getMontant();
+            }
+        }
+        
+        // Sinon calculer avec la date de la période
+        $date = \DateTime::createFromFormat('Y', $periode);
+        return $this->calculateMontant($adherent, $date);
     }
 
     private function isONG(Liste $adherent): bool
     {
-        // Vérifier via le champ type
         if ($adherent->getType() === 'ong') {
             return true;
         }
-        
-        // Vérifier via l'activité ou le nom
         $activite = strtolower($adherent->getActivite() ?? '');
         $nom = strtolower($adherent->getNom() ?? '');
-        
-        return str_contains($activite, 'ong') 
-            || str_contains($activite, 'association')
-            || str_contains($nom, 'ong')
-            || str_contains($nom, 'association');
+        return str_contains($activite, 'ong') || str_contains($nom, 'ong');
     }
 
-    private function calculateEntrepriseMontant(Liste $adherent): float
+    private function getTrancheEmployesKey(?string $nbEmployes): string
     {
-        $nbEmployes = $this->parseEmployesNumber($adherent->getNbEmployes());
-        
-        if ($nbEmployes <= 10) {
-            return self::BAREME['entreprise']['1-10'];
-        } elseif ($nbEmployes <= 50) {
-            return self::BAREME['entreprise']['11-50'];
-        } else {
-            return self::BAREME['entreprise']['51+'];
-        }
+        $nb = $this->parseEmployesNumber($nbEmployes);
+        if ($nb <= 10) return '1-10';
+        if ($nb <= 50) return '11-50';
+        return '51+';
+    }
+
+    /**
+     * Récupère la tranche d'employés pour l'affichage
+     */
+    public function getTrancheEmployes(?string $nbEmployes): string
+    {
+        $nb = $this->parseEmployesNumber($nbEmployes);
+        if ($nb <= 10) return '1 à 10 employés';
+        if ($nb <= 50) return '11 à 50 employés';
+        return 'Plus de 50 employés';
     }
 
     private function parseEmployesNumber(?string $nbEmployes): int
     {
-        if (empty($nbEmployes)) {
-            return 0;
-        }
-        $cleaned = preg_replace('/[^0-9]/', '', $nbEmployes);
-        return (int) $cleaned;
+        if (empty($nbEmployes)) return 0;
+        return (int) preg_replace('/[^0-9]/', '', $nbEmployes);
     }
 
-    public function getTrancheEmployes(?string $nbEmployes): string
+    private function getDefaultMontant(string $categorie, ?string $sousCategorie = null): float
     {
-        $nb = $this->parseEmployesNumber($nbEmployes);
-        
-        if ($nb <= 10) {
-            return '1 à 10 employés';
-        } elseif ($nb <= 50) {
-            return '11 à 50 employés';
-        } else {
-            return 'Plus de 50 employés';
-        }
-    }
-
-    public function getMontantFormate(Liste $adherent): string
-    {
-        return number_format($this->calculateMontant($adherent), 0, '.', ' ') . ' MGA';
-    }
-
-    public function getBareme(): array
-    {
-        return [
+        $defaults = [
             'entreprise' => [
-                ['tranche' => '1 à 10 employés', 'montant' => self::BAREME['entreprise']['1-10'], 'montant_formate' => number_format(self::BAREME['entreprise']['1-10'], 0, '.', ' ') . ' MGA'],
-                ['tranche' => '11 à 50 employés', 'montant' => self::BAREME['entreprise']['11-50'], 'montant_formate' => number_format(self::BAREME['entreprise']['11-50'], 0, '.', ' ') . ' MGA'],
-                ['tranche' => 'Plus de 50 employés', 'montant' => self::BAREME['entreprise']['51+'], 'montant_formate' => number_format(self::BAREME['entreprise']['51+'], 0, '.', ' ') . ' MGA'],
+                '1-10' => 200000,
+                '11-50' => 400000,
+                '51+' => 1000000,
             ],
-            'ong' => ['montant' => self::BAREME['ong'], 'montant_formate' => number_format(self::BAREME['ong'], 0, '.', ' ') . ' MGA'],
-            'sponsor' => ['montant' => self::BAREME['sponsor'], 'montant_formate' => number_format(self::BAREME['sponsor'], 0, '.', ' ') . ' MGA'],
+            'ong' => 400000,
+            'sponsor' => 10000000,
         ];
+
+        if ($categorie === 'entreprise' && $sousCategorie) {
+            return $defaults['entreprise'][$sousCategorie] ?? 400000;
+        }
+
+        return $defaults[$categorie] ?? 400000;
+    }
+
+    /**
+     * Initialise les barèmes par défaut
+     */
+    public function initDefaultBaremes(): void
+    {
+        // Vérifier si des barèmes existent déjà
+        $existing = $this->baremeRepository->findAll();
+        if (!empty($existing)) {
+            return;
+        }
+
+        $defaults = [
+            ['categorie' => 'entreprise', 'sousCategorie' => '1-10', 'montant' => 200000, 'description' => 'Entreprise 1-10 employés'],
+            ['categorie' => 'entreprise', 'sousCategorie' => '11-50', 'montant' => 400000, 'description' => 'Entreprise 11-50 employés'],
+            ['categorie' => 'entreprise', 'sousCategorie' => '51+', 'montant' => 1000000, 'description' => 'Entreprise +50 employés'],
+            ['categorie' => 'ong', 'sousCategorie' => null, 'montant' => 400000, 'description' => 'ONG / Association'],
+            ['categorie' => 'sponsor', 'sousCategorie' => null, 'montant' => 10000000, 'description' => 'Membre sponsor'],
+        ];
+
+        foreach ($defaults as $default) {
+            $bareme = new Bareme();
+            $bareme->setCategorie($default['categorie']);
+            $bareme->setSousCategorie($default['sousCategorie']);
+            $bareme->setMontant($default['montant']);
+            $bareme->setDescription($default['description']);
+            $bareme->setDateDebut(new \DateTime('2024-01-01'));
+            $bareme->setActif(true);
+            
+            $this->entityManager->persist($bareme);
+        }
+        
+        $this->entityManager->flush();
     }
 }

@@ -87,7 +87,7 @@ final class CotisationController extends AbstractController
         }
 
         $currentYear = date('Y');
-        $montantAttendu = $calculator->calculateMontant($adherent);
+        $montantAttendu = $calculator->getMontantHistorique($adherent, $currentYear);
         
         // Vérifier si une cotisation existe pour cette année
         $cotisation = $em->getRepository(Cotisation::class)
@@ -255,7 +255,7 @@ final class CotisationController extends AbstractController
         ]);
 
         if (!$existing) {
-            $montant = $calculator->calculateMontant($adherent);
+            $montant = $calculator->getMontantHistorique($adherent, $currentYear);
             $cotisation = new Cotisation();
             $cotisation->setAdherent($adherent);
             $cotisation->setPeriode($currentYear);

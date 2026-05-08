@@ -1,0 +1,93 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Historique des barèmes{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_bareme_index') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Historique des barèmes</h1>
+                    <p class="text-muted mb-0">Suivi des modifications des barèmes</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date création</th>
+                        <th>Catégorie</th>
+                        <th>Tranche</th>
+                        <th>Montant</th>
+                        <th>Période validité</th>
+                        <th>Créé par</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for bareme in historique %}
+                    <tr>
+                        <td>{{ bareme.createdAt|date('d/m/Y H:i') }}</td>
+                        <td>
+                            {% if bareme.categorie == 'entreprise' %}
+                                <span class="badge bg-primary">Entreprise</span>
+                            {% elseif bareme.categorie == 'ong' %}
+                                <span class="badge bg-success">ONG</span>
+                            {% else %}
+                                <span class="badge bg-warning">Sponsor</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if bareme.sousCategorie == '1-10' %}
+                                1 à 10 employés
+                            {% elseif bareme.sousCategorie == '11-50' %}
+                                11 à 50 employés
+                            {% elseif bareme.sousCategorie == '51+' %}
+                                Plus de 50 employés
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold">{{ bareme.montant|number_format(0, '.', ' ') }} MGA</td>
+                        <td>
+                            {{ bareme.dateDebut|date('d/m/Y') }}
+                            {% if bareme.dateFin %}
+                                → {{ bareme.dateFin|date('d/m/Y') }}
+                            {% else %}
+                                → Aujourd'hui
+                            {% endif %}
+                        </td>
+                        <td>{{ bareme.createdBy|default('-') }}</td>
+                        <td>
+                            {% if bareme.actif %}
+                                <span class="badge bg-success">Actif</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Historique</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="mb-3">
+                                <i class="fas fa-history fa-4x text-muted opacity-25"></i>
+                            </div>
+                            <p class="text-muted fw-bold">Aucun historique disponible.</p>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
