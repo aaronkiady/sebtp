@@ -28,6 +28,9 @@ class Sebtp
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $observation = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $fichiers = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -89,6 +92,18 @@ class Sebtp
     public function setObservation(?string $observation): static
     {
         $this->observation = $observation;
+
+        return $this;
+    }
+
+    public function getFichiers(): ?string
+    {
+        return $this->fichiers;
+    }
+
+    public function setFichiers(?string $fichiers): static
+    {
+        $this->fichiers = $fichiers;
 
         return $this;
     }

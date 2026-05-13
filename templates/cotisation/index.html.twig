@@ -3,30 +3,58 @@
 {% block title %}Gestion des Cotisations{% endblock %}
 
 {% block body %}
-{#<div class="container mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <a href="{{ path('app_home') }}" class="btn btn-outline-secondary shadow-sm">
-            <i class="fas fa-arrow-left"></i> Retour au dashboard
-        </a>
-        
-    </div>
-</div>#}
+<div class="container mt-3">
+    <a href="{{ path('app_home') }}" class="btn btn-outline-secondary shadow-sm">
+        <i class="fas fa-arrow-left"></i> Retour au dashboard
+    </a>
+    <a href="{{ path('app_export_cotisations_form') }}" class="btn btn-outline-success">
+        <i class="fas fa-file-excel me-2"></i>Exporter les cotisations
+    </a>
+</div>
 
 <div class="main-wrapper mt-3">
     <div class="form-card-wide p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <div class="d-flex align-items-center">
-                <a href="{{ path('app_home') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <div>
-                    <h1 class="h2 fw-bold text-dark">Cotisations</h1>
-                    <p class="text-muted">Flux financier et suivi des paiements</p>
-                </div>
+            <div>
+                <h1 class="h2 fw-bold text-dark">Cotisations</h1>
+                <p class="text-muted">Flux financier et suivi des paiements</p>
             </div>
-            <a href="{{ path('app_export_cotisations_form') }}" class="btn btn-outline-success">
-                        <i class="fas fa-file-excel me-2"></i>Exporter les cotisations
-            </a>
+        </div>
+
+        {# Barre de recherche #}
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form method="get" action="{{ path('app_cotisation_index') }}" class="row g-3">
+                    <div class="col-md-5">
+                        <label class="form-label">Rechercher un adhérent</label>
+                        <input type="text" name="search" class="form-control" placeholder="Nom, email ou téléphone..." value="{{ search }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Statut</label>
+                        <select name="statut" class="form-select">
+                            <option value="">Tous</option>
+                            <option value="paye" {% if statutFilter == 'paye' %}selected{% endif %}>Payé</option>
+                            <option value="partiel" {% if statutFilter == 'partiel' %}selected{% endif %}>Partiel</option>
+                            <option value="impaye" {% if statutFilter == 'impaye' %}selected{% endif %}>Impayé</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Année</label>
+                        <select name="periode" class="form-select">
+                            <option value="">Toutes</option>
+                            {% set currentYear = "now"|date('Y') %}
+                            <option value="{{ currentYear }}" {% if periodeFilter == currentYear %}selected{% endif %}>{{ currentYear }}</option>
+                            <option value="{{ currentYear - 1 }}" {% if periodeFilter == currentYear - 1 %}selected{% endif %}>{{ currentYear - 1 }}</option>
+                            <option value="{{ currentYear - 2 }}" {% if periodeFilter == currentYear - 2 %}selected{% endif %}>{{ currentYear - 2 }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i>Rechercher
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <div class="table-responsive">
@@ -47,57 +75,37 @@
                     {% set adherent = cotisation.adherent %}
                     {% set paye = cotisation.montantPaye %}
                     {% set reste = cotisation.getResteAPayer %}
-                    {% set statut = cotisation.statut %}
+                    {% set montantAttendu = calculator.calculateMontant(adherent) %}
                     <tr>
                         <td class="fw-bold">
-                            <i class="fas fa-user-circle me-2 text-primary opacity-50"></i>
+                            <i class="fas fa-building me-2 text-primary opacity-50"></i>
                             {{ adherent.nom }}
                         </td>
-                        <td>
-                            <span class="badge bg-light text-dark border px-3 py-2">{{ cotisation.periode }}</span>
-                        </td>
-                        <td>{{ cotisation.montant|number_format(0, '.', ' ') }} MGA</td>
+                        <td>{{ cotisation.periode }}</td>
+                        <td>{{ montantAttendu|number_format(0, '.', ' ') }} MGA</td>
                         <td class="text-success fw-bold">{{ paye|number_format(0, '.', ' ') }} MGA</td>
                         <td class="{% if reste > 0 %}text-danger{% else %}text-success{% endif %} fw-bold">
                             {{ reste|number_format(0, '.', ' ') }} MGA
                         </td>
                         <td>
-                            {% if statut == 'paye' %}
-                                <span class="badge bg-success rounded-pill px-3 py-2">
-                                    <i class="fas fa-check me-1"></i> Payé
-                                </span>
-                            {% elseif statut == 'partiel' %}
-                                <span class="badge bg-warning rounded-pill px-3 py-2">
-                                    <i class="fas fa-clock me-1"></i> Partiel
-                                </span>
+                            {% if cotisation.statut == 'paye' %}
+                                <span class="badge bg-success">Payé</span>
+                            {% elseif cotisation.statut == 'partiel' %}
+                                <span class="badge bg-warning">Partiel</span>
                             {% else %}
-                                <span class="badge bg-danger rounded-pill px-3 py-2">
-                                    <i class="fas fa-times me-1"></i> Impayé
-                                </span>
+                                <span class="badge bg-danger">Impayé</span>
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <div class="btn-group">
-                                <a href="{{ path('app_cotisation_show', {'id': cotisation.id}) }}" 
-                                   class="btn btn-sm btn-outline-secondary border-0 bg-light" title="Détails">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{{ path('app_cotisation_history', {'adherent_id': adherent.id}) }}" 
-                                   class="btn btn-sm btn-outline-secondary border-0 bg-light ms-1" title="Historique">
-                                    <i class="fas fa-history"></i>
-                                </a>
-                            </div>
+                            <a href="{{ path('app_cotisation_history', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-eye"></i> Voir
+                            </a>
                         </td>
                     </tr>
                 {% else %}
                     <tr>
                         <td colspan="7" class="text-center py-5">
-                            <div class="mb-3">
-                                <i class="fas fa-wallet fa-3x opacity-25 text-muted"></i>
-                            </div>
-                            <p class="text-muted fw-bold">Aucune cotisation trouvée.</p>
-                            <p class="text-muted small">Générez les cotisations avec la commande :</p>
-                            <code class="bg-light p-2 rounded">php bin/console app:generer-cotisations {{ "now"|date('Y') }}</code>
+                            <p class="text-muted">Aucune cotisation trouvée.</p>
                         </td>
                     </tr>
                 {% endfor %}

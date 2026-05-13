@@ -9,6 +9,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
+use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
@@ -78,6 +79,15 @@ class ListeType extends AbstractType
                 'choices' => [
                     'Oui' => 'Oui',
                     'Non' => 'Non',
+                ]
+            ])
+            ->add('fichiers', FileType::class, [
+                'label' => 'Document (PDF, DOC, DOCX)',
+                'mapped' => false,
+                'required' => false,
+                'attr' => [
+                    'accept' => '.pdf,.doc,.docx',
+                    'class' => 'form-control'
                 ]
             ])
             ->add('dg', TextType::class, [

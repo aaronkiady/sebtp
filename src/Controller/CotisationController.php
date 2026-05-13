@@ -26,13 +26,20 @@ final class CotisationController extends AbstractController
     }
 
     #[Route('/', name: 'app_cotisation_index', methods: ['GET'])]
-    public function index(CotisationRepository $repo, CotisationCalculator $calculator): Response
+    public function index(Request $request, CotisationRepository $repo, CotisationCalculator $calculator): Response
     {
-        $cotisations = $repo->findBy([], ['periode' => 'DESC']);
+        $search = $request->query->get('search');
+        $statut = $request->query->get('statut');
+        $periode = $request->query->get('periode');
+        
+        $cotisations = $repo->search($search, $statut, $periode);
         
         return $this->render('cotisation/index.html.twig', [
             'cotisations' => $cotisations,
             'calculator' => $calculator,
+            'search' => $search,
+            'statutFilter' => $statut,
+            'periodeFilter' => $periode,
         ]);
     }
 
@@ -249,18 +256,26 @@ final class CotisationController extends AbstractController
         }
 
         $currentYear = date('Y');
+        
+        // Vérifier si une cotisation existe déjà
         $existing = $em->getRepository(Cotisation::class)->findOneBy([
             'adherent' => $adherent,
             'periode' => $currentYear
         ]);
 
         if (!$existing) {
-            $montant = $calculator->getMontantHistorique($adherent, $currentYear);
+            // Calculer le montant avec le barème actuel
+            $result = $calculator->calculateMontantWithBareme($adherent);
+            
             $cotisation = new Cotisation();
             $cotisation->setAdherent($adherent);
             $cotisation->setPeriode($currentYear);
-            $cotisation->setMontant($montant);
+            $cotisation->setMontant($result['montant']);  // Montant figé
             $cotisation->setMontantPaye(0);
+            $cotisation->setStatut('impaye');
+            $cotisation->setBaremeId($result['baremeId']);
+            $cotisation->setBaremeLibelle($result['baremeLibelle']);
+            
             $em->persist($cotisation);
             $em->flush();
             
@@ -272,7 +287,8 @@ final class CotisationController extends AbstractController
                 [
                     'adherent' => $adherent->getNom(),
                     'periode' => $currentYear,
-                    'montant' => $montant
+                    'montant' => $result['montant'],
+                    'bareme' => $result['baremeLibelle']
                 ]
             );
             

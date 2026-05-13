@@ -102,6 +102,9 @@ class Liste
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $type = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $fichiers = null;
+
     public function __construct()
     {
         $this->formations = new ArrayCollection();
@@ -478,6 +481,18 @@ class Liste
     public function setType(?string $type): static
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    public function getFichiers(): ?string
+    {
+        return $this->fichiers;
+    }
+
+    public function setFichiers(?string $fichiers): static
+    {
+        $this->fichiers = $fichiers;
 
         return $this;
     }

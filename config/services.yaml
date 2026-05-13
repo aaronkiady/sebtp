@@ -4,6 +4,7 @@
 # Files in the packages/ subdirectory configure your dependencies.
 
 parameters:
+    uploads_directory: '%kernel.project_dir%/public/uploads'
 
 services:
     # default configuration for services in *this* file

@@ -49,6 +49,19 @@ class Cotisation
     #[ORM\OneToMany(mappedBy: 'cotisation', targetEntity: Paiement::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $paiements;
 
+    /**
+     * Stocke l'ID du barème utilisé au moment de la création
+     * Permet de figer le montant même si le barème change
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $baremeId = null;
+
+    /**
+     * Stocke le libellé du barème utilisé (pour information)
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $baremeLibelle = null;
+
     public function __construct()
     {
         $this->montantPaye = 0;
@@ -212,4 +225,28 @@ class Cotisation
         }
         return $this;
     }
+
+    public function getBaremeId(): ?int
+    {
+        return $this->baremeId;
+    }
+
+    public function setBaremeId(?int $baremeId): static
+    {
+        $this->baremeId = $baremeId;
+        return $this;
+    }
+
+    public function getBaremeLibelle(): ?string
+    {
+        return $this->baremeLibelle;
+    }
+
+    public function setBaremeLibelle(?string $baremeLibelle): static
+    {
+        $this->baremeLibelle = $baremeLibelle;
+        return $this;
+    }
+
+    
 }

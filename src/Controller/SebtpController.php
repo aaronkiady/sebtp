@@ -8,9 +8,11 @@ use App\Repository\SebtpRepository;
 use App\Service\AuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\String\Slugger\SluggerInterface;
 
 #[Route('/sebtp')]
 final class SebtpController extends AbstractController
@@ -35,13 +37,32 @@ final class SebtpController extends AbstractController
     }
 
     #[Route('/new', name: 'app_sebtp_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $entityManager): Response
+    public function new(Request $request, EntityManagerInterface $entityManager, SluggerInterface $slugger): Response
     {
         $sebtp = new Sebtp();
         $form = $this->createForm(SebtpType::class, $sebtp);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+
+        // Gestion du fichier
+            $fichier = $form->get('fichiers')->getData();
+            
+            if ($fichier) {
+                $originalFilename = pathinfo($fichier->getClientOriginalName(), PATHINFO_FILENAME);
+                $safeFilename = $slugger->slug($originalFilename);
+                $newFilename = $safeFilename . '-' . uniqid() . '.' . $fichier->guessExtension();
+
+                try {
+                    $fichier->move(
+                        $this->getParameter('uploads_directory'),
+                        $newFilename
+                    );
+                    $sebtp->setFichiers($newFilename);
+                } catch (FileException $e) {
+                    $this->addFlash('danger', 'Erreur lors du téléchargement du fichier.');
+                }
+            }
             $entityManager->persist($sebtp);
             $entityManager->flush();
 
@@ -55,6 +76,7 @@ final class SebtpController extends AbstractController
                     'nom_organisme' => $sebtp->getNomOrganisme(),
                     'mandat' => $sebtp->getMandat(),
                     'nom_representant' => $sebtp->getNomRepresentant(),
+                    'fichier' => $fichier ? $fichier->getClientOriginalName() : null
                 ]
             );
 
@@ -77,7 +99,7 @@ final class SebtpController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'app_sebtp_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Sebtp $sebtp, EntityManagerInterface $entityManager): Response
+    public function edit(Request $request, Sebtp $sebtp, EntityManagerInterface $entityManager, SluggerInterface $slugger): Response
     {
         $oldData = [
             'instance' => $sebtp->getInstance(),
@@ -85,12 +107,42 @@ final class SebtpController extends AbstractController
             'mandat' => $sebtp->getMandat(),
             'nom_representant' => $sebtp->getNomRepresentant(),
             'observation' => $sebtp->getObservation(),
+            'fichiers' => $sebtp->getFichiers(),
+
         ];
 
         $form = $this->createForm(SebtpType::class, $sebtp);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+
+        // Gestion du fichier
+            $fichier = $form->get('fichiers')->getData();
+            
+            if ($fichier) {
+                // Supprimer l'ancien fichier s'il existe
+                $ancienFichier = $sebtp->getFichiers();
+                if ($ancienFichier) {
+                    $ancienChemin = $this->getParameter('uploads_directory') . '/' . $ancienFichier;
+                    if (file_exists($ancienChemin)) {
+                        unlink($ancienChemin);
+                    }
+                }
+                
+                $originalFilename = pathinfo($fichier->getClientOriginalName(), PATHINFO_FILENAME);
+                $safeFilename = $slugger->slug($originalFilename);
+                $newFilename = $safeFilename . '-' . uniqid() . '.' . $fichier->guessExtension();
+
+                try {
+                    $fichier->move(
+                        $this->getParameter('uploads_directory'),
+                        $newFilename
+                    );
+                    $sebtp->setFichiers($newFilename);
+                } catch (FileException $e) {
+                    $this->addFlash('danger', 'Erreur lors du téléchargement du fichier.');
+                }
+            }
             $entityManager->flush();
 
             $newData = [
@@ -120,6 +172,43 @@ final class SebtpController extends AbstractController
         ]);
     }
 
+    #[Route('/{id}/fichier/download', name: 'app_liste_fichier_download', methods: ['GET'])]
+    public function downloadFichier(Sebtp $sebtp): Response
+    {
+        $fichier = $sebtp->getFichiers();
+        
+        if (!$fichier) {
+            throw $this->createNotFoundException('Aucun fichier associé à cet adhérent.');
+        }
+        
+        $chemin = $this->getParameter('uploads_directory') . '/' . $fichier;
+        
+        if (!file_exists($chemin)) {
+            throw $this->createNotFoundException('Le fichier n\'existe plus sur le serveur.');
+        }
+        
+        return $this->file($chemin, $fichier);
+    }
+
+    #[Route('/{id}/fichier/delete', name: 'app_liste_fichier_delete', methods: ['POST'])]
+    public function deleteFichier(Request $request, Sebtp $sebtp, EntityManagerInterface $entityManager): Response
+    {
+        if ($this->isCsrfTokenValid('delete_fichier_' . $sebtp->getId(), $request->request->get('_token'))) {
+            $fichier = $sebtp->getFichiers();
+            if ($fichier) {
+                $chemin = $this->getParameter('uploads_directory') . '/' . $fichier;
+                if (file_exists($chemin)) {
+                    unlink($chemin);
+                }
+                $sebtp->setFichiers(null);
+                $entityManager->flush();
+                $this->addFlash('success', 'Fichier supprimé avec succès!');
+            }
+        }
+        
+        return $this->redirectToRoute('app_liste_show', ['id' => $sebtp->getId()]);
+    }
+
     #[Route('/{id}', name: 'app_sebtp_delete', methods: ['POST'])]
     public function delete(Request $request, Sebtp $sebtp, EntityManagerInterface $entityManager): Response
     {
@@ -131,6 +220,15 @@ final class SebtpController extends AbstractController
         ];
 
         if ($this->isCsrfTokenValid('delete' . $sebtp->getId(), $request->getPayload()->getString('_token'))) {
+
+        // Supprimer le fichier associé
+            $fichier = $sebtp->getFichiers();
+            if ($fichier) {
+                $chemin = $this->getParameter('uploads_directory') . '/' . $fichier;
+                if (file_exists($chemin)) {
+                    unlink($chemin);
+                }
+            }
             $entityManager->remove($sebtp);
             $entityManager->flush();
 

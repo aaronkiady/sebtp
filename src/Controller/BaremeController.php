@@ -59,6 +59,13 @@ class BaremeController extends AbstractController
             // Désactiver l'ancien barème de la même catégorie
             $baremeRepo->desactiverBaremes($bareme->getCategorie(), $bareme->getSousCategorie());
             
+            // Définir la date de fin de l'ancien barème si nécessaire
+            $oldBareme = $baremeRepo->getBaremeActif($bareme->getCategorie(), $bareme->getSousCategorie());
+            if ($oldBareme && !$oldBareme->getDateFin()) {
+                $oldBareme->setDateFin(new \DateTime());
+                $em->persist($oldBareme);
+            }
+            
             $bareme->setActif(true);
             $bareme->setCreatedBy($this->getUser()->getUserIdentifier());
             

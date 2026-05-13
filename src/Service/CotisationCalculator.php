@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Liste;
+use App\Entity\Bareme;
 use App\Repository\BaremeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -19,8 +20,9 @@ class CotisationCalculator
 
     /**
      * Calcule le montant de la cotisation en fonction de l'adhérent et de la date
+     * Retourne également l'ID et le libellé du barème utilisé
      */
-    public function calculateMontant(Liste $adherent, ?\DateTimeInterface $date = null): float
+    public function calculateMontantWithBareme(Liste $adherent, ?\DateTimeInterface $date = null): array
     {
         $date = $date ?? new \DateTime();
         
@@ -39,28 +41,60 @@ class CotisationCalculator
         $bareme = $this->baremeRepository->getBaremeActif($categorie, $sousCategorie, $date);
         
         if ($bareme) {
-            return $bareme->getMontant();
+            return [
+                'montant' => $bareme->getMontant(),
+                'baremeId' => $bareme->getId(),
+                'baremeLibelle' => $this->getBaremeLibelle($bareme)
+            ];
         }
 
-        // Fallback : barème par défaut si aucun barème trouvé
-        return $this->getDefaultMontant($categorie, $sousCategorie);
+        // Fallback : barème par défaut
+        $montant = $this->getDefaultMontant($categorie, $sousCategorie);
+        return [
+            'montant' => $montant,
+            'baremeId' => null,
+            'baremeLibelle' => 'Barème par défaut'
+        ];
     }
 
     /**
-     * Récupère le barème pour une cotisation existante (historique)
+     * Calcule le montant uniquement (pour compatibilité)
+     */
+    public function calculateMontant(Liste $adherent, ?\DateTimeInterface $date = null): float
+    {
+        $result = $this->calculateMontantWithBareme($adherent, $date);
+        return $result['montant'];
+    }
+
+    /**
+     * Récupère le montant historique d'une cotisation (ne recalcule jamais)
      */
     public function getMontantHistorique(Liste $adherent, string $periode): float
     {
-        // Vérifier si une cotisation existe déjà avec un montant
+        // Vérifier si une cotisation existe déjà avec un montant stocké
         foreach ($adherent->getCotisations() as $cotisation) {
             if ($cotisation->getPeriode() === $periode) {
+                // Retourner le montant stocké, ne jamais recalculer
                 return $cotisation->getMontant();
             }
         }
         
-        // Sinon calculer avec la date de la période
-        $date = \DateTime::createFromFormat('Y', $periode);
-        return $this->calculateMontant($adherent, $date);
+        // Si aucune cotisation n'existe, calculer avec barème
+        $result = $this->calculateMontantWithBareme($adherent, \DateTime::createFromFormat('Y', $periode));
+        return $result['montant'];
+    }
+
+    /**
+     * Vérifie si une cotisation existe déjà pour une période
+     */
+    public function cotisationExists(Liste $adherent, string $periode): bool
+    {
+        foreach ($adherent->getCotisations() as $cotisation) {
+            if ($cotisation->getPeriode() === $periode) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function isONG(Liste $adherent): bool
@@ -81,9 +115,6 @@ class CotisationCalculator
         return '51+';
     }
 
-    /**
-     * Récupère la tranche d'employés pour l'affichage
-     */
     public function getTrancheEmployes(?string $nbEmployes): string
     {
         $nb = $this->parseEmployesNumber($nbEmployes);
@@ -117,37 +148,19 @@ class CotisationCalculator
         return $defaults[$categorie] ?? 400000;
     }
 
-    /**
-     * Initialise les barèmes par défaut
-     */
-    public function initDefaultBaremes(): void
+    private function getBaremeLibelle(Bareme $bareme): string
     {
-        // Vérifier si des barèmes existent déjà
-        $existing = $this->baremeRepository->findAll();
-        if (!empty($existing)) {
-            return;
+        if ($bareme->getCategorie() === 'entreprise') {
+            $tranches = [
+                '1-10' => '1 à 10 employés',
+                '11-50' => '11 à 50 employés',
+                '51+' => 'Plus de 50 employés'
+            ];
+            return 'Entreprise - ' . ($tranches[$bareme->getSousCategorie()] ?? $bareme->getSousCategorie());
+        } elseif ($bareme->getCategorie() === 'ong') {
+            return 'ONG / Association';
+        } else {
+            return 'Membre sponsor';
         }
-
-        $defaults = [
-            ['categorie' => 'entreprise', 'sousCategorie' => '1-10', 'montant' => 200000, 'description' => 'Entreprise 1-10 employés'],
-            ['categorie' => 'entreprise', 'sousCategorie' => '11-50', 'montant' => 400000, 'description' => 'Entreprise 11-50 employés'],
-            ['categorie' => 'entreprise', 'sousCategorie' => '51+', 'montant' => 1000000, 'description' => 'Entreprise +50 employés'],
-            ['categorie' => 'ong', 'sousCategorie' => null, 'montant' => 400000, 'description' => 'ONG / Association'],
-            ['categorie' => 'sponsor', 'sousCategorie' => null, 'montant' => 10000000, 'description' => 'Membre sponsor'],
-        ];
-
-        foreach ($defaults as $default) {
-            $bareme = new Bareme();
-            $bareme->setCategorie($default['categorie']);
-            $bareme->setSousCategorie($default['sousCategorie']);
-            $bareme->setMontant($default['montant']);
-            $bareme->setDescription($default['description']);
-            $bareme->setDateDebut(new \DateTime('2024-01-01'));
-            $bareme->setActif(true);
-            
-            $this->entityManager->persist($bareme);
-        }
-        
-        $this->entityManager->flush();
     }
 }
