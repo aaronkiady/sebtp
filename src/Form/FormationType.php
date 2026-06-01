@@ -4,9 +4,9 @@ namespace App\Form;
 
 use App\Entity\Formation;
 use App\Entity\Liste;
+use Doctrine\ORM\EntityRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\CollectionType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -53,22 +53,15 @@ class FormationType extends AbstractType
                 'class' => Liste::class,
                 'choice_label' => 'nom',
                 'multiple' => true,
-                'expanded' => false,
+                'expanded' => true,  // Changement : true pour des cases à cocher
                 'label' => 'Sélectionner les participants',
-                'attr' => ['class' => 'form-select', 'data-participants-select' => 'true']
-            ])
-            ->add('participantsDetails', CollectionType::class, [
-                'label' => 'Détails des participants',
-                'entry_type' => TextType::class,
-                'entry_options' => [
-                    'attr' => ['class' => 'form-control participant-detail-input', 'placeholder' => 'Noms des agents / représentants...']
-                ],
-                'allow_add' => true,
-                'allow_delete' => true,
-                'prototype' => true,
-                'mapped' => false,
-                'required' => false,
-                'label' => false,
+                'attr' => ['class' => 'participants-checkbox-list'],
+                'query_builder' => function (EntityRepository $er) {
+                    return $er->createQueryBuilder('l')
+                        ->where('l.statut != :statutRadie')
+                        ->setParameter('statutRadie', 'radie')
+                        ->orderBy('l.nom', 'ASC');
+                },
             ])
         ;
     }

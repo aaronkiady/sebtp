@@ -65,7 +65,7 @@
                     <div class="text-danger small mt-1">{{ form_errors(form.commentaire) }}</div>
                 </div>
 
-                <div class="col-12">
+                {#<div class="col-12">
                     <label class="form-label fw-bold">
                         <i class="fas fa-users me-2 opacity-50"></i>
                         {{ form.participantsTemp.vars.label }}
@@ -75,7 +75,7 @@
                     </div>
                     <small class="text-muted">Sélectionnez les participants à cet événement</small>
                     <div class="text-danger small mt-1">{{ form_errors(form.participantsTemp) }}</div>
-                </div>
+                </div>#}
             </div>
 
             {{ form_rest(form) }}

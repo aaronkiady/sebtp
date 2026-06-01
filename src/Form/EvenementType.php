@@ -38,7 +38,7 @@ class EvenementType extends AbstractType
                 'label' => 'Commentaire',
                 'attr' => ['class' => 'custom-input', 'rows' => 3]
             ])
-            ->add('participantsTemp', EntityType::class, [
+            /*->add('participantsTemp', EntityType::class, [
                 'class' => Liste::class,
                 'choice_label' => 'nom',
                 'multiple' => true,
@@ -47,7 +47,7 @@ class EvenementType extends AbstractType
                 'required' => false,
                 'label' => 'Participants',
                 'attr' => ['class' => 'participants-checkbox-list']
-            ]);
+            ])*/;
     }
 
     public function configureOptions(OptionsResolver $resolver): void

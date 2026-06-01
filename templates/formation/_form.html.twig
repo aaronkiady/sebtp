@@ -54,13 +54,26 @@
                     <div class="text-danger small mt-1">{{ form_errors(form.remarque) }}</div>
                 </div>
 
-                {# Sélection des participants #}
+                {# Sélection des participants avec cases à cocher et recherche #}
                 <div class="col-md-12">
                     <label class="form-label fw-bold">{{ form.participants.vars.label }}</label>
-                    <div class="border rounded-3 p-3" style="max-height: 200px; overflow-y: auto;">
-                        {{ form_widget(form.participants, {'attr': {'class': 'participants-checkbox-list'}}) }}
+                    
+                    {# Barre de recherche #}
+                    <div class="mb-2">
+                        <div class="input-group">
+                            <input type="text" id="participant-search" class="form-control" placeholder="Rechercher un adhérent...">
+                            <button class="btn btn-outline-secondary" type="button" id="clear-search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Tapez pour filtrer les adhérents</small>
                     </div>
-                    <small class="text-muted">Sélectionnez les adhérents participants à cette formation</small>
+                    
+                    {# Conteneur des cases à cocher #}
+                    <div class="border rounded-3 p-3" style="max-height: 350px; overflow-y: auto;" id="participants-list-container">
+                        {{ form_widget(form.participants) }}
+                    </div>
+                    <small class="text-muted">Cochez les adhérents participants à cette formation (les adhérents radiés ne sont pas affichés)</small>
                     <div class="text-danger small mt-1">{{ form_errors(form.participants) }}</div>
                 </div>
 
@@ -102,9 +115,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const participantsSelect = document.querySelector('[data-participants-select]');
+    // Récupérer le conteneur des cases à cocher
+    const participantsContainer = document.querySelector('#{{ form.participants.vars.id }}');
     const container = document.getElementById('participants-details-container');
     const detailsList = document.getElementById('participants-details-list');
+    const searchInput = document.getElementById('participant-search');
+    const clearBtn = document.getElementById('clear-search');
     let existingDetails = {};
 
     // Récupérer les détails existants (pour l'édition)
@@ -112,20 +128,49 @@ document.addEventListener('DOMContentLoaded', function() {
         existingDetails = {{ form.vars.value.participantsDetails|json_encode|raw }};
     {% endif %}
 
-    function updateParticipantsDetails() {
-        const selectedOptions = Array.from(participantsSelect.selectedOptions);
-        const selectedIds = selectedOptions.map(opt => opt.value);
-        const selectedNames = selectedOptions.map(opt => opt.text);
+    // Fonction pour filtrer les cases à cocher
+    function filterCheckboxes() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const checkboxes = participantsContainer.querySelectorAll('.checkbox-item');
         
-        // Vider le conteneur
+        checkboxes.forEach(item => {
+            const label = item.querySelector('label');
+            const text = label ? label.textContent.toLowerCase() : '';
+            if (text.includes(searchTerm)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // Fonction pour obtenir les participants sélectionnés
+    function getSelectedParticipants() {
+        const checkboxes = participantsContainer.querySelectorAll('input[type="checkbox"]:checked');
+        const selected = [];
+        checkboxes.forEach(cb => {
+            const parentDiv = cb.closest('.checkbox-item');
+            const label = parentDiv ? parentDiv.querySelector('label') : null;
+            selected.push({
+                id: cb.value,
+                name: label ? label.textContent : ''
+            });
+        });
+        return selected;
+    }
+
+    // Fonction pour mettre à jour les détails des participants
+    function updateParticipantsDetails() {
+        const selected = getSelectedParticipants();
+        
         detailsList.innerHTML = '';
         
-        if (selectedIds.length > 0) {
+        if (selected.length > 0) {
             container.style.display = 'block';
             
-            for (let i = 0; i < selectedIds.length; i++) {
-                const id = selectedIds[i];
-                const name = selectedNames[i];
+            for (let i = 0; i < selected.length; i++) {
+                const id = selected[i].id;
+                const name = selected[i].name;
                 const existingValue = existingDetails[id] || '';
                 
                 const div = document.createElement('div');
@@ -135,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="col-md-4">
                             <label class="form-label fw-bold mb-0">
                                 <i class="fas fa-building me-1 text-primary"></i>
-                                ${name}
+                                ${escapeHtml(name)}
                             </label>
                             <input type="hidden" name="participant_id_${id}" value="${id}" class="participant-id">
                         </div>
@@ -167,11 +212,55 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Écouter les changements de sélection
-    if (participantsSelect) {
-        participantsSelect.addEventListener('change', updateParticipantsDetails);
-        updateParticipantsDetails();
+    // Ajouter une classe aux divs contenant les checkboxes pour faciliter le filtrage
+    if (participantsContainer) {
+        const checkboxItems = participantsContainer.querySelectorAll('div');
+        checkboxItems.forEach(item => {
+            if (item.querySelector('input[type="checkbox"]')) {
+                item.classList.add('checkbox-item');
+                item.style.display = 'flex';
+                item.style.alignItems = 'center';
+                item.style.gap = '8px';
+                item.style.padding = '8px';
+                item.style.borderRadius = '8px';
+                item.style.cursor = 'pointer';
+                
+                // Rendre toute la div cliquable
+                item.addEventListener('click', function(e) {
+                    if (e.target.tagName !== 'INPUT') {
+                        const checkbox = this.querySelector('input[type="checkbox"]');
+                        if (checkbox) {
+                            checkbox.checked = !checkbox.checked;
+                            // Déclencher l'événement change
+                            const event = new Event('change', { bubbles: true });
+                            checkbox.dispatchEvent(event);
+                        }
+                    }
+                });
+            }
+        });
+        
+        // Écouter les changements sur les checkboxes
+        participantsContainer.addEventListener('change', function() {
+            updateParticipantsDetails();
+        });
     }
+
+    // Écouter la recherche
+    if (searchInput) {
+        searchInput.addEventListener('input', filterCheckboxes);
+    }
+
+    // Bouton effacer la recherche
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            filterCheckboxes();
+        });
+    }
+
+    // Déclencher la mise à jour initiale
+    setTimeout(updateParticipantsDetails, 100);
 });
 </script>
 
@@ -179,26 +268,33 @@ document.addEventListener('DOMContentLoaded', function() {
 .participants-checkbox-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
-.participants-checkbox-list label {
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+.checkbox-item:hover {
+    background-color: #f8f9fa;
+}
+.checkbox-item label {
     margin-left: 10px;
     cursor: pointer;
+    flex: 1;
 }
-.participants-checkbox-list input[type="checkbox"] {
+.checkbox-item input[type="checkbox"] {
     margin-right: 10px;
     cursor: pointer;
     transform: scale(1.1);
 }
-.participants-checkbox-list div {
-    padding: 8px;
-    border-radius: 8px;
-    transition: background-color 0.2s;
-}
-.participants-checkbox-list div:hover {
-    background-color: #f8f9fa;
-}
 .custom-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+#participant-search:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
 }

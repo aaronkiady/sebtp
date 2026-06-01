@@ -155,7 +155,13 @@ class EvenementRepository extends ServiceEntityRepository
         ?string $annee = null,
         ?int $evenementId = null
     ): array {
-        $qb = $this->createQueryBuilder('e');
+        $qb = $this->createQueryBuilder('e')
+            ->leftJoin('e.participations', 'p')
+            ->leftJoin('p.adherent', 'a')
+            ->addSelect('p')
+            ->addSelect('a')
+            ->where('a.statut != :statutRadie OR a.statut IS NULL')
+            ->setParameter('statutRadie', 'radie');
 
         if ($annee && $annee !== 'tous') {
             $qb->andWhere('e.date BETWEEN :debut AND :fin')
@@ -163,7 +169,7 @@ class EvenementRepository extends ServiceEntityRepository
             ->setParameter('fin', $annee . '-12-31');
         }
 
-        if ($evenementId) {
+        if ($evenementId !== null && $evenementId > 0) {
             $qb->andWhere('e.id = :evenementId')
             ->setParameter('evenementId', $evenementId);
         }

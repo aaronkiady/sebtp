@@ -22,14 +22,20 @@
             </div>
         {% endfor %}
 
-        {% if participations|length > 0 %}
+        {% if adherent.statut == 'radie' %}
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Adhérent radié :</strong> Cet adhérent a été radié. L'historique des événements n'est pas disponible.
+            </div>
+        {% elseif participations|length > 0 %}
+            {# Affichage du tableau des participations #}
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th>Événement</th>
                             <th>Date</th>
-                            <th>Montant unitaire (MGA)</th>
+                            <th>Montant (MGA)</th>
                             <th>Statut de paiement</th>
                             <th>Action</th>
                         </tr>
@@ -44,7 +50,7 @@
                                     {{ evenement.date ? evenement.date|date('d/m/Y') : 'Date non définie' }}
                                 </td>
                                 <td class="fw-bold">
-                                    {{ evenement.montant ? evenement.montant|number_format(0, '.', ' ') : '0' }}
+                                    {{ evenement.montant ? evenement.montant|number_format(0, '.', ' ') : '0' }} MGA
                                 </td>
                                 <td>
                                     {% if participation.statutPaiement == 'paye' %}
@@ -70,32 +76,10 @@
                     </tbody>
                 </table>
             </div>
-
-            <div class="mt-4 p-3 bg-light rounded">
-                <h6 class="fw-bold mb-2">Résumé</h6>
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="text-muted small">Total participations</div>
-                        <div class="fw-bold fs-4">{{ participations|length }}</div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-muted small">Payés</div>
-                        <div class="fw-bold fs-4 text-success">
-                            {{ participations|filter(p => p.statutPaiement == 'paye')|length }}
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-muted small">Impayés</div>
-                        <div class="fw-bold fs-4 text-danger">
-                            {{ participations|filter(p => p.statutPaiement == 'impaye')|length }}
-                        </div>
-                    </div>
-                </div>
-            </div>
         {% else %}
             <div class="text-center py-5">
                 <div class="mb-3">
-                    <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="80" class="opacity-25" alt="aucun événement">
+                    <i class="fas fa-calendar-times fa-4x text-muted opacity-25"></i>
                 </div>
                 <p class="text-muted fw-bold">Aucun événement enregistré pour cet adhérent.</p>
             </div>

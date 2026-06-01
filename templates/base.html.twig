@@ -206,6 +206,11 @@
                     <i class="fas fa-history me-2"></i>Journal d'audit
                 </a>
             </li>
+             <li class="nav-item">
+                <a href="{{ path('app_bareme_index') }}" class="nav-link {{ 'bareme' in app.request.get('_route') ? 'active' : 'text-muted' }}" >
+                    <i class="fas fa-history me-2"></i>Barèmes
+                </a>
+            </li>
         </ul>
          <a href="{{ path('app_logout') }}" class="btn btn-danger">
             <i class="fas fa-power-off"></i> Déconnexion

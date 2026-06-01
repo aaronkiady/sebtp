@@ -64,4 +64,17 @@ class ParticipationRepository extends ServiceEntityRepository
             'pourcentageImpaye' => $total > 0 ? round(($impaye / $total) * 100, 2) : 0,
         ];
     }
+
+     public function findParticipationsByAdherent(int $adherentId): array
+    {
+        $qb = $this->createQueryBuilder('p')
+            ->leftJoin('p.adherent', 'a')
+            ->where('p.adherent = :adherentId')
+            ->andWhere('a.statut != :statutRadie')
+            ->setParameter('adherentId', $adherentId)
+            ->setParameter('statutRadie', 'radie')
+            ->orderBy('p.id', 'DESC');
+
+        return $qb->getQuery()->getResult();
+    }
 }

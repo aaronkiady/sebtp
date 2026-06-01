@@ -42,14 +42,19 @@ final class FormationController extends AbstractController
             throw $this->createNotFoundException("Adhérent non trouvé");
         }
 
-        $searchTerm = $request->query->get('q');
-        $formations = $adherent->getFormations();
+        // Si l'adhérent est radié, ne pas afficher les formations
+        if ($adherent->getStatut() === 'radie') {
+            $formations = [];
+        } else {
+            $searchTerm = $request->query->get('q');
+            $formations = $adherent->getFormations();
 
-        if ($searchTerm) {
-            $formations = $formations->filter(function(Formation $f) use ($searchTerm) {
-                return stripos($f->getNom(), $searchTerm) !== false || 
-                       stripos($f->getType(), $searchTerm) !== false;
-            });
+            if ($searchTerm) {
+                $formations = $formations->filter(function(Formation $f) use ($searchTerm) {
+                    return stripos($f->getNom(), $searchTerm) !== false || 
+                        stripos($f->getType(), $searchTerm) !== false;
+                });
+            }
         }
 
         return $this->render('formation/history.html.twig', [
@@ -118,8 +123,13 @@ final class FormationController extends AbstractController
     #[Route('/{id}/participants', name: 'app_formation_show_participants', methods: ['GET'])]
     public function showParticipants(Formation $formation): Response
     {
+        $participantsFiltres = $formation->getParticipants()->filter(function($participant) {
+            return $participant->getStatut() !== 'radie';
+        });
+
         return $this->render('liste/show_formation.html.twig', [
             'formation' => $formation,
+            'participantsFiltres' => $participantsFiltres,
         ]);
     }
 

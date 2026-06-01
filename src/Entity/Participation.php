@@ -24,6 +24,15 @@ class Participation
     #[ORM\Column(length: 20)]
     private string $statutPaiement = 'impaye';
 
+    #[ORM\Column]
+    private ?int $quantite = 1;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $montantTotal = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $reference = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -61,9 +70,53 @@ class Participation
         $this->statutPaiement = $statutPaiement;
         return $this;
     }
-    
+
+    public function getQuantite(): ?int
+    {
+        return $this->quantite;
+    }
+
+    public function setQuantite(int $quantite): static
+    {
+        $this->quantite = $quantite;
+        $this->calculerMontantTotal();
+        return $this;
+    }
+
+    public function getMontantTotal(): ?float
+    {
+        return $this->montantTotal;
+    }
+
+    public function setMontantTotal(?float $montantTotal): static
+    {
+        $this->montantTotal = $montantTotal;
+        return $this;
+    }
+
+    public function calculerMontantTotal(): void
+    {
+        if ($this->evenement && $this->evenement->getMontant()) {
+            $this->montantTotal = $this->evenement->getMontant() * $this->quantite;
+        } else {
+            $this->montantTotal = 0;
+        }
+    }
+
     public function isPaye(): bool
     {
         return $this->statutPaiement === 'paye';
+    }
+
+    public function getReference(): ?string
+    {
+        return $this->reference;
+    }
+
+    public function setReference(?string $reference): static
+    {
+        $this->reference = $reference;
+
+        return $this;
     }
 }

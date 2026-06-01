@@ -28,15 +28,41 @@
 
         <div class="p-4 p-md-5">
             <div class="row g-4">
-                <div class="col-12">
+                <div class="col-md-6">
                     <label class="form-label">
                         <i class="fas fa-user me-2 opacity-50"></i>
                         {{ form.participant.vars.label }}
                     </label>
                     {{ form_widget(form.participant, {'attr': {'class': 'form-control custom-input'}}) }}
                     <div class="text-danger small mt-1">{{ form_errors(form.participant) }}</div>
+                    <small class="text-muted">Seuls les adhérents actifs sont affichés</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <i class="fas fa-users me-2 opacity-50"></i>
+                        {{ form.quantite.vars.label }}
+                    </label>
+                    {{ form_widget(form.quantite, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.quantite) }}</div>
+                    <small class="text-muted">Nombre de représentants de cette entreprise</small>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">
+                        <i class="fas fa-file-invoice me-2 opacity-50"></i>
+                        {{ form.reference.vars.label }}
+                    </label>
+                    {{ form_widget(form.reference, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.reference) }}</div>
+                    <small class="text-muted">Référence du paiement (n° chèque, référence virement, etc.)</small>
                 </div>
             </div>
+
+            {% if evenement.montant %}
+            <div class="alert alert-info mt-3">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Information :</strong> Montant unitaire: {{ evenement.montant|number_format(0, '.', ' ') }} MGA
+            </div>
+            {% endif %}
 
             <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
                 <a href="{{ path('app_evenement_show', {'id': evenement.id}) }}" class="btn-action btn-cancel text-decoration-none">

@@ -45,10 +45,10 @@ class ListeType extends AbstractType
                 ]
             ])
             ->add('type', ChoiceType::class, [
-                'label' => 'Type',
+                'label' => 'Catégorie',
                 'choices' => [
                     'ONG' => 'ong',
-                    'Simple entreprise' => 'entreprise',
+                    'Entreprise' => 'entreprise',
                     'Sponsor' => 'sponsor'
                 ],
                 'required' => false,

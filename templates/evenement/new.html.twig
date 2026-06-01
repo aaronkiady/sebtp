@@ -72,7 +72,7 @@
                     <div class="text-danger small mt-1">{{ form_errors(form.commentaire) }}</div>
                 </div>
 
-                <div class="col-12">
+                {#<div class="col-12">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>Note:</strong> La sélection des participants est optionnelle. Vous pourrez ajouter des participants plus tard.
@@ -86,7 +86,7 @@
                     </div>
                     <small class="text-muted">Vous pouvez sélectionner des participants maintenant ou les ajouter ultérieurement.</small>
                     <div class="text-danger small mt-1">{{ form_errors(form.participantsTemp) }}</div>
-                </div>
+                </div>#}
             </div>
 
             {{ form_rest(form) }}
