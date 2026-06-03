@@ -150,7 +150,15 @@
                         <td>{{ liste.email }}</td>
                         <td>{{ liste.numero }}</td>
                         <td>{{ liste.activite }}</td>
-                        <td>{{ liste.filiere }}</td>
+                        <td>
+                            {% if liste.filiere is iterable %}
+                                {% for fil in liste.filiere %}
+                                    <span class="badge bg-info me-1">{{ fil }}</span>
+                                {% endfor %}
+                            {% else %}
+                                {{ liste.filiere|default('-') }}
+                            {% endif %}
+                        </td>
                         <td>
                             {% if liste.statut == 'actif' %}
                                 <span class="badge bg-success rounded-pill">Actif</span>

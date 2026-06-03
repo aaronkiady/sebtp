@@ -63,12 +63,15 @@ class ListeType extends AbstractType
                 'required' => false,
             ])
             ->add('filiere', ChoiceType::class, [
-                'label' => 'Filière',
+                'label' => 'Filière(s)',
                 'choices' => [
-                    'BTP / Construction'             => 'BTP / Construction ',
-                    'Bureau d\'études'                => 'Bureau d\'études',
+                    'BTP / Construction' => 'BTP / Construction',
+                    'Bureau d\'études' => 'Bureau d\'études',
                     'Fournisseur de biens et services' => 'Fournisseur de biens et services',
-                ]
+                ],
+                'multiple' => true,
+                'expanded' => true,
+                'required' => false,
             ])
             ->add('nbEmployes', TextType::class, [
                 'required' => false,

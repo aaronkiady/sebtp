@@ -149,8 +149,14 @@ class ExportListeController extends AbstractController
             $sheet->setCellValue('E' . $row, $adherent->getAdresse() ?? '-');
             $sheet->setCellValue('F' . $row, $adherent->getSiteWeb() ?? '-');
             $sheet->setCellValue('G' . $row, $adherent->getActivite());
-            $sheet->setCellValue('H' . $row, $adherent->getFiliere());
             $sheet->setCellValue('I' . $row, $adherent->getNbEmployes() ?? '-');
+            $filiere = $adherent->getFiliere();
+                if (is_array($filiere)) {
+                    $filiereString = implode(', ', $filiere);
+                } else {
+                    $filiereString = $filiere ?? '-';
+                }
+                $sheet->setCellValue('H' . $row, $filiereString);
             $sheet->setCellValue('J' . $row, $adherent->getCotFMTP() ?? '-');
             $sheet->setCellValue('K' . $row, $adherent->getDg());
             $sheet->setCellValue('L' . $row, $adherent->getTelephoneDg() ?? '-');

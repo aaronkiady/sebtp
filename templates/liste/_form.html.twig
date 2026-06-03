@@ -31,6 +31,26 @@
                     </div>
                 {% endmacro %}
 
+                {# Macro spéciale pour les champs avec cases à cocher (expanded + multiple) #}
+                {% macro render_checkbox_field(field, icon, icon_class, hint) %}
+                    <div class="col-md-12">
+                        <label class="form-label">
+                            <i class="{{ icon }} me-2 opacity-50 {{ icon_class|default('') }}"></i>
+                            {{ field.vars.label|default(field.vars.name|capitalize) }}
+                            {% if field.vars.required %}
+                                <span class="text-danger">*</span>
+                            {% endif %}
+                        </label>
+                        <div class="border rounded-3 p-3" style="max-height: 200px; overflow-y: auto;">
+                            {{ form_widget(field, {'attr': {'class': 'filiere-checkbox-list'}}) }}
+                        </div>
+                        <div class="text-danger small mt-1">{{ form_errors(field) }}</div>
+                        {% if hint %}
+                            <small class="text-muted">{{ hint }}</small>
+                        {% endif %}
+                    </div>
+                {% endmacro %}
+
                 {% import _self as f %}
 
                 {{ f.render_field(form.nom,          'fas fa-building',          '') }}
@@ -47,7 +67,16 @@
                     {{ f.render_field(form.validationAG, 'fas fa-users', 'text-success', 'Date à laquelle l\'AG a validé l\'adhésion') }}
                 {% endif %}
                 {% if form.raisonDepart is defined %}
-                    {{ f.render_field(form.raisonDepart, 'fas fa-sign-out-alt', 'text-danger', 'Requis en cas de départ') }}
+                    <div class="col-md-12">
+                        <label class="form-label">
+                            <i class="fas fa-sign-out-alt me-2 opacity-50 text-danger"></i>
+                            {{ form.raisonDepart.vars.label }}
+                            <span class="text-danger">*</span>
+                        </label>
+                        {{ form_widget(form.raisonDepart, {'attr': {'class': 'form-control custom-input', 'rows': 3}}) }}
+                        <div class="text-danger small mt-1">{{ form_errors(form.raisonDepart) }}</div>
+                        <small class="text-muted">Requis en cas de départ</small>
+                    </div>
                 {% endif %}
                 {% if form.statutDemande is defined %}
                     {{ f.render_field(form.statutDemande, 'fas fa-clock', 'text-warning', 'Suivi du processus d\'adhésion') }}
@@ -56,10 +85,12 @@
                 {{ f.render_field(form.type,          'fas fa-briefcase',             '') }}
                 {{ f.render_field(form.siteWeb,       'fas fa-globe',             '') }}
                 {{ f.render_field(form.activite,      'fas fa-briefcase',         '') }}
-                {{ f.render_field(form.filiere,       'fas fa-chart-line',        '') }}
+                
+                {# Champ filière avec cases à cocher #}
+                {{ f.render_checkbox_field(form.filiere, 'fas fa-chart-line', '', 'Sélectionnez une ou plusieurs filières') }}
+                
                 {{ f.render_field(form.nbEmployes,    'fas fa-users',             '') }}
                 {{ f.render_field(form.cotFMTP,       'fas fa-hand-holding-usd',  '') }}
-                {{ f.render_field(form.fichiers,       'fas fa-hand-holding-usd',  '') }}
                 {{ f.render_field(form.dg,            'fas fa-user-tie',          '') }}
                 {{ f.render_field(form.adresseDg,     'fas fa-map-pin',           '') }}
                 {{ f.render_field(form.telephoneDg,   'fas fa-phone-alt',         '') }}
@@ -74,6 +105,17 @@
                 {% endif %}
 
                 {{ f.render_field(form.observation,   'fas fa-comment',           '') }}
+                
+                {# Champ fichier - affiché séparément car c'est un FileType #}
+                <div class="col-md-12">
+                    <label class="form-label">
+                        <i class="fas fa-paperclip me-2 opacity-50"></i>
+                        {{ form.fichiers.vars.label|default('Document') }}
+                    </label>
+                    {{ form_widget(form.fichiers, {'attr': {'class': 'form-control custom-input'}}) }}
+                    <div class="text-danger small mt-1">{{ form_errors(form.fichiers) }}</div>
+                    <small class="text-muted">Formats acceptés : PDF, DOC, DOCX (max 10 Mo)</small>
+                </div>
 
             </div>
 
@@ -146,5 +188,30 @@ document.addEventListener('DOMContentLoaded', attachFormEvents);
 }
 textarea.custom-input {
     resize: vertical;
+}
+
+/* Style pour les cases à cocher de la filière */
+.filiere-checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.filiere-checkbox-list label {
+    margin-left: 10px;
+    cursor: pointer;
+    font-weight: normal;
+}
+.filiere-checkbox-list input[type="checkbox"] {
+    margin-right: 10px;
+    cursor: pointer;
+    transform: scale(1.1);
+}
+.filiere-checkbox-list div {
+    padding: 10px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+.filiere-checkbox-list div:hover {
+    background-color: #f8f9fa;
 }
 </style>

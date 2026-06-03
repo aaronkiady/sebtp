@@ -30,11 +30,11 @@ class Liste
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $siteWeb = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $activite = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $filiere = null;
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $filiere = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $nbEmployes = null;
@@ -42,7 +42,7 @@ class Liste
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $cotFMTP = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $dg = null;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -110,6 +110,7 @@ class Liste
         $this->formations = new ArrayCollection();
         $this->cotisations = new ArrayCollection();
         $this->contacts = new ArrayCollection();
+        $this->filiere = [];
     }
 
     public function getId(): ?int
@@ -177,21 +178,29 @@ class Liste
         return $this->activite;
     }
 
-    public function setActivite(string $activite): static
+    public function setActivite(?string $activite): static
     {
         $this->activite = $activite;
         return $this;
     }
 
-    public function getFiliere(): ?string
+    public function getFiliere(): ?array
     {
         return $this->filiere;
     }
 
-    public function setFiliere(string $filiere): static
+    public function setFiliere(?array $filiere): static
     {
         $this->filiere = $filiere;
         return $this;
+    }
+
+    public function getFiliereAsString(): string
+    {
+        if (empty($this->filiere)) {
+            return '-';
+        }
+        return implode(', ', $this->filiere);
     }
 
     public function getNbEmployes(): ?string
@@ -221,7 +230,7 @@ class Liste
         return $this->dg;
     }
 
-    public function setDg(string $dg): static
+    public function setDg(?string $dg): static
     {
         $this->dg = $dg;
         return $this;
@@ -433,7 +442,6 @@ class Liste
     public function setRaisonDepart(?string $raisonDepart): static
     {
         $this->raisonDepart = $raisonDepart;
-
         return $this;
     }
 
@@ -445,7 +453,6 @@ class Liste
     public function setStatutDemande(?string $statutDemande): static
     {
         $this->statutDemande = $statutDemande;
-
         return $this;
     }
 
@@ -457,7 +464,6 @@ class Liste
     public function setValidationBureau(?string $validationBureau): static
     {
         $this->validationBureau = $validationBureau;
-
         return $this;
     }
 
@@ -469,7 +475,6 @@ class Liste
     public function setValidationAG(?string $validationAG): static
     {
         $this->validationAG = $validationAG;
-
         return $this;
     }
 
@@ -481,7 +486,6 @@ class Liste
     public function setType(?string $type): static
     {
         $this->type = $type;
-
         return $this;
     }
 
@@ -493,7 +497,6 @@ class Liste
     public function setFichiers(?string $fichiers): static
     {
         $this->fichiers = $fichiers;
-
         return $this;
     }
 }
