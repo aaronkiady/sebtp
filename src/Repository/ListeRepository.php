@@ -204,41 +204,61 @@ class ListeRepository extends ServiceEntityRepository
      */
     public function getDistinctFilieres(): array
     {
-        // Utilisation de SQL natif pour extraire les valeurs du tableau JSON
         $conn = $this->getEntityManager()->getConnection();
         
-        // Pour MySQL 5.7+
-        $sql = "SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[0]')) as filiere 
+        // Requête SQL pour extraire toutes les valeurs uniques du tableau JSON
+        $sql = "SELECT DISTINCT TRIM(JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[0]'))) as filiere 
                 FROM liste 
-                WHERE filiere IS NOT NULL AND JSON_LENGTH(filiere) > 0
+                WHERE filiere IS NOT NULL 
                 
                 UNION
                 
-                SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[1]')) as filiere 
+                SELECT DISTINCT TRIM(JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[1]'))) as filiere 
                 FROM liste 
-                WHERE filiere IS NOT NULL AND JSON_LENGTH(filiere) > 1
+                WHERE filiere IS NOT NULL 
                 
                 UNION
                 
-                SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[2]')) as filiere 
+                SELECT DISTINCT TRIM(JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[2]'))) as filiere 
                 FROM liste 
-                WHERE filiere IS NOT NULL AND JSON_LENGTH(filiere) > 2
+                WHERE filiere IS NOT NULL
                 
+                UNION
+                
+                SELECT DISTINCT TRIM(JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[3]'))) as filiere 
+                FROM liste 
+                WHERE filiere IS NOT NULL
+                
+                HAVING filiere IS NOT NULL AND filiere != ''
                 ORDER BY filiere ASC";
         
-        $stmt = $conn->prepare($sql);
-        $result = $stmt->executeQuery();
-        $results = $result->fetchAllAssociative();
+        try {
+            $stmt = $conn->prepare($sql);
+            $result = $stmt->executeQuery();
+            $results = $result->fetchAllAssociative();
 
-        $filieres = [];
-        foreach ($results as $row) {
-            $filiere = $row['filiere'];
-            if ($filiere && !in_array($filiere, $filieres)) {
-                $filieres[] = $filiere;
+            $filieres = [];
+            foreach ($results as $row) {
+                $filiere = trim($row['filiere']);
+                if (!empty($filiere) && !in_array($filiere, $filieres)) {
+                    $filieres[] = $filiere;
+                }
             }
+            
+            // Ajouter les valeurs par défaut si aucune trouvée
+            $defaultFilieres = ['BTP / Construction', 'Bureau d\'études', 'Fournisseur de biens et services'];
+            foreach ($defaultFilieres as $default) {
+                if (!in_array($default, $filieres)) {
+                    $filieres[] = $default;
+                }
+            }
+            
+            sort($filieres);
+            return $filieres;
+        } catch (\Exception $e) {
+            // En cas d'erreur, retourner les valeurs par défaut
+            return ['BTP / Construction', 'Bureau d\'études', 'Fournisseur de biens et services'];
         }
-        
-        return $filieres;
     }
 
     /**
@@ -301,49 +321,49 @@ class ListeRepository extends ServiceEntityRepository
         // Recherche textuelle
         if ($searchTerm) {
             $qb->andWhere('l.nom LIKE :q OR l.email LIKE :q OR l.numero LIKE :q OR l.adresse LIKE :q OR l.activite LIKE :q')
-               ->setParameter('q', '%' . $searchTerm . '%');
+            ->setParameter('q', '%' . $searchTerm . '%');
         }
 
         // Filtre par statut
         if ($statut && $statut !== 'tous') {
             $qb->andWhere('l.statut = :statut')
-               ->setParameter('statut', $statut);
+            ->setParameter('statut', $statut);
         }
 
-        // Filtre par filière
+        // Filtre par filière (recherche dans le tableau JSON)
         if ($filiere && $filiere !== 'tous') {
-            $qb->andWhere('l.filiere = :filiere')
-               ->setParameter('filiere', $filiere);
+            // Recherche si la filière est dans le tableau JSON
+            $qb->andWhere('JSON_CONTAINS(l.filiere, :filiere) = 1')
+            ->setParameter('filiere', json_encode($filiere));
         }
 
         // Filtre par cotisation FMTP
         if ($cotFMTP && $cotFMTP !== 'tous') {
             $qb->andWhere('l.cotFMTP = :cotFMTP')
-               ->setParameter('cotFMTP', $cotFMTP);
+            ->setParameter('cotFMTP', $cotFMTP);
         }
 
         // Filtre par statut du membre
         if ($statutMenmbre && $statutMenmbre !== 'tous') {
             $qb->andWhere('l.statutMenmbre = :statutMenmbre')
-               ->setParameter('statutMenmbre', $statutMenmbre);
+            ->setParameter('statutMenmbre', $statutMenmbre);
         }
 
         // Filtre par type (ONG, entreprise, sponsor)
         if ($type && $type !== 'tous') {
             $qb->andWhere('l.type = :type')
-               ->setParameter('type', $type);
+            ->setParameter('type', $type);
         }
 
-        // Filtre par année d'adhésion (basée sur la date de création ou première cotisation)
+        // Filtre par année d'adhésion
         if ($anneeAdhesion && $anneeAdhesion !== 'tous') {
-            // Utiliser la date de validation bureau ou AG comme année d'adhésion
             $qb->andWhere('(YEAR(l.validationBureau) = :annee OR YEAR(l.validationAG) = :annee)')
-               ->setParameter('annee', $anneeAdhesion);
+            ->setParameter('annee', $anneeAdhesion);
         }
 
         return $qb->orderBy('l.nom', 'ASC')
-                  ->getQuery()
-                  ->getResult();
+                ->getQuery()
+                ->getResult();
     }
 
     /**

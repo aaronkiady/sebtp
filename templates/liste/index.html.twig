@@ -59,7 +59,7 @@
                     <select name="filiere" class="form-select">
                         <option value="">Toutes les filières</option>
                         {% for fil in filieres %}
-                            <option value="{{ fil }}" {% if filiere == fil %}selected{% endif %}>{{ fil }}</option>
+                            <option value="{{ fil }}" {% if app.request.query.get('filiere') == fil %}selected{% endif %}>{{ fil }}</option>
                         {% endfor %}
                     </select>
                 </div>
