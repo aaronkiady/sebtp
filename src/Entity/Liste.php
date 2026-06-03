@@ -203,6 +203,17 @@ class Liste
         return implode(', ', $this->filiere);
     }
 
+    public function getFiliereDisplay(): string
+    {
+        if (empty($this->filiere)) {
+            return '-';
+        }
+        if (is_array($this->filiere)) {
+            return implode(', ', $this->filiere);
+        }
+        return (string) $this->filiere;
+    }
+
     public function getNbEmployes(): ?string
     {
         return $this->nbEmployes;

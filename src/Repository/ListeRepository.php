@@ -204,19 +204,40 @@ class ListeRepository extends ServiceEntityRepository
      */
     public function getDistinctFilieres(): array
     {
-        $results = $this->createQueryBuilder('l')
-            ->select('DISTINCT l.filiere')
-            ->where('l.filiere IS NOT NULL')
-            ->orderBy('l.filiere', 'ASC')
-            ->getQuery()
-            ->getResult();
+        // Utilisation de SQL natif pour extraire les valeurs du tableau JSON
+        $conn = $this->getEntityManager()->getConnection();
+        
+        // Pour MySQL 5.7+
+        $sql = "SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[0]')) as filiere 
+                FROM liste 
+                WHERE filiere IS NOT NULL AND JSON_LENGTH(filiere) > 0
+                
+                UNION
+                
+                SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[1]')) as filiere 
+                FROM liste 
+                WHERE filiere IS NOT NULL AND JSON_LENGTH(filiere) > 1
+                
+                UNION
+                
+                SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[2]')) as filiere 
+                FROM liste 
+                WHERE filiere IS NOT NULL AND JSON_LENGTH(filiere) > 2
+                
+                ORDER BY filiere ASC";
+        
+        $stmt = $conn->prepare($sql);
+        $result = $stmt->executeQuery();
+        $results = $result->fetchAllAssociative();
 
         $filieres = [];
-        foreach ($results as $result) {
-            if ($result['filiere']) {
-                $filieres[] = $result['filiere'];
+        foreach ($results as $row) {
+            $filiere = $row['filiere'];
+            if ($filiere && !in_array($filiere, $filieres)) {
+                $filieres[] = $filiere;
             }
         }
+        
         return $filieres;
     }
 
