@@ -19,6 +19,9 @@
                 </div>
             </div>
             <div class="d-flex gap-2">
+                <a href="{{ path('app_liste_import') }}?{{ app.request.query.all|url_encode }}" class="btn btn-outline-success">
+                    <i class="fas fa-file-excel me-2"></i>Importer
+                </a>
                 <a href="{{ path('app_export_liste_form') }}?{{ app.request.query.all|url_encode }}" class="btn btn-outline-success">
                     <i class="fas fa-file-excel me-2"></i>Exporter
                 </a>

@@ -7,6 +7,7 @@ use App\Form\ListeType;
 use App\Repository\ListeRepository;
 use App\Repository\ParticipationRepository;
 use App\Service\AuditLogger;
+use App\Service\ImportExcelService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
@@ -19,10 +20,12 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 final class ListeController extends AbstractController
 {
     private AuditLogger $auditLogger;
+    private string $uploadDirectory;
 
     public function __construct(AuditLogger $auditLogger)
     {
         $this->auditLogger = $auditLogger;
+        $this->uploadDirectory = __DIR__ . '/../../public/uploads';
     }
 
     #[Route(name: 'app_liste_index', methods: ['GET'])]
@@ -83,15 +86,17 @@ final class ListeController extends AbstractController
             $fichier = $form->get('fichiers')->getData();
             
             if ($fichier) {
+                // Créer le dossier s'il n'existe pas
+                if (!is_dir($this->uploadDirectory)) {
+                    mkdir($this->uploadDirectory, 0777, true);
+                }
+                
                 $originalFilename = pathinfo($fichier->getClientOriginalName(), PATHINFO_FILENAME);
                 $safeFilename = $slugger->slug($originalFilename);
                 $newFilename = $safeFilename . '-' . uniqid() . '.' . $fichier->guessExtension();
 
                 try {
-                    $fichier->move(
-                        $this->getParameter('uploads_directory'),
-                        $newFilename
-                    );
+                    $fichier->move($this->uploadDirectory, $newFilename);
                     $liste->setFichiers($newFilename);
                 } catch (FileException $e) {
                     $this->addFlash('danger', 'Erreur lors du téléchargement du fichier.');
@@ -127,17 +132,74 @@ final class ListeController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}', name: 'app_liste_show', methods: ['GET'])]
-    public function show(Liste $liste): Response
+    #[Route('/import', name: 'app_liste_import', methods: ['GET', 'POST'])]
+    public function import(Request $request, ImportExcelService $importService): Response
     {
+        if ($request->isMethod('POST')) {
+            $file = $request->files->get('excel_file');
+            
+            if (!$file) {
+                $this->addFlash('error', 'Veuillez sélectionner un fichier Excel.');
+                return $this->redirectToRoute('app_liste_import');
+            }
+
+            if ($file->getClientOriginalExtension() !== 'xlsx') {
+                $this->addFlash('error', 'Le fichier doit être au format .xlsx');
+                return $this->redirectToRoute('app_liste_import');
+            }
+
+            try {
+                $result = $importService->importAdherents($file);
+                
+                $this->addFlash('success', sprintf('Import terminé : %d adhérents importés, %d erreurs.', $result['success'], $result['errors']));
+                
+                foreach ($result['messages'] as $message) {
+                    if (strpos($message, 'Erreur') !== false) {
+                        $this->addFlash('error', $message);
+                    } else {
+                        $this->addFlash('info', $message);
+                    }
+                }
+                
+                // Audit log
+                $this->auditLogger->logExport(
+                    'ImportExcel',
+                    sprintf('Import Excel - %d adhérents importés', $result['success'])
+                );
+                
+            } catch (\Exception $e) {
+                $this->addFlash('error', 'Erreur lors de l\'import : ' . $e->getMessage());
+            }
+            
+            return $this->redirectToRoute('app_liste_index');
+        }
+
+        return $this->render('liste/import.html.twig');
+    }
+
+    #[Route('/{id}', name: 'app_liste_show', methods: ['GET'])]
+    public function show(string $id, EntityManagerInterface $em): Response
+    {
+        $liste = $em->getRepository(Liste::class)->find((int)$id);
+        
+        if (!$liste) {
+            throw $this->createNotFoundException('Adhérent non trouvé');
+        }
+        
         return $this->render('liste/show.html.twig', [
             'liste' => $liste,
         ]);
     }
 
     #[Route('/{id}/edit', name: 'app_liste_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Liste $liste, EntityManagerInterface $entityManager, SluggerInterface $slugger): Response
+    public function edit(string $id, Request $request, EntityManagerInterface $entityManager, SluggerInterface $slugger): Response
     {
+        $liste = $entityManager->getRepository(Liste::class)->find((int)$id);
+        
+        if (!$liste) {
+            throw $this->createNotFoundException('Adhérent non trouvé');
+        }
+        
         $oldData = [
             'nom' => $liste->getNom(),
             'email' => $liste->getEmail(),
@@ -167,10 +229,15 @@ final class ListeController extends AbstractController
             $fichier = $form->get('fichiers')->getData();
             
             if ($fichier) {
+                // Créer le dossier s'il n'existe pas
+                if (!is_dir($this->uploadDirectory)) {
+                    mkdir($this->uploadDirectory, 0777, true);
+                }
+                
                 // Supprimer l'ancien fichier s'il existe
                 $ancienFichier = $liste->getFichiers();
                 if ($ancienFichier) {
-                    $ancienChemin = $this->getParameter('uploads_directory') . '/' . $ancienFichier;
+                    $ancienChemin = $this->uploadDirectory . '/' . $ancienFichier;
                     if (file_exists($ancienChemin)) {
                         unlink($ancienChemin);
                     }
@@ -181,10 +248,7 @@ final class ListeController extends AbstractController
                 $newFilename = $safeFilename . '-' . uniqid() . '.' . $fichier->guessExtension();
 
                 try {
-                    $fichier->move(
-                        $this->getParameter('uploads_directory'),
-                        $newFilename
-                    );
+                    $fichier->move($this->uploadDirectory, $newFilename);
                     $liste->setFichiers($newFilename);
                 } catch (FileException $e) {
                     $this->addFlash('danger', 'Erreur lors du téléchargement du fichier.');
@@ -227,15 +291,21 @@ final class ListeController extends AbstractController
     }
 
     #[Route('/{id}/fichier/download', name: 'app_liste_fichier_download', methods: ['GET'])]
-    public function downloadFichier(Liste $liste): Response
+    public function downloadFichier(string $id, EntityManagerInterface $em): Response
     {
+        $liste = $em->getRepository(Liste::class)->find((int)$id);
+        
+        if (!$liste) {
+            throw $this->createNotFoundException('Adhérent non trouvé');
+        }
+        
         $fichier = $liste->getFichiers();
         
         if (!$fichier) {
             throw $this->createNotFoundException('Aucun fichier associé à cet adhérent.');
         }
         
-        $chemin = $this->getParameter('uploads_directory') . '/' . $fichier;
+        $chemin = $this->uploadDirectory . '/' . $fichier;
         
         if (!file_exists($chemin)) {
             throw $this->createNotFoundException('Le fichier n\'existe plus sur le serveur.');
@@ -245,12 +315,18 @@ final class ListeController extends AbstractController
     }
 
     #[Route('/{id}/fichier/delete', name: 'app_liste_fichier_delete', methods: ['POST'])]
-    public function deleteFichier(Request $request, Liste $liste, EntityManagerInterface $entityManager): Response
+    public function deleteFichier(string $id, Request $request, EntityManagerInterface $entityManager): Response
     {
+        $liste = $entityManager->getRepository(Liste::class)->find((int)$id);
+        
+        if (!$liste) {
+            throw $this->createNotFoundException('Adhérent non trouvé');
+        }
+        
         if ($this->isCsrfTokenValid('delete_fichier_' . $liste->getId(), $request->request->get('_token'))) {
             $fichier = $liste->getFichiers();
             if ($fichier) {
-                $chemin = $this->getParameter('uploads_directory') . '/' . $fichier;
+                $chemin = $this->uploadDirectory . '/' . $fichier;
                 if (file_exists($chemin)) {
                     unlink($chemin);
                 }
@@ -263,9 +339,17 @@ final class ListeController extends AbstractController
         return $this->redirectToRoute('app_liste_show', ['id' => $liste->getId()]);
     }
 
+    
+
     #[Route('/{id}', name: 'app_liste_delete', methods: ['POST'])]
-    public function delete(Request $request, Liste $liste, EntityManagerInterface $entityManager): Response
+    public function delete(string $id, Request $request, EntityManagerInterface $entityManager): Response
     {
+        $liste = $entityManager->getRepository(Liste::class)->find((int)$id);
+        
+        if (!$liste) {
+            throw $this->createNotFoundException('Adhérent non trouvé');
+        }
+        
         $adherentData = [
             'nom' => $liste->getNom(),
             'email' => $liste->getEmail(),
@@ -277,7 +361,7 @@ final class ListeController extends AbstractController
             // Supprimer le fichier associé
             $fichier = $liste->getFichiers();
             if ($fichier) {
-                $chemin = $this->getParameter('uploads_directory') . '/' . $fichier;
+                $chemin = $this->uploadDirectory . '/' . $fichier;
                 if (file_exists($chemin)) {
                     unlink($chemin);
                 }
@@ -299,17 +383,17 @@ final class ListeController extends AbstractController
 
     #[Route('/{id}/stats', name: 'app_liste_stats', methods: ['GET'])]
     public function stats(
-        int $id,
+        string $id,
         ParticipationRepository $repo,
         EntityManagerInterface $em
     ): Response {
-        $liste = $em->getRepository(Liste::class)->find($id);
+        $liste = $em->getRepository(Liste::class)->find((int)$id);
 
         if (!$liste) {
             throw $this->createNotFoundException('Adhérent introuvable');
         }
 
-        $stats = $repo->getStatsByAdherent($id);
+        $stats = $repo->getStatsByAdherent((int)$id);
         
         $this->addFlash('info', 'Statistiques calculées: Total=' . $stats['total'] . ', Payé=' . $stats['paye'] . ', Impayé=' . $stats['impaye']);
 

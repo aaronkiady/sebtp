@@ -1,0 +1,58 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Import Excel - Adhérents{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_liste_index') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-file-excel"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Import Excel</h1>
+                    <p class="text-muted mb-0">Importation massive d'adhérents depuis un fichier Excel</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">
+                        <i class="fas fa-upload me-2 text-primary"></i>Upload du fichier
+                    </div>
+                    <div class="card-body">
+                        <form method="post" enctype="multipart/form-data" class="text-center">
+                            <div class="mb-4">
+                                <div class="border rounded-3 p-5 bg-light">
+                                    <i class="fas fa-file-excel fa-4x text-success mb-3"></i>
+                                    <h5>Sélectionnez votre fichier Excel</h5>
+                                    <p class="text-muted small">Format accepté : .xlsx</p>
+                                    <input type="file" name="excel_file" id="excel_file" class="form-control" accept=".xlsx" required style="max-width: 300px; margin: 0 auto;">
+                                </div>
+                            </div>
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Attention :</strong> Assurez-vous que votre fichier respecte le format du modèle.
+                                La première ligne doit contenir les en-têtes exacts.
+                            </div>
+                            <button type="submit" class="btn btn-cute">
+                                <i class="fas fa-upload me-2"></i> Importer les adhérents
+                            </button>
+                            <a href="{{ path('app_liste_index') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i> Annuler
+                            </a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
