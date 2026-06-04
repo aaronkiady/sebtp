@@ -113,49 +113,66 @@ class ListeRepository extends ServiceEntityRepository
     /**
      * Récupère les adhérents pour export avec filtres
      */
-    public function getForExport(
-        ?string $statut = null,
-        ?string $statutMenmbre = null,
-        ?string $filiere = null,
-        ?string $activite = null,
-        ?string $search = null
-    ): array {
-        $qb = $this->createQueryBuilder('l');
+    /**
+ * Récupère les adhérents pour export avec filtres
+ */
+public function getForExport(
+    ?string $statut = null,
+    ?string $statutMenmbre = null,
+    ?string $filiere = null,
+    ?string $activite = null,
+    ?string $search = null
+): array {
+    // D'abord récupérer les adhérents avec les filtres simples
+    $qb = $this->createQueryBuilder('l');
 
-        if ($statut && $statut !== 'tous') {
-            $qb->andWhere('l.statut = :statut')
-               ->setParameter('statut', $statut);
-        }
+    if ($statut && $statut !== 'tous') {
+        $qb->andWhere('l.statut = :statut')
+           ->setParameter('statut', $statut);
+    }
 
-        if ($statutMenmbre && $statutMenmbre !== 'tous') {
-            $qb->andWhere('l.statutMenmbre = :statutMenmbre')
-               ->setParameter('statutMenmbre', $statutMenmbre);
-        }
+    if ($statutMenmbre && $statutMenmbre !== 'tous') {
+        $qb->andWhere('l.statutMenmbre = :statutMenmbre')
+           ->setParameter('statutMenmbre', $statutMenmbre);
+    }
 
-        if ($filiere && $filiere !== 'tous') {
-            $qb->andWhere('l.filiere = :filiere')
-               ->setParameter('filiere', $filiere);
-        }
+    // Ne pas filtrer par filière ici car c'est un JSON
+    // On filtrera après en PHP
 
-        if ($activite && $activite !== 'tous') {
-            $qb->andWhere('l.activite = :activite')
-               ->setParameter('activite', $activite);
-        }
+    if ($activite && $activite !== 'tous') {
+        $qb->andWhere('l.activite = :activite')
+           ->setParameter('activite', $activite);
+    }
 
-        if ($search) {
-            $qb->andWhere($qb->expr()->orX(
-                $qb->expr()->like('l.nom', ':search'),
-                $qb->expr()->like('l.email', ':search'),
-                $qb->expr()->like('l.numero', ':search'),
-                $qb->expr()->like('l.activite', ':search')
-            ))
-            ->setParameter('search', '%' . $search . '%');
-        }
+    if ($search) {
+        $qb->andWhere($qb->expr()->orX(
+            $qb->expr()->like('l.nom', ':search'),
+            $qb->expr()->like('l.email', ':search'),
+            $qb->expr()->like('l.numero', ':search'),
+            $qb->expr()->like('l.activite', ':search')
+        ))
+        ->setParameter('search', '%' . $search . '%');
+    }
 
-        return $qb->orderBy('l.nom', 'ASC')
+    $results = $qb->orderBy('l.nom', 'ASC')
                   ->getQuery()
                   ->getResult();
+    
+    // Filtrer par filière en PHP (car c'est un tableau JSON)
+    if ($filiere && $filiere !== 'tous') {
+        $searchFiliere = trim($filiere);
+        $filteredResults = [];
+        foreach ($results as $adherent) {
+            $filieres = $adherent->getFiliere();
+            if (is_array($filieres) && in_array($searchFiliere, $filieres)) {
+                $filteredResults[] = $adherent;
+            }
+        }
+        $results = $filteredResults;
     }
+    
+    return $results;
+}
 
     /**
      * Récupère tous les statuts distincts pour les filtres
@@ -206,42 +223,51 @@ class ListeRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
         
-        $sql = "SELECT filiere FROM liste WHERE filiere IS NOT NULL AND filiere != '' AND filiere != 'null' AND filiere != '[]'";
+        // Récupérer toutes les valeurs uniques du tableau JSON
+        $sql = "SELECT DISTINCT TRIM(JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[0]'))) as filiere 
+                FROM liste 
+                WHERE filiere IS NOT NULL AND JSON_LENGTH(filiere) > 0
+                
+                UNION
+                
+                SELECT DISTINCT TRIM(JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[1]'))) as filiere 
+                FROM liste 
+                WHERE filiere IS NOT NULL AND JSON_LENGTH(filiere) > 1
+                
+                UNION
+                
+                SELECT DISTINCT TRIM(JSON_UNQUOTE(JSON_EXTRACT(filiere, '$[2]'))) as filiere 
+                FROM liste 
+                WHERE filiere IS NOT NULL AND JSON_LENGTH(filiere) > 2
+                
+                HAVING filiere IS NOT NULL AND filiere != ''";
+        
         $stmt = $conn->prepare($sql);
         $result = $stmt->executeQuery();
         $results = $result->fetchAllAssociative();
         
         $filieres = [];
         foreach ($results as $row) {
-            $filiereData = json_decode($row['filiere'], true);
-            if (is_array($filiereData)) {
-                foreach ($filiereData as $fil) {
-                    $fil = trim($fil);
-                    // Nettoyer les valeurs
-                    $fil = str_replace(['"', "'"], '', $fil);
-                    if (!empty($fil) && !in_array($fil, $filieres)) {
-                        $filieres[] = $fil;
-                    }
+            $filiere = trim($row['filiere']);
+            if (!empty($filiere) && !in_array($filiere, $filieres)) {
+                $filieres[] = $filiere;
+            }
+        }
+        
+        // Nettoyer : remplacer "BTP" par "BTP / Construction"
+        $cleanFilieres = [];
+        foreach ($filieres as $fil) {
+            if ($fil === 'BTP' || $fil === 'BTP/Construction') {
+                if (!in_array('BTP / Construction', $cleanFilieres)) {
+                    $cleanFilieres[] = 'BTP / Construction';
                 }
+            } else {
+                $cleanFilieres[] = $fil;
             }
         }
         
-        // Valeurs standardisées
-        $standardFilieres = [
-            'BTP / Construction',
-            'Bureau d\'études',
-            'Fournisseur de biens et services'
-        ];
-        
-        // Ajouter les valeurs standardisées
-        foreach ($standardFilieres as $standard) {
-            if (!in_array($standard, $filieres)) {
-                $filieres[] = $standard;
-            }
-        }
-        
-        sort($filieres);
-        return $filieres;
+        sort($cleanFilieres);
+        return $cleanFilieres;
     }
 
     /**
@@ -287,7 +313,7 @@ class ListeRepository extends ServiceEntityRepository
         ];
     }
 
-     /**
+    /**
      * Recherche avec filtres avancés
      */
     public function findByFilters(
@@ -301,85 +327,88 @@ class ListeRepository extends ServiceEntityRepository
     ): array {
         $qb = $this->createQueryBuilder('l');
 
-        // Recherche textuelle
+        // Recherche texte
         if ($searchTerm) {
-            $qb->andWhere('l.nom LIKE :q OR l.email LIKE :q OR l.numero LIKE :q OR l.adresse LIKE :q OR l.activite LIKE :q')
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    $qb->expr()->like('l.nom', ':q'),
+                    $qb->expr()->like('l.email', ':q'),
+                    $qb->expr()->like('l.numero', ':q'),
+                    $qb->expr()->like('l.adresse', ':q'),
+                    $qb->expr()->like('l.activite', ':q')
+                )
+            )
             ->setParameter('q', '%' . $searchTerm . '%');
         }
 
-        // Filtre par statut
+        // Statut
         if ($statut && $statut !== 'tous') {
             $qb->andWhere('l.statut = :statut')
             ->setParameter('statut', $statut);
         }
 
-        // Filtre par filière (utilisation de FIND_IN_SET ou LIKE)
-        if ($filiere && $filiere !== 'tous') {
-            // Nettoyer la valeur de recherche
-            $filiere = trim($filiere);
-            
-            // Recherche avec LIKE en encodant correctement la chaîne
-            $qb->andWhere($qb->expr()->like('l.filiere', ':filiere'))
-            ->setParameter('filiere', '%' . addslashes($filiere) . '%');
+        // Filière JSON
+       
+if (!empty($filiere) && $filiere !== 'tous') {
+
+    $allResults = $qb->getQuery()->getResult();
+
+    $filteredIds = [];
+
+    foreach ($allResults as $adherent) {
+
+        $filieres = $adherent->getFiliere();
+
+        if (!is_array($filieres)) {
+            continue;
         }
 
-        // Filtre par cotisation FMTP
+        foreach ($filieres as $fil) {
+
+            if (trim($fil) === trim($filiere)) {
+                $filteredIds[] = $adherent->getId();
+                break;
+            }
+        }
+    }
+
+    if (empty($filteredIds)) {
+        return [];
+    }
+
+    $qb = $this->createQueryBuilder('l');
+    $qb->andWhere('l.id IN (:ids)')
+       ->setParameter('ids', $filteredIds);
+}
+        // Cotisation FMTP
         if ($cotFMTP && $cotFMTP !== 'tous') {
             $qb->andWhere('l.cotFMTP = :cotFMTP')
             ->setParameter('cotFMTP', $cotFMTP);
         }
 
-        // Filtre par statut du membre
+        // Statut membre
         if ($statutMenmbre && $statutMenmbre !== 'tous') {
             $qb->andWhere('l.statutMenmbre = :statutMenmbre')
             ->setParameter('statutMenmbre', $statutMenmbre);
         }
 
-        // Filtre par type (ONG, entreprise, sponsor)
+        // Type
         if ($type && $type !== 'tous') {
             $qb->andWhere('l.type = :type')
             ->setParameter('type', $type);
         }
 
-        // Filtre par année d'adhésion (basée sur la date de création ou première cotisation)
+        // Année adhésion
         if ($anneeAdhesion && $anneeAdhesion !== 'tous') {
-            // Utiliser SUBSTRING car YEAR n'est pas supporté dans toutes les versions
-            $qb->andWhere('(SUBSTRING(l.validationBureau, 1, 4) = :annee OR SUBSTRING(l.validationAG, 1, 4) = :annee)')
-            ->setParameter('annee', $anneeAdhesion);
+            $qb->andWhere(
+                '(YEAR(l.validationBureau) = :annee OR YEAR(l.validationAG) = :annee)'
+            )
+            ->setParameter('annee', (int) $anneeAdhesion);
         }
 
         return $qb->orderBy('l.nom', 'ASC')
                 ->getQuery()
                 ->getResult();
-    }
-
-    /**
-     * Récupère les années d'adhésion disponibles
-     */
-    public function getAvailableAdhesionYears(): array
-    {
-        $conn = $this->getEntityManager()->getConnection();
-        $sql = 'SELECT DISTINCT YEAR(validation_bureau) as annee FROM liste WHERE validation_bureau IS NOT NULL 
-                UNION 
-                SELECT DISTINCT YEAR(validation_ag) as annee FROM liste WHERE validation_ag IS NOT NULL
-                ORDER BY annee DESC';
-        $stmt = $conn->prepare($sql);
-        $result = $stmt->executeQuery();
-        $results = $result->fetchAllAssociative();
-
-        $years = [];
-        foreach ($results as $row) {
-            if ($row['annee']) {
-                $years[] = (string) $row['annee'];
-            }
-        }
-        
-        // Ajouter l'année en cours par défaut
-        if (empty($years)) {
-            $years[] = date('Y');
-        }
-        
-        return $years;
     }
 
      /**
@@ -540,4 +569,30 @@ class ListeRepository extends ServiceEntityRepository
 
         return $adherents[0];
     }
+
+    public function getAvailableAdhesionYears(): array
+{
+    $conn = $this->getEntityManager()->getConnection();
+    $sql = 'SELECT DISTINCT YEAR(validation_bureau) as annee FROM liste WHERE validation_bureau IS NOT NULL
+            UNION
+            SELECT DISTINCT YEAR(validation_ag) as annee FROM liste WHERE validation_ag IS NOT NULL
+            ORDER BY annee DESC';
+
+    $stmt = $conn->prepare($sql);
+    $result = $stmt->executeQuery();
+    $results = $result->fetchAllAssociative();
+
+    $years = [];
+    foreach ($results as $row) {
+        if ($row['annee']) {
+            $years[] = (string) $row['annee'];
+        }
+    }
+
+    if (empty($years)) {
+        $years[] = date('Y');
+    }
+
+    return $years;
+}
 }

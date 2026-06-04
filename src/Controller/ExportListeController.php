@@ -98,7 +98,7 @@ class ExportListeController extends AbstractController
             'E' => 'Adresse',
             'F' => 'Site web',
             'G' => 'Activité',
-            'H' => 'Filière',
+            'H' => 'Filière(s)',
             'I' => 'Nb employés',
             'J' => 'Cotisation FMTP',
             'K' => 'DG',
@@ -150,13 +150,16 @@ class ExportListeController extends AbstractController
             $sheet->setCellValue('F' . $row, $adherent->getSiteWeb() ?? '-');
             $sheet->setCellValue('G' . $row, $adherent->getActivite());
             $sheet->setCellValue('I' . $row, $adherent->getNbEmployes() ?? '-');
-            $filiere = $adherent->getFiliere();
-                if (is_array($filiere)) {
-                    $filiereString = implode(', ', $filiere);
-                } else {
-                    $filiereString = $filiere ?? '-';
-                }
-                $sheet->setCellValue('H' . $row, $filiereString);
+            
+            // Gestion de la filière (JSON array)
+            $filiereData = $adherent->getFiliere();
+            if (is_array($filiereData)) {
+                $filiereString = implode(', ', $filiereData);
+            } else {
+                $filiereString = $filiereData ?? '-';
+            }
+            $sheet->setCellValue('H' . $row, $filiereString);
+            
             $sheet->setCellValue('J' . $row, $adherent->getCotFMTP() ?? '-');
             $sheet->setCellValue('K' . $row, $adherent->getDg());
             $sheet->setCellValue('L' . $row, $adherent->getTelephoneDg() ?? '-');
@@ -198,6 +201,7 @@ class ExportListeController extends AbstractController
                 ->getStartColor()->setARGB('FFE5E7EB');
         }
 
+        // Ajuster la largeur des colonnes
         foreach (range('A', 'V') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }

@@ -93,11 +93,11 @@ class Liste
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $statutDemande = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $validationBureau = null;
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    private ?\DateTimeInterface $validationBureau = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $validationAG = null;
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    private ?\DateTimeInterface $validationAG = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $type = null;
@@ -467,23 +467,23 @@ class Liste
         return $this;
     }
 
-    public function getValidationBureau(): ?string
+    public function getValidationBureau(): ?\DateTimeInterface
     {
         return $this->validationBureau;
     }
 
-    public function setValidationBureau(?string $validationBureau): static
+    public function setValidationBureau(?\DateTimeInterface $validationBureau): static
     {
         $this->validationBureau = $validationBureau;
         return $this;
     }
 
-    public function getValidationAG(): ?string
+    public function getValidationAG(): ?\DateTimeInterface
     {
         return $this->validationAG;
     }
 
-    public function setValidationAG(?string $validationAG): static
+    public function setValidationAG(?\DateTimeInterface $validationAG): static
     {
         $this->validationAG = $validationAG;
         return $this;
