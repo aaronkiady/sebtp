@@ -91,6 +91,7 @@
                             <th>Montant payé</th>
                             <th>Mode de paiement</th>
                             <th>Référence</th>
+                            <th>Commentaire</th>
                             <th>Observation</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -109,6 +110,9 @@
                                     <td>{{ paiement.modePaiement|default('-') }}</td>
                                     <td>
                                         <span class="text-muted small">{{ paiement.reference|default('-') }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted small">{{ paiement.commentaire|default('-') }}</span>
                                     </td>
                                     <td>{{ paiement.observation|default('-') }}</td>
                                     <td class="text-center">

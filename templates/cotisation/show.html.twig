@@ -135,6 +135,7 @@
                                         <td class="fw-bold text-success">{{ paiement.montant|number_format(0, '.', ' ') }} MGA</td>
                                         <td>{{ paiement.modePaiement|default('-') }}</td>
                                         <td>{{ paiement.reference|default('-') }}</td>
+                                        <td>{{ paiement.commentaire|default('-') }}</td>
                                         <td>{{ paiement.observation|default('-') }}</td>
                                         <td class="text-center">
                                             <div class="btn-group">

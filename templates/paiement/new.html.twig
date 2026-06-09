@@ -66,6 +66,11 @@
                         {{ form_widget(form.reference, {'attr': {'class': 'form-control custom-input'}}) }}
                         <div class="text-danger small mt-1">{{ form_errors(form.reference) }}</div>
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.commentaire.vars.label }}</label>
+                        {{ form_widget(form.commentaire, {'attr': {'class': 'form-control custom-input'}}) }}
+                        <div class="text-danger small mt-1">{{ form_errors(form.commentaire) }}</div>
+                    </div>
                     <div class="col-12">
                         <label class="form-label">{{ form.observation.vars.label }}</label>
                         {{ form_widget(form.observation, {'attr': {'class': 'form-control custom-input'}}) }}

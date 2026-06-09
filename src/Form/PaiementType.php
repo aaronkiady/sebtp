@@ -43,6 +43,11 @@ class PaiementType extends AbstractType
                 'required' => false,
                 'attr' => ['class' => 'form-control custom-input', 'placeholder' => 'Optionnel'],
             ])
+            ->add('commentaire', TextType::class, [
+                'label' => 'Commentaire',
+                'required' => false,
+                'attr' => ['class' => 'form-control custom-input', 'placeholder' => 'Optionnel'],
+            ])
             ->add('observation', TextType::class, [
                 'label' => 'Observation',
                 'required' => false,
