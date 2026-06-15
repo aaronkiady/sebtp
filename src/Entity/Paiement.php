@@ -35,6 +35,9 @@ class Paiement
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $commentaire = null;
 
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $periode = null;
+
     public function __construct()
     {
         $this->datePaiement = new \DateTime();
@@ -119,7 +122,17 @@ class Paiement
     public function setCommentaire(?string $commentaire): static
     {
         $this->commentaire = $commentaire;
+        return $this;
+    }
 
+    public function getPeriode(): ?string
+    {
+        return $this->periode;
+    }
+
+    public function setPeriode(?string $periode): static
+    {
+        $this->periode = $periode;
         return $this;
     }
 }

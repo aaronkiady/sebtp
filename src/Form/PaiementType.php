@@ -22,7 +22,6 @@ class PaiementType extends AbstractType
                 'required' => true,
             ])
             ->add('datePaiement', DateType::class, [
-                'label' => 'Date de paiement',
                 'widget' => 'single_text',
                 'attr' => ['class' => 'form-control custom-input'],
                 'required' => true,
@@ -46,14 +45,13 @@ class PaiementType extends AbstractType
             ->add('commentaire', TextType::class, [
                 'label' => 'Commentaire',
                 'required' => false,
-                'attr' => ['class' => 'form-control custom-input', 'placeholder' => 'Optionnel'],
+                'attr' => ['class' => 'form-control custom-input', 'placeholder' => 'Commentaire interne'],
             ])
             ->add('observation', TextType::class, [
                 'label' => 'Observation',
                 'required' => false,
-                'attr' => ['class' => 'form-control custom-input'],
-            ])
-        ;
+                'attr' => ['class' => 'form-control custom-input', 'placeholder' => 'Observation générale'],
+            ]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void

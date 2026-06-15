@@ -53,21 +53,20 @@ final class CotisationController extends AbstractController
         }
 
         $cotisations = $adherent->getCotisations();
-        $montantAttendu = $calculator->calculateMontant($adherent);
         $totalPaye = 0;
         
         foreach ($cotisations as $cotisation) {
             $totalPaye += $cotisation->getMontantPaye();
         }
         
-        $statut = $totalPaye >= $montantAttendu ? 'paye' : 'impaye';
+        $montantAttendu = $calculator->calculateMontantByPeriode($adherent, date('Y'));
 
         return $this->render('cotisation/history.html.twig', [
             'adherent' => $adherent,
             'cotisations' => $cotisations,
             'montantAttendu' => $montantAttendu,
             'totalPaye' => $totalPaye,
-            'statut' => $statut,
+            'statut' => $totalPaye >= $montantAttendu ? 'paye' : 'impaye',
             'calculator' => $calculator,
         ]);
     }
@@ -93,41 +92,47 @@ final class CotisationController extends AbstractController
             throw $this->createNotFoundException('Adhérent non trouvé');
         }
 
-        $currentYear = date('Y');
-        $montantAttendu = $calculator->getMontantHistorique($adherent, $currentYear);
+        $periode = $request->request->get('periode', date('Y'));
         
-        // Vérifier si une cotisation existe pour cette année
+        $montantAttendu = $calculator->calculateMontant($adherent, $periode);
+        
         $cotisation = $em->getRepository(Cotisation::class)
             ->findOneBy([
                 'adherent' => $adherent,
-                'periode' => $currentYear
+                'periode' => $periode
             ]);
         
-        // Si aucune cotisation n'existe, la créer
         if (!$cotisation) {
+            $result = $calculator->calculateMontantWithBareme($adherent, $calculator->createDateFromPeriode($periode));
+            
             $cotisation = new Cotisation();
             $cotisation->setAdherent($adherent);
-            $cotisation->setPeriode($currentYear);
-            $cotisation->setMontant($montantAttendu);
+            $cotisation->setPeriode($periode);
+            $cotisation->setMontant($result['montant']);
             $cotisation->setMontantPaye(0);
+            $cotisation->setStatut('impaye');
+            $cotisation->setBaremeId($result['baremeId']);
+            $cotisation->setBaremeLibelle($result['baremeLibelle']);
+            
             $em->persist($cotisation);
             $em->flush();
 
-            // Audit log pour la création de la cotisation
             $this->auditLogger->logCreate(
                 'Cotisation',
                 $cotisation->getId(),
-                $adherent->getNom() . ' - ' . $currentYear,
+                $adherent->getNom() . ' - ' . $periode,
                 [
                     'adherent' => $adherent->getNom(),
-                    'periode' => $currentYear,
-                    'montant' => $montantAttendu
+                    'periode' => $periode,
+                    'montant' => $result['montant'],
+                    'bareme' => $result['baremeLibelle']
                 ]
             );
         }
 
         $paiement = new Paiement();
         $paiement->setCotisation($cotisation);
+        $paiement->setPeriode($periode);
         
         $form = $this->createForm(PaiementType::class, $paiement);
         $form->handleRequest($request);
@@ -135,19 +140,18 @@ final class CotisationController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $em->persist($paiement);
             
-            // Mettre à jour le montant payé de la cotisation
             $oldMontantPaye = $cotisation->getMontantPaye();
             $cotisation->setMontantPaye($cotisation->getMontantPaye() + $paiement->getMontant());
             
             $em->flush();
 
-            // Audit log pour le paiement
             $this->auditLogger->logPayment(
                 'Paiement',
                 $paiement->getId(),
-                $adherent->getNom() . ' - ' . $currentYear,
+                $adherent->getNom() . ' - ' . $periode,
                 [
                     'adherent' => $adherent->getNom(),
+                    'periode' => $periode,
                     'montant' => $paiement->getMontant(),
                     'mode_paiement' => $paiement->getModePaiement(),
                     'ancien_montant_paye' => $oldMontantPaye,
@@ -155,6 +159,7 @@ final class CotisationController extends AbstractController
                 ]
             );
 
+            $this->addFlash('success', 'Paiement enregistré avec succès!');
             return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherent_id]);
         }
 
@@ -163,6 +168,7 @@ final class CotisationController extends AbstractController
             'adherent' => $adherent,
             'montantAttendu' => $montantAttendu,
             'resteAPayer' => $cotisation->getResteAPayer(),
+            'periode' => $periode,
             'calculator' => $calculator,
         ]);
     }
@@ -173,18 +179,21 @@ final class CotisationController extends AbstractController
         $cotisation = $paiement->getCotisation();
         $adherent = $cotisation->getAdherent();
         $ancienMontant = $paiement->getMontant();
+        $anciennePeriode = $paiement->getPeriode();
         
         $oldData = [
             'montant' => $paiement->getMontant(),
             'mode_paiement' => $paiement->getModePaiement(),
             'reference' => $paiement->getReference(),
+            'commentaire' => $paiement->getCommentaire(),
+            'observation' => $paiement->getObservation(),
+            'periode' => $paiement->getPeriode(),
         ];
         
         $form = $this->createForm(PaiementType::class, $paiement);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Mettre à jour le montant payé de la cotisation
             $nouveauMontant = $paiement->getMontant();
             $difference = $nouveauMontant - $ancienMontant;
             $cotisation->setMontantPaye($cotisation->getMontantPaye() + $difference);
@@ -195,9 +204,11 @@ final class CotisationController extends AbstractController
                 'montant' => $paiement->getMontant(),
                 'mode_paiement' => $paiement->getModePaiement(),
                 'reference' => $paiement->getReference(),
+                'commentaire' => $paiement->getCommentaire(),
+                'observation' => $paiement->getObservation(),
+                'periode' => $paiement->getPeriode(),
             ];
 
-            // Audit log
             $this->auditLogger->logUpdate(
                 'Paiement',
                 $paiement->getId(),
@@ -226,15 +237,16 @@ final class CotisationController extends AbstractController
             'montant' => $paiement->getMontant(),
             'mode_paiement' => $paiement->getModePaiement(),
             'reference' => $paiement->getReference(),
+            'commentaire' => $paiement->getCommentaire(),
+            'observation' => $paiement->getObservation(),
+            'periode' => $paiement->getPeriode(),
         ];
         
         if ($this->isCsrfTokenValid('delete_paiement_' . $paiement->getId(), $request->request->get('_token'))) {
-            // Mettre à jour le montant payé de la cotisation
             $cotisation->setMontantPaye($cotisation->getMontantPaye() - $paiement->getMontant());
             $em->remove($paiement);
             $em->flush();
 
-            // Audit log
             $this->auditLogger->logDelete(
                 'Paiement',
                 $paiement->getId(),
@@ -257,20 +269,18 @@ final class CotisationController extends AbstractController
 
         $currentYear = date('Y');
         
-        // Vérifier si une cotisation existe déjà
         $existing = $em->getRepository(Cotisation::class)->findOneBy([
             'adherent' => $adherent,
             'periode' => $currentYear
         ]);
 
         if (!$existing) {
-            // Calculer le montant avec le barème actuel
             $result = $calculator->calculateMontantWithBareme($adherent);
             
             $cotisation = new Cotisation();
             $cotisation->setAdherent($adherent);
             $cotisation->setPeriode($currentYear);
-            $cotisation->setMontant($result['montant']);  // Montant figé
+            $cotisation->setMontant($result['montant']);
             $cotisation->setMontantPaye(0);
             $cotisation->setStatut('impaye');
             $cotisation->setBaremeId($result['baremeId']);
@@ -279,7 +289,6 @@ final class CotisationController extends AbstractController
             $em->persist($cotisation);
             $em->flush();
             
-            // Audit log
             $this->auditLogger->logCreate(
                 'Cotisation',
                 $cotisation->getId(),

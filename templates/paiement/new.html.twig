@@ -11,7 +11,7 @@
             </div>
             <div>
                 <h4 class="mb-0 fw-800">Nouveau paiement</h4>
-                <p class="text-muted mb-0 small">{{ adherent.nom }} - Cotisation {{ "now"|date('Y') }}</p>
+                <p class="text-muted mb-0 small">{{ adherent.nom }}</p>
             </div>
         </div>
 
@@ -47,17 +47,30 @@
             {{ form_start(form) }}
                 <div class="row g-4">
                     <div class="col-md-6">
-                        <label class="form-label">{{ form.montant.vars.label }}</label>
+                        <label class="form-label">Période (Année) <span class="text-danger">*</span></label>
+                        <select name="periode" class="form-select custom-input" required>
+                            {% set currentYear = "now"|date('Y') %}
+                            <option value="{{ currentYear }}" selected>{{ currentYear }} (Année en cours)</option>
+                            <option value="{{ currentYear + 1 }}">{{ currentYear + 1 }} (Année prochaine)</option>
+                            <option value="{{ currentYear - 1 }}">{{ currentYear - 1 }}</option>
+                            <option value="{{ currentYear - 2 }}">{{ currentYear - 2 }}</option>
+                            <option value="{{ currentYear - 3 }}">{{ currentYear - 3 }}</option>
+                            <option value="{{ currentYear - 4 }}">{{ currentYear - 4 }}</option>
+                            <option value="{{ currentYear - 5 }}">{{ currentYear - 5 }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.montant.vars.label }} <span class="text-danger">*</span></label>
                         {{ form_widget(form.montant, {'attr': {'class': 'form-control custom-input'}}) }}
                         <div class="text-danger small mt-1">{{ form_errors(form.montant) }}</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">{{ form.datePaiement.vars.label }}</label>
+                        <label class="form-label">{{ form.datePaiement.vars.label }} <span class="text-danger">*</span></label>
                         {{ form_widget(form.datePaiement, {'attr': {'class': 'form-control custom-input'}}) }}
                         <div class="text-danger small mt-1">{{ form_errors(form.datePaiement) }}</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">{{ form.modePaiement.vars.label }}</label>
+                        <label class="form-label">{{ form.modePaiement.vars.label }} <span class="text-danger">*</span></label>
                         {{ form_widget(form.modePaiement, {'attr': {'class': 'form-select custom-input'}}) }}
                         <div class="text-danger small mt-1">{{ form_errors(form.modePaiement) }}</div>
                     </div>

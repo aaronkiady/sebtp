@@ -19,6 +19,15 @@ class CotisationCalculator
     }
 
     /**
+     * Calcule le montant de la cotisation en fonction de l'adhérent et de la période (année)
+     */
+    public function calculateMontantByPeriode(Liste $adherent, $periode): float
+    {
+        $date = $this->createDateFromPeriode($periode);
+        return $this->calculateMontantWithBareme($adherent, $date)['montant'];
+    }
+
+    /**
      * Calcule le montant de la cotisation en fonction de l'adhérent et de la date
      * Retourne également l'ID et le libellé du barème utilisé
      */
@@ -26,7 +35,6 @@ class CotisationCalculator
     {
         $date = $date ?? new \DateTime();
         
-        // Déterminer la catégorie et sous-catégorie
         if ($adherent->getStatutMenmbre() === 'sponsor') {
             $categorie = 'sponsor';
             $sousCategorie = null;
@@ -44,24 +52,33 @@ class CotisationCalculator
             return [
                 'montant' => $bareme->getMontant(),
                 'baremeId' => $bareme->getId(),
-                'baremeLibelle' => $this->getBaremeLibelle($bareme)
+                'baremeLibelle' => $this->getBaremeLibelle($bareme),
+                'periode' => $date->format('Y')
             ];
         }
 
-        // Fallback : barème par défaut
         $montant = $this->getDefaultMontant($categorie, $sousCategorie);
         return [
             'montant' => $montant,
             'baremeId' => null,
-            'baremeLibelle' => 'Barème par défaut'
+            'baremeLibelle' => 'Barème par défaut',
+            'periode' => $date->format('Y')
         ];
     }
 
     /**
      * Calcule le montant uniquement (pour compatibilité)
      */
-    public function calculateMontant(Liste $adherent, ?\DateTimeInterface $date = null): float
+    public function calculateMontant(Liste $adherent, $periode = null): float
     {
+        if ($periode === null) {
+            $date = new \DateTime();
+        } elseif ($periode instanceof \DateTimeInterface) {
+            $date = $periode;
+        } else {
+            $date = $this->createDateFromPeriode($periode);
+        }
+        
         $result = $this->calculateMontantWithBareme($adherent, $date);
         return $result['montant'];
     }
@@ -71,17 +88,65 @@ class CotisationCalculator
      */
     public function getMontantHistorique(Liste $adherent, string $periode): float
     {
-        // Vérifier si une cotisation existe déjà avec un montant stocké
         foreach ($adherent->getCotisations() as $cotisation) {
             if ($cotisation->getPeriode() === $periode) {
-                // Retourner le montant stocké, ne jamais recalculer
                 return $cotisation->getMontant();
             }
         }
         
-        // Si aucune cotisation n'existe, calculer avec barème
-        $result = $this->calculateMontantWithBareme($adherent, \DateTime::createFromFormat('Y', $periode));
+        $date = $this->createDateFromPeriode($periode);
+        $result = $this->calculateMontantWithBareme($adherent, $date);
         return $result['montant'];
+    }
+
+    /**
+     * Récupère le barème complet pour une période donnée
+     */
+    public function getBaremeForPeriode(Liste $adherent, string $periode): ?array
+    {
+        $date = $this->createDateFromPeriode($periode);
+        
+        if ($adherent->getStatutMenmbre() === 'sponsor') {
+            $categorie = 'sponsor';
+            $sousCategorie = null;
+        } elseif ($this->isONG($adherent)) {
+            $categorie = 'ong';
+            $sousCategorie = null;
+        } else {
+            $categorie = 'entreprise';
+            $sousCategorie = $this->getTrancheEmployesKey($adherent->getNbEmployes());
+        }
+
+        $bareme = $this->baremeRepository->getBaremeActif($categorie, $sousCategorie, $date);
+        
+        if ($bareme) {
+            return [
+                'id' => $bareme->getId(),
+                'montant' => $bareme->getMontant(),
+                'libelle' => $this->getBaremeLibelle($bareme),
+                'date_debut' => $bareme->getDateDebut()->format('d/m/Y'),
+                'date_fin' => $bareme->getDateFin() ? $bareme->getDateFin()->format('d/m/Y') : 'En cours'
+            ];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Crée un objet DateTime à partir d'une année
+     */
+    public function createDateFromPeriode($periode): \DateTimeInterface
+    {
+        if ($periode instanceof \DateTimeInterface) {
+            return $periode;
+        }
+        
+        $year = (int) $periode;
+        $date = \DateTime::createFromFormat('Y-m-d', $year . '-01-01');
+        if (!$date) {
+            $date = new \DateTime();
+        }
+        return $date;
     }
 
     /**
@@ -162,5 +227,33 @@ class CotisationCalculator
         } else {
             return 'Membre sponsor';
         }
+    }
+
+    /**
+     * Retourne le barème complet pour affichage
+     */
+    public function getBaremeComplete(): array
+    {
+        $baremes = $this->baremeRepository->getAllActifs();
+        $result = [];
+        
+        foreach ($baremes as $bareme) {
+            $key = $bareme->getCategorie();
+            if ($bareme->getSousCategorie()) {
+                $key .= '_' . $bareme->getSousCategorie();
+            }
+            
+            $result[$key] = [
+                'categorie' => $bareme->getCategorie(),
+                'sousCategorie' => $bareme->getSousCategorie(),
+                'montant' => $bareme->getMontant(),
+                'montant_formate' => number_format($bareme->getMontant(), 0, '.', ' ') . ' MGA',
+                'libelle' => $this->getBaremeLibelle($bareme),
+                'date_debut' => $bareme->getDateDebut()->format('d/m/Y'),
+                'actif' => $bareme->isActif()
+            ];
+        }
+        
+        return $result;
     }
 }

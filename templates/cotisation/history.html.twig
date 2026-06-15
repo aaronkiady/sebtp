@@ -14,210 +14,128 @@
         </a>
     </div>
 
-    {# Cartes de statistiques #}
-    {% for cotisation in cotisations %}
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Montant attendu</div>
-                    <div class="h5 mb-0 font-weight-bold">{{ cotisation.montant|number_format(0, '.', ' ') }} MGA</div>
-                    <small class="text-muted">
-                        {% if adherent.statutMenmbre == 'sponsor' %}
-                            Membre sponsor
-                        elseif adherent.type == 'ong' or 'ONG' in adherent.activite %}
-                            Tarif ONG
-                        else %}
-                            {{ calculator.getTrancheEmployes(adherent.nbEmployes) }}
-                        {% endif %}
-                    </small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total payé</div>
-                    <div class="h5 mb-0 font-weight-bold text-success">{{ totalPaye|number_format(0, '.', ' ') }} MGA</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Reste à payer</div>
-                    <div class="h5 mb-0 font-weight-bold text-warning">{{ cotisation.getResteAPayer|number_format(0, '.', ' ') }} MGA</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card border-left-{{ statut == 'paye' ? 'success' : 'danger' }} shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-{{ statut == 'paye' ? 'success' : 'danger' }} text-uppercase mb-1">Statut</div>
-                    <div class="h5 mb-0 font-weight-bold">
-                        {% if statut == 'paye' %}
-                            <span class="text-success">✓ À JOUR</span>
-                        {% else %}
-                            <span class="text-danger">✘ IMPAYÉ</span>
-                        {% endif %}
+    {# Accordéon des cotisations par période #}
+    <div class="accordion" id="accordionCotisations">
+        {% for cotisation in cotisations %}
+        <div class="accordion-item mb-3 border rounded shadow-sm">
+            <h2 class="accordion-header" id="heading{{ cotisation.id }}">
+                <button class="accordion-button {{ loop.index != 1 ? 'collapsed' : '' }}" type="button" 
+                        data-bs-toggle="collapse" data-bs-target="#collapse{{ cotisation.id }}" 
+                        aria-expanded="{{ loop.index == 1 ? 'true' : 'false' }}" 
+                        aria-controls="collapse{{ cotisation.id }}">
+                    <div class="d-flex justify-content-between w-100 me-3">
+                        <strong class="text-primary">Année {{ cotisation.periode }}</strong>
+                        <div class="d-flex gap-3">
+                            <span class="text-success">Payé: {{ cotisation.montantPaye|number_format(0, '.', ' ') }} MGA</span>
+                            <span class="text-danger">Reste: {{ cotisation.getResteAPayer|number_format(0, '.', ' ') }} MGA</span>
+                            {% if cotisation.statut == 'paye' %}
+                                <span class="badge bg-success">Payé</span>
+                            {% elseif cotisation.statut == 'partiel' %}
+                                <span class="badge bg-warning">Partiel</span>
+                            {% else %}
+                                <span class="badge bg-danger">Impayé</span>
+                            {% endif %}
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-    {# Liste des paiements #}
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white">
-            <h6 class="m-0 font-weight-bold text-primary">Historique des paiements</h6>
-            <div>
-                {% if cotisations|length == 0 %}
-                    <a href="{{ path('app_cotisation_generate', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-info shadow-sm me-2">
-                        <i class="fas fa-plus"></i> Générer la cotisation {{ "now"|date('Y') }}
-                    </a>
-                {% endif %}
-                <a href="{{ path('app_paiement_new', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-primary shadow-sm">
-                    <i class="fas fa-plus"></i> Enregistrer un paiement
-                </a>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Date</th>
-                            <th>Période</th>
-                            <th>Montant payé</th>
-                            <th>Mode de paiement</th>
-                            <th>Référence</th>
-                            <th>Commentaire</th>
-                            <th>Observation</th>
-                            <th class="text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% for cotisation in cotisations %}
-                        {% set paiements = cotisation.paiements %}
-                        {% if paiements|length > 0 %}
-                            {% for paiement in paiements %}
-                                <tr>
-                                    <td>{{ paiement.datePaiement|date('d/m/Y') }}</td>
-                                    <td>
-                                        <span class="badge bg-light text-dark border px-2 py-1">{{ cotisation.periode }}</span>
-                                    </td>
-                                    <td class="fw-bold text-success">{{ paiement.montant|number_format(0, '.', ' ') }} MGA</td>
-                                    <td>{{ paiement.modePaiement|default('-') }}</td>
-                                    <td>
-                                        <span class="text-muted small">{{ paiement.reference|default('-') }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="text-muted small">{{ paiement.commentaire|default('-') }}</span>
-                                    </td>
-                                    <td>{{ paiement.observation|default('-') }}</td>
-                                    <td class="text-center">
-                                        <div class="btn-group">
-                                            <a href="{{ path('app_paiement_edit', {'id': paiement.id}) }}" 
-                                               class="btn btn-sm btn-outline-warning" title="Modifier">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <form method="post" 
-                                                  action="{{ path('app_paiement_delete', {'id': paiement.id}) }}" 
-                                                  onsubmit="return confirm('Supprimer ce paiement ?')" 
-                                                  style="display:inline">
-                                                <input type="hidden" name="_token" value="{{ csrf_token('delete_paiement_' ~ paiement.id) }}">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="7" class="text-center py-3 text-muted">
-                                    <i class="fas fa-info-circle me-1"></i> 
-                                    Aucun paiement pour l'année {{ cotisation.periode }}
-                                    <a href="{{ path('app_paiement_new', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-link">
-                                        Ajouter un paiement
-                                    </a>
-                                </td>
-                            </tr>
-                        {% endif %}
-                    {% else %}
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <i class="fas fa-folder-open fa-3x mb-3 d-block opacity-25"></i>
-                                Aucune cotisation trouvée.
-                                <div class="mt-3">
-                                    <a href="{{ path('app_cotisation_generate', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-info">
-                                        <i class="fas fa-plus me-1"></i> Générer la cotisation {{ "now"|date('Y') }}
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    {# Récapitulatif par année #}
-    {% if cotisations|length > 0 %}
-    <div class="card shadow">
-        <div class="card-header bg-white">
-            <h6 class="m-0 font-weight-bold text-primary">Récapitulatif par année</h6>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                {% for cotisation in cotisations %}
-                    <div class="col-md-3 mb-3">
-                        <div class="border rounded p-3 text-center">
-                            <h6 class="fw-bold mb-2">{{ cotisation.periode }}</h6>
-                            <div class="small">
-                                <div class="d-flex justify-content-between">
-                                    <span>Dû:</span>
-                                    <strong>{{ cotisation.montant|number_format(0, '.', ' ') }} MGA</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mt-1">
-                                    <span>Payé:</span>
-                                    <strong class="text-success">{{ cotisation.montantPaye|number_format(0, '.', ' ') }} MGA</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mt-1">
-                                    <span>Reste:</span>
-                                    <strong class="{% if cotisation.getResteAPayer > 0 %}text-danger{% else %}text-success{% endif %}">
-                                        {{ cotisation.getResteAPayer|number_format(0, '.', ' ') }} MGA
-                                    </strong>
+                </button>
+            </h2>
+            <div id="collapse{{ cotisation.id }}" class="accordion-collapse collapse {{ loop.index == 1 ? 'show' : '' }}" 
+                 aria-labelledby="heading{{ cotisation.id }}" data-bs-parent="#accordionCotisations">
+                <div class="accordion-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <div class="text-muted small">Montant attendu</div>
+                                    <h4 class="mb-0">{{ cotisation.montant|number_format(0, '.', ' ') }} MGA</h4>
+                                    <small class="text-muted">
+                                        {% if adherent.statutMenmbre == 'sponsor' %}
+                                            Membre sponsor
+                                        {% elseif adherent.type == 'ong' or 'ONG' in adherent.activite %}
+                                            Tarif ONG
+                                        {% else %}
+                                            {{ calculator.getTrancheEmployes(adherent.nbEmployes) }}
+                                        {% endif %}
+                                    </small>
                                 </div>
                             </div>
-                            <div class="mt-2">
-                                {% if cotisation.statut == 'paye' %}
-                                    <span class="badge bg-success">Payé</span>
-                                {% elseif cotisation.statut == 'partiel' %}
-                                    <span class="badge bg-warning">Partiel</span>
-                                {% else %}
-                                    <span class="badge bg-danger">Impayé</span>
-                                {% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            {% set paiements = cotisation.paiements %}
+                            {% if paiements|length > 0 %}
+                            <h6 class="fw-bold mb-2">Historique des paiements</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Montant</th>
+                                            <th>Mode</th>
+                                            <th>Référence</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for paiement in paiements %}
+                                        <tr>
+                                            <td>{{ paiement.datePaiement|date('d/m/Y') }}</td>
+                                            <td class="text-success fw-bold">{{ paiement.montant|number_format(0, '.', ' ') }} MGA</td>
+                                            <td>{{ paiement.modePaiement|default('-') }}</td>
+                                            <td>{{ paiement.reference|default('-') }}</td>
+                                            <td class="text-center">
+                                                <div class="btn-group">
+                                                    <a href="{{ path('app_paiement_edit', {'id': paiement.id}) }}" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <form method="post" 
+                                                          action="{{ path('app_paiement_delete', {'id': paiement.id}) }}" 
+                                                          onsubmit="return confirm('Supprimer ce paiement ?')" 
+                                                          style="display:inline">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_paiement_' ~ paiement.id) }}">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </table>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-light text-center">
+                                <i class="fas fa-info-circle me-1"></i> 
+                                Aucun paiement pour l'année {{ cotisation.periode }}
+                            </div>
+                            {% endif %}
+                            <div class="text-end mt-2">
+                                <a href="{{ path('app_paiement_new', {'adherent_id': adherent.id, 'periode': cotisation.periode}) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus me-1"></i> Ajouter un paiement pour {{ cotisation.periode }}
+                                </a>
                             </div>
                         </div>
                     </div>
-                {% endfor %}
+                </div>
             </div>
         </div>
+        {% else %}
+        <div class="card shadow mb-4">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-folder-open fa-3x mb-3 d-block opacity-25"></i>
+                <p class="text-muted fw-bold">Aucune cotisation trouvée.</p>
+                <a href="{{ path('app_cotisation_generate', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-info">
+                    <i class="fas fa-plus me-1"></i> Générer la cotisation {{ "now"|date('Y') }}
+                </a>
+            </div>
+        </div>
+        {% endfor %}
     </div>
-    {% endif %}
-</div>
-{% endblock %}
 
-{% block stylesheets %}
-{{ parent() }}
-<style>
-    .border-left-primary { border-left: 0.25rem solid #4e73df !important; }
-    .border-left-success { border-left: 0.25rem solid #1cc88a !important; }
-    .border-left-warning { border-left: 0.25rem solid #f6c23e !important; }
-    .border-left-danger { border-left: 0.25rem solid #e74a3b !important; }
-    .text-xs { font-size: .7rem; text-transform: uppercase; }
-</style>
+    <div class="text-center mt-3">
+        <a href="{{ path('app_paiement_new', {'adherent_id': adherent.id}) }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i> Enregistrer un paiement
+        </a>
+    </div>
+</div>
 {% endblock %}
