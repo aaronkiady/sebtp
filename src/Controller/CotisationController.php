@@ -14,6 +14,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use App\Service\ImportCotisationExcelService;
 
 #[Route('/cotisation')]
 final class CotisationController extends AbstractController
@@ -92,10 +93,16 @@ final class CotisationController extends AbstractController
             throw $this->createNotFoundException('Adhérent non trouvé');
         }
 
-        $periode = $request->request->get('periode', date('Y'));
+        // Récupérer la période depuis l'URL ou depuis le formulaire
+        $periode = $request->query->get('periode');
+        if (!$periode) {
+            $periode = $request->request->get('periode', date('Y'));
+        }
         
+        // Calculer le montant attendu avec le barème de la période
         $montantAttendu = $calculator->calculateMontant($adherent, $periode);
         
+        // Récupérer la cotisation existante ou en créer une nouvelle
         $cotisation = $em->getRepository(Cotisation::class)
             ->findOneBy([
                 'adherent' => $adherent,
@@ -108,7 +115,7 @@ final class CotisationController extends AbstractController
             $cotisation = new Cotisation();
             $cotisation->setAdherent($adherent);
             $cotisation->setPeriode($periode);
-            $cotisation->setMontant($result['montant']);
+            $cotisation->setMontant($result['montant']);  // Stocker le montant calculé
             $cotisation->setMontantPaye(0);
             $cotisation->setStatut('impaye');
             $cotisation->setBaremeId($result['baremeId']);
@@ -116,18 +123,12 @@ final class CotisationController extends AbstractController
             
             $em->persist($cotisation);
             $em->flush();
-
-            $this->auditLogger->logCreate(
-                'Cotisation',
-                $cotisation->getId(),
-                $adherent->getNom() . ' - ' . $periode,
-                [
-                    'adherent' => $adherent->getNom(),
-                    'periode' => $periode,
-                    'montant' => $result['montant'],
-                    'bareme' => $result['baremeLibelle']
-                ]
-            );
+            
+            // Recalculer le montantAttendu après création
+            $montantAttendu = $cotisation->getMontant();
+        } else {
+            // Si la cotisation existe, utiliser son montant stocké
+            $montantAttendu = $cotisation->getMontant();
         }
 
         $paiement = new Paiement();
@@ -307,5 +308,50 @@ final class CotisationController extends AbstractController
         }
 
         return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherent_id]);
+    }
+
+    #[Route('/import', name: 'app_cotisation_import', methods: ['GET', 'POST'])]
+    public function import(Request $request, ImportCotisationExcelService $importService): Response
+    {
+        if ($request->isMethod('POST')) {
+            $file = $request->files->get('excel_file');
+            
+            if (!$file) {
+                $this->addFlash('error', 'Veuillez sélectionner un fichier Excel.');
+                return $this->redirectToRoute('app_cotisation_import');
+            }
+
+            if ($file->getClientOriginalExtension() !== 'xlsx') {
+                $this->addFlash('error', 'Le fichier doit être au format .xlsx');
+                return $this->redirectToRoute('app_cotisation_import');
+            }
+
+            try {
+                $result = $importService->importCotisations($file);
+                
+                $this->addFlash('success', sprintf('Import terminé : %d cotisations importées/mises à jour, %d erreurs.', $result['success'], $result['errors']));
+                
+                foreach ($result['messages'] as $message) {
+                    if (strpos($message, 'Erreur') !== false) {
+                        $this->addFlash('error', $message);
+                    } else {
+                        $this->addFlash('info', $message);
+                    }
+                }
+                
+                // Audit log
+                $this->auditLogger->logExport(
+                    'ImportCotisationExcel',
+                    sprintf('Import Excel cotisations - %d lignes', $result['success'])
+                );
+                
+            } catch (\Exception $e) {
+                $this->addFlash('error', 'Erreur lors de l\'import : ' . $e->getMessage());
+            }
+            
+            return $this->redirectToRoute('app_cotisation_index');
+        }
+
+        return $this->render('cotisation/import.html.twig');
     }
 }

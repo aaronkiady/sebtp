@@ -48,15 +48,15 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <label class="form-label">Période (Année) <span class="text-danger">*</span></label>
-                        <select name="periode" class="form-select custom-input" required>
+                        <select name="periode" id="periode_select" class="form-select custom-input" required>
                             {% set currentYear = "now"|date('Y') %}
-                            <option value="{{ currentYear }}" selected>{{ currentYear }} (Année en cours)</option>
-                            <option value="{{ currentYear + 1 }}">{{ currentYear + 1 }} (Année prochaine)</option>
-                            <option value="{{ currentYear - 1 }}">{{ currentYear - 1 }}</option>
-                            <option value="{{ currentYear - 2 }}">{{ currentYear - 2 }}</option>
-                            <option value="{{ currentYear - 3 }}">{{ currentYear - 3 }}</option>
-                            <option value="{{ currentYear - 4 }}">{{ currentYear - 4 }}</option>
-                            <option value="{{ currentYear - 5 }}">{{ currentYear - 5 }}</option>
+                            <option value="{{ currentYear }}" {% if periode == currentYear %}selected{% endif %}>{{ currentYear }} (Année en cours)</option>
+                            <option value="{{ currentYear + 1 }}" {% if periode == currentYear + 1 %}selected{% endif %}>{{ currentYear + 1 }} (Année prochaine)</option>
+                            <option value="{{ currentYear - 1 }}" {% if periode == currentYear - 1 %}selected{% endif %}>{{ currentYear - 1 }}</option>
+                            <option value="{{ currentYear - 2 }}" {% if periode == currentYear - 2 %}selected{% endif %}>{{ currentYear - 2 }}</option>
+                            <option value="{{ currentYear - 3 }}" {% if periode == currentYear - 3 %}selected{% endif %}>{{ currentYear - 3 }}</option>
+                            <option value="{{ currentYear - 4 }}" {% if periode == currentYear - 4 %}selected{% endif %}>{{ currentYear - 4 }}</option>
+                            <option value="{{ currentYear - 5 }}" {% if periode == currentYear - 5 %}selected{% endif %}>{{ currentYear - 5 }}</option>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -91,6 +91,15 @@
                     </div>
                 </div>
 
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Information :</strong> 
+                    Vous êtes en train d'enregistrer un paiement pour l'année <strong>{{ periode }}</strong>.
+                    {% if montantAttendu > 0 %}
+                    Le montant attendu pour cette année est de <strong>{{ montantAttendu|number_format(0, '.', ' ') }} MGA</strong>.
+                    {% endif %}
+                </div>
+
                 <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
                     <a href="{{ path('app_cotisation_history', {'adherent_id': adherent.id}) }}" class="btn-action btn-cancel text-decoration-none">
                         <i class="fas fa-times me-2"></i> Annuler
@@ -103,4 +112,24 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const periodeSelect = document.getElementById('periode_select');
+    const anneeSpan = document.querySelector('.alert-info strong:first-of-type');
+    const montantSpan = document.querySelector('.alert-info strong:last-of-type');
+    
+    if (periodeSelect) {
+        periodeSelect.addEventListener('change', function() {
+            const selectedPeriode = this.value;
+            if (anneeSpan) {
+                anneeSpan.textContent = selectedPeriode;
+            }
+            
+            // Recharger la page avec la nouvelle période
+            window.location.href = '{{ path('app_paiement_new', {'adherent_id': adherent.id}) }}?periode=' + selectedPeriode;
+        });
+    }
+});
+</script>
 {% endblock %}
