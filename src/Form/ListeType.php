@@ -79,6 +79,7 @@ class ListeType extends AbstractType
             ])
             ->add('cotFMTP', ChoiceType::class, [
                 'label' => 'Cotisation FMFP',
+                'required' => false,
                 'choices' => [
                     'Oui' => 'Oui',
                     'Non' => 'Non',

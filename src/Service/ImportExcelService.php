@@ -21,11 +21,11 @@ class ImportExcelService
         $results = [
             'success' => 0,
             'errors' => 0,
+            'updated' => 0,
             'messages' => []
         ];
 
         try {
-            // Charger le fichier Excel
             $spreadsheet = IOFactory::load($file->getPathname());
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray();
@@ -48,8 +48,20 @@ class ImportExcelService
                 }
 
                 try {
-                    // Créer un NOUVEL adhérent (pas de recherche d'existant)
-                    $adherent = new Liste();
+                    // Vérifier si un adhérent avec ce nom existe déjà
+                    $existingAdherent = $this->entityManager
+                        ->getRepository(Liste::class)
+                        ->findOneBy(['nom' => $nom]);
+
+                    if ($existingAdherent) {
+                        // Mettre à jour l'adhérent existant
+                        $adherent = $existingAdherent;
+                        $isUpdate = true;
+                    } else {
+                        // Créer un nouvel adhérent
+                        $adherent = new Liste();
+                        $isUpdate = false;
+                    }
 
                     // Map des colonnes selon votre template
                     $adherent->setEmail($this->getValue($row, 0));
@@ -60,7 +72,20 @@ class ImportExcelService
                     
                     // Valeurs par défaut si non renseignées
                     $adherent->setActivite($this->getValue($row, 5) ?? 'Non renseigné');
-                    $adherent->setFiliere($this->getValue($row, 6) ?? 'BTP / Construction ');
+                    
+                    // Gérer la filière comme un tableau
+                    $filiereValue = $this->getValue($row, 6);
+                    if ($filiereValue) {
+                        if (strpos($filiereValue, ',') !== false) {
+                            $filiereArray = array_map('trim', explode(',', $filiereValue));
+                        } else {
+                            $filiereArray = [$filiereValue];
+                        }
+                        $adherent->setFiliere($filiereArray);
+                    } else {
+                        $adherent->setFiliere([]);
+                    }
+                    
                     $adherent->setNbEmployes($this->getValue($row, 7) ?? '0');
                     
                     // Cotisation FMFP
@@ -78,7 +103,7 @@ class ImportExcelService
                     } elseif ($statutMenmbre === 'bureau') {
                         $adherent->setStatutMenmbre('bureau');
                     } else {
-                        $adherent->setStatutMenmbre('simple'); // Valeur par défaut
+                        $adherent->setStatutMenmbre('simple');
                     }
                     
                     $adherent->setFonctionSEBTP($this->getValue($row, 13));
@@ -109,9 +134,14 @@ class ImportExcelService
                     // Fichiers (optionnel)
                     $adherent->setFichiers($this->getValue($row, 22));
 
-                    $this->entityManager->persist($adherent);
-                    $results['success']++;
-                    $results['messages'][] = "Ligne " . ($rowIndex + 2) . " : Adhérent '{$adherent->getNom()}' importé avec succès.";
+                    if (!$isUpdate) {
+                        $this->entityManager->persist($adherent);
+                        $results['success']++;
+                        $results['messages'][] = "Ligne " . ($rowIndex + 2) . " : Adhérent '{$adherent->getNom()}' importé avec succès.";
+                    } else {
+                        $results['updated']++;
+                        $results['messages'][] = "Ligne " . ($rowIndex + 2) . " : Adhérent '{$adherent->getNom()}' mis à jour avec succès.";
+                    }
 
                 } catch (\Exception $e) {
                     $results['errors']++;
