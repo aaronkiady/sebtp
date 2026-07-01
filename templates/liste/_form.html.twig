@@ -58,6 +58,9 @@
                 {{ f.render_field(form.numero,        'fas fa-phone',             '') }}
                 {{ f.render_field(form.email,         'fas fa-envelope',          '') }}
                 {{ f.render_field(form.statut,        'fas fa-tag',               '') }}
+                {{ f.render_field(form.nif,                                       '') }}
+                {{ f.render_field(form.stat,                                      '') }}
+                {{ f.render_field(form.cnaps,                                     '') }}
 
                 {# Champs conditionnels liés au statut principal #}
                 {% if form.validationBureau is defined %}

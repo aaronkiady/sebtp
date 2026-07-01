@@ -105,6 +105,15 @@ class Liste
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $fichiers = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $nif = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stat = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $cnaps = null;
+
     public function __construct()
     {
         $this->formations = new ArrayCollection();
@@ -508,6 +517,42 @@ class Liste
     public function setFichiers(?string $fichiers): static
     {
         $this->fichiers = $fichiers;
+        return $this;
+    }
+
+    public function getNif(): ?string
+    {
+        return $this->nif;
+    }
+
+    public function setNif(?string $nif): static
+    {
+        $this->nif = $nif;
+
+        return $this;
+    }
+
+    public function getStat(): ?string
+    {
+        return $this->stat;
+    }
+
+    public function setStat(?string $stat): static
+    {
+        $this->stat = $stat;
+
+        return $this;
+    }
+
+    public function getCnaps(): ?string
+    {
+        return $this->cnaps;
+    }
+
+    public function setCnaps(?string $cnaps): static
+    {
+        $this->cnaps = $cnaps;
+
         return $this;
     }
 }

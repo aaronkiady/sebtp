@@ -62,6 +62,18 @@ class ListeType extends AbstractType
                 'label' => 'Domaine d\'activité',
                 'required' => false,
             ])
+            ->add('nif', TextType::class, [
+                'label' => 'NIF',
+                'required' => false,
+            ])
+            ->add('stat', TextType::class, [
+                'label' => 'STAT',
+                'required' => false,
+            ])
+            ->add('cnaps', TextType::class, [
+                'label' => 'CNAPS',
+                'required' => false,
+            ])
             ->add('filiere', ChoiceType::class, [
                 'label' => 'Filière(s)',
                 'choices' => [
