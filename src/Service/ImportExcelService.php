@@ -30,16 +30,13 @@ class ImportExcelService
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray();
 
-            // Supprimer la ligne d'en-tête
             array_shift($rows);
 
             foreach ($rows as $rowIndex => $row) {
-                // Vérifier si la ligne est vide
                 if (empty(array_filter($row))) {
                     continue;
                 }
 
-                // Vérifier si le nom est présent (obligatoire)
                 $nom = $this->getValue($row, 3);
                 if (empty($nom)) {
                     $results['errors']++;
@@ -48,32 +45,26 @@ class ImportExcelService
                 }
 
                 try {
-                    // Vérifier si un adhérent avec ce nom existe déjà
                     $existingAdherent = $this->entityManager
                         ->getRepository(Liste::class)
                         ->findOneBy(['nom' => $nom]);
 
                     if ($existingAdherent) {
-                        // Mettre à jour l'adhérent existant
                         $adherent = $existingAdherent;
                         $isUpdate = true;
                     } else {
-                        // Créer un nouvel adhérent
                         $adherent = new Liste();
                         $isUpdate = false;
                     }
 
-                    // Map des colonnes selon votre template
+                    // Map des colonnes
                     $adherent->setEmail($this->getValue($row, 0));
                     $adherent->setNumero($this->getValue($row, 1));
                     $adherent->setAdresse($this->getValue($row, 2));
                     $adherent->setNom($nom);
                     $adherent->setSiteWeb($this->getValue($row, 4));
-                    
-                    // Valeurs par défaut si non renseignées
                     $adherent->setActivite($this->getValue($row, 5) ?? 'Non renseigné');
                     
-                    // Gérer la filière comme un tableau
                     $filiereValue = $this->getValue($row, 6);
                     if ($filiereValue) {
                         if (strpos($filiereValue, ',') !== false) {
@@ -88,7 +79,6 @@ class ImportExcelService
                     
                     $adherent->setNbEmployes($this->getValue($row, 7) ?? '0');
                     
-                    // Cotisation FMFP
                     $cotFmtp = $this->getValue($row, 8);
                     $adherent->setCotFMTP($cotFmtp === 'oui' ? 'Oui' : ($cotFmtp === 'non' ? 'Non' : 'Non'));
                     
@@ -96,7 +86,6 @@ class ImportExcelService
                     $adherent->setAdresseDg($this->getValue($row, 10));
                     $adherent->setTelephoneDg($this->getValue($row, 11));
                     
-                    // Statut membre
                     $statutMenmbre = $this->getValue($row, 12);
                     if ($statutMenmbre === 'simple') {
                         $adherent->setStatutMenmbre('simple');
@@ -109,7 +98,6 @@ class ImportExcelService
                     $adherent->setFonctionSEBTP($this->getValue($row, 13));
                     $adherent->setMandat($this->getValue($row, 14));
                     
-                    // Statut principal
                     $statut = $this->getStatutValue($this->getValue($row, 15));
                     $adherent->setStatut($statut ?? 'actif');
                     
@@ -117,22 +105,33 @@ class ImportExcelService
                     $adherent->setRaisonDepart($this->getValue($row, 17));
                     $adherent->setStatutDemande($this->getValue($row, 18));
                     
-                    // Dates
+                    // CORRECTION : Convertir les dates en DateTime pour validationBureau
                     $validationBureau = $this->getValue($row, 19);
-                    if ($validationBureau && $this->isValidDate($validationBureau)) {
-                        $adherent->setValidationBureau($validationBureau);
+                    if ($validationBureau) {
+                        $dateTime = $this->convertToDateTime($validationBureau);
+                        if ($dateTime) {
+                            $adherent->setValidationBureau($dateTime);
+                        }
                     }
                     
+                    // CORRECTION : Convertir les dates en DateTime pour validationAG
                     $validationAG = $this->getValue($row, 20);
-                    if ($validationAG && $this->isValidDate($validationAG)) {
-                        $adherent->setValidationAG($validationAG);
+                    if ($validationAG) {
+                        $dateTime = $this->convertToDateTime($validationAG);
+                        if ($dateTime) {
+                            $adherent->setValidationAG($dateTime);
+                        }
                     }
                     
                     $type = $this->getTypeValue($this->getValue($row, 21));
                     $adherent->setType($type ?? 'entreprise');
                     
-                    // Fichiers (optionnel)
                     $adherent->setFichiers($this->getValue($row, 22));
+
+                    // Nouveaux champs
+                    $adherent->setNif($this->getValue($row, 23));
+                    $adherent->setStat($this->getValue($row, 24));
+                    $adherent->setCnaps($this->getValue($row, 25));
 
                     if (!$isUpdate) {
                         $this->entityManager->persist($adherent);
@@ -157,6 +156,58 @@ class ImportExcelService
         }
         
         return $results;
+    }
+
+    /**
+     * Convertit une date en objet DateTime
+     * Supporte les formats : JJ/MM/AAAA, DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD
+     */
+    private function convertToDateTime(?string $date): ?\DateTimeInterface
+    {
+        if (empty($date)) {
+            return null;
+        }
+
+        $date = trim($date);
+        
+        // Format JJ/MM/AAAA (ex: 02/07/2026)
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $date, $matches)) {
+            $dateTime = \DateTime::createFromFormat('d/m/Y', $date);
+            if ($dateTime) {
+                return $dateTime;
+            }
+        }
+        
+        // Format DD-MM-YYYY (ex: 02-07-2026)
+        if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $date, $matches)) {
+            $dateTime = \DateTime::createFromFormat('d-m-Y', $date);
+            if ($dateTime) {
+                return $dateTime;
+            }
+        }
+        
+        // Format YYYY-MM-DD (ex: 2026-07-02)
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $matches)) {
+            $dateTime = \DateTime::createFromFormat('Y-m-d', $date);
+            if ($dateTime) {
+                return $dateTime;
+            }
+        }
+        
+        // Format YYYY/MM/DD (ex: 2026/07/02)
+        if (preg_match('/^(\d{4})\/(\d{2})\/(\d{2})$/', $date, $matches)) {
+            $dateTime = \DateTime::createFromFormat('Y/m/d', $date);
+            if ($dateTime) {
+                return $dateTime;
+            }
+        }
+        
+        // Essayer de créer une date automatiquement
+        try {
+            return new \DateTime($date);
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     private function getValue(array $row, int $index): ?string
@@ -196,11 +247,5 @@ class ImportExcelService
         ];
         
         return $mapping[$type] ?? 'entreprise';
-    }
-
-    private function isValidDate(string $date): bool
-    {
-        $d = \DateTime::createFromFormat('Y-m-d', $date);
-        return $d && $d->format('Y-m-d') === $date;
     }
 }
