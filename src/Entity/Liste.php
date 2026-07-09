@@ -114,6 +114,15 @@ class Liste
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $cnaps = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $referentSebtp = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $numRef = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $mailRef = null;
+
     public function __construct()
     {
         $this->formations = new ArrayCollection();
@@ -552,6 +561,42 @@ class Liste
     public function setCnaps(?string $cnaps): static
     {
         $this->cnaps = $cnaps;
+
+        return $this;
+    }
+
+    public function getReferentSebtp(): ?string
+    {
+        return $this->referentSebtp;
+    }
+
+    public function setReferentSebtp(?string $referentSebtp): static
+    {
+        $this->referentSebtp = $referentSebtp;
+
+        return $this;
+    }
+
+    public function getNumRef(): ?string
+    {
+        return $this->numRef;
+    }
+
+    public function setNumRef(?string $numRef): static
+    {
+        $this->numRef = $numRef;
+
+        return $this;
+    }
+
+    public function getMailRef(): ?string
+    {
+        return $this->mailRef;
+    }
+
+    public function setMailRef(?string $mailRef): static
+    {
+        $this->mailRef = $mailRef;
 
         return $this;
     }

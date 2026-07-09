@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Liste;
+use App\Entity\Contact;
 use Doctrine\ORM\EntityManagerInterface;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -22,6 +23,7 @@ class ImportExcelService
             'success' => 0,
             'errors' => 0,
             'updated' => 0,
+            'contacts_imported' => 0,
             'messages' => []
         ];
 
@@ -30,6 +32,7 @@ class ImportExcelService
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray();
 
+            // Supprimer la ligne d'en-tête
             array_shift($rows);
 
             foreach ($rows as $rowIndex => $row) {
@@ -45,6 +48,7 @@ class ImportExcelService
                 }
 
                 try {
+                    // Vérifier si un adhérent avec ce nom existe déjà
                     $existingAdherent = $this->entityManager
                         ->getRepository(Liste::class)
                         ->findOneBy(['nom' => $nom]);
@@ -57,7 +61,7 @@ class ImportExcelService
                         $isUpdate = false;
                     }
 
-                    // Map des colonnes
+                    // Map des colonnes pour l'adhérent
                     $adherent->setEmail($this->getValue($row, 0));
                     $adherent->setNumero($this->getValue($row, 1));
                     $adherent->setAdresse($this->getValue($row, 2));
@@ -65,6 +69,7 @@ class ImportExcelService
                     $adherent->setSiteWeb($this->getValue($row, 4));
                     $adherent->setActivite($this->getValue($row, 5) ?? 'Non renseigné');
                     
+                    // Filière
                     $filiereValue = $this->getValue($row, 6);
                     if ($filiereValue) {
                         if (strpos($filiereValue, ',') !== false) {
@@ -105,7 +110,7 @@ class ImportExcelService
                     $adherent->setRaisonDepart($this->getValue($row, 17));
                     $adherent->setStatutDemande($this->getValue($row, 18));
                     
-                    // CORRECTION : Convertir les dates en DateTime pour validationBureau
+                    // Dates
                     $validationBureau = $this->getValue($row, 19);
                     if ($validationBureau) {
                         $dateTime = $this->convertToDateTime($validationBureau);
@@ -114,7 +119,6 @@ class ImportExcelService
                         }
                     }
                     
-                    // CORRECTION : Convertir les dates en DateTime pour validationAG
                     $validationAG = $this->getValue($row, 20);
                     if ($validationAG) {
                         $dateTime = $this->convertToDateTime($validationAG);
@@ -127,11 +131,32 @@ class ImportExcelService
                     $adherent->setType($type ?? 'entreprise');
                     
                     $adherent->setFichiers($this->getValue($row, 22));
-
-                    // Nouveaux champs
                     $adherent->setNif($this->getValue($row, 23));
                     $adherent->setStat($this->getValue($row, 24));
                     $adherent->setCnaps($this->getValue($row, 25));
+                    $adherent->setReferentSebtp($this->getValue($row, 26));
+                    $adherent->setNumRef($this->getValue($row, 27));
+                    $adherent->setMailRef($this->getValue($row, 28));
+                    
+                    // Traitement du contact RH
+                    $contactRHNom = $this->getValue($row, 29);
+                    $contactRHTel = $this->getValue($row, 30);
+                    $contactRHEmail = $this->getValue($row, 31);
+                    
+                    if ($contactRHNom) {
+                        $this->createOrUpdateContact($adherent, $contactRHNom, 'RH', $contactRHEmail, $contactRHTel);
+                        $results['contacts_imported']++;
+                    }
+                    
+                    // Traitement du contact Compta
+                    $contactComptaNom = $this->getValue($row, 32);
+                    $contactComptaTel = $this->getValue($row, 33);
+                    $contactComptaEmail = $this->getValue($row, 34);
+                    
+                    if ($contactComptaNom) {
+                        $this->createOrUpdateContact($adherent, $contactComptaNom, 'Compta', $contactComptaEmail, $contactComptaTel);
+                        $results['contacts_imported']++;
+                    }
 
                     if (!$isUpdate) {
                         $this->entityManager->persist($adherent);
@@ -159,8 +184,42 @@ class ImportExcelService
     }
 
     /**
+     * Crée ou met à jour un contact pour un adhérent
+     */
+    private function createOrUpdateContact(Liste $adherent, string $nom, string $fonction, ?string $email = null, ?string $telephone = null): void
+    {
+        // Vérifier si le contact existe déjà
+        $existingContact = $this->entityManager
+            ->getRepository(Contact::class)
+            ->findOneBy([
+                'liste' => $adherent,
+                'fonction' => $fonction
+            ]);
+
+        if ($existingContact) {
+            // Mettre à jour le contact existant
+            $contact = $existingContact;
+            $contact->setNom($nom);
+            if ($email) {
+                $contact->setEmail($email);
+            }
+            if ($telephone) {
+                $contact->setTelephone($telephone);
+            }
+        } else {
+            // Créer un nouveau contact
+            $contact = new Contact();
+            $contact->setListe($adherent);
+            $contact->setNom($nom);
+            $contact->setFonction($fonction);
+            $contact->setEmail($email ?? '');
+            $contact->setTelephone($telephone ?? '');
+            $this->entityManager->persist($contact);
+        }
+    }
+
+    /**
      * Convertit une date en objet DateTime
-     * Supporte les formats : JJ/MM/AAAA, DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD
      */
     private function convertToDateTime(?string $date): ?\DateTimeInterface
     {
@@ -170,7 +229,7 @@ class ImportExcelService
 
         $date = trim($date);
         
-        // Format JJ/MM/AAAA (ex: 02/07/2026)
+        // Format JJ/MM/AAAA
         if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $date, $matches)) {
             $dateTime = \DateTime::createFromFormat('d/m/Y', $date);
             if ($dateTime) {
@@ -178,7 +237,7 @@ class ImportExcelService
             }
         }
         
-        // Format DD-MM-YYYY (ex: 02-07-2026)
+        // Format DD-MM-YYYY
         if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $date, $matches)) {
             $dateTime = \DateTime::createFromFormat('d-m-Y', $date);
             if ($dateTime) {
@@ -186,7 +245,7 @@ class ImportExcelService
             }
         }
         
-        // Format YYYY-MM-DD (ex: 2026-07-02)
+        // Format YYYY-MM-DD
         if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $matches)) {
             $dateTime = \DateTime::createFromFormat('Y-m-d', $date);
             if ($dateTime) {
@@ -194,7 +253,7 @@ class ImportExcelService
             }
         }
         
-        // Format YYYY/MM/DD (ex: 2026/07/02)
+        // Format YYYY/MM/DD
         if (preg_match('/^(\d{4})\/(\d{2})\/(\d{2})$/', $date, $matches)) {
             $dateTime = \DateTime::createFromFormat('Y/m/d', $date);
             if ($dateTime) {

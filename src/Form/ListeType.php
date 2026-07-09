@@ -74,11 +74,23 @@ class ListeType extends AbstractType
                 'label' => 'CNAPS',
                 'required' => false,
             ])
+            ->add('referentSebtp', TextType::class, [
+                'label' => 'Référent SEBTP',
+                'required' => false,
+            ])
+            ->add('numRef', TextType::class, [
+                'label' => 'Numéro référent',
+                'required' => false,
+            ])
+            ->add('mailRef', TextType::class, [
+                'label' => 'Mail référent',
+                'required' => false,
+            ])
             ->add('filiere', ChoiceType::class, [
                 'label' => 'Filière(s)',
                 'choices' => [
                     'BTP / Construction' => 'BTP / Construction',
-                    'Bureau d\'études' => 'Bureau d\'études',
+                    'Bureau d\'études' => 'Bureau d_etudes',
                     'Fournisseur de biens et services' => 'Fournisseur de biens et services',
                 ],
                 'multiple' => true,
