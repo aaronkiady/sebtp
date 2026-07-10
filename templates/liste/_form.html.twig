@@ -123,6 +123,54 @@
                     <small class="text-muted">Formats acceptés : PDF, DOC, DOCX (max 10 Mo)</small>
                 </div>
 
+                {# SECTION CONTACTS - Collection de contacts #}
+                <div class="col-12 mt-4">
+                    <div class="card border">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h6 class="fw-bold mb-0">
+                                <i class="fas fa-address-book me-2 text-primary"></i>
+                                Contacts
+                            </h6>
+                            <button type="button" class="btn btn-sm btn-success" id="add-contact">
+                                <i class="fas fa-plus me-1"></i> Ajouter un contact
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="contacts-wrapper" data-prototype="{{ form_widget(form.contacts.vars.prototype)|e('html_attr') }}">
+                                {% for contact in form.contacts %}
+                                    <div class="contact-item border-bottom pb-3 mb-3">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="row g-3 flex-grow-1">
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Nom</label>
+                                                    {{ form_widget(contact.nom, {'attr': {'class': 'form-control form-control-sm'}}) }}
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Fonction</label>
+                                                    {{ form_widget(contact.fonction, {'attr': {'class': 'form-control form-control-sm'}}) }}
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Email</label>
+                                                    {{ form_widget(contact.email, {'attr': {'class': 'form-control form-control-sm'}}) }}
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Téléphone</label>
+                                                    {{ form_widget(contact.telephone, {'attr': {'class': 'form-control form-control-sm'}}) }}
+                                                </div>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-contact" title="Supprimer ce contact">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        {{ form_errors(contact) }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted">Ajoutez les contacts (RH, Compta, etc.) pour cet adhérent</small>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             {{ form_rest(form) }}
@@ -174,6 +222,54 @@ function attachFormEvents() {
         statutMenmbreSelect.removeEventListener('change', handleStatutMenmbreChange);
         statutMenmbreSelect.addEventListener('change', handleStatutMenmbreChange);
     }
+    
+    // Gestion des contacts
+    const contactsWrapper = document.getElementById('contacts-wrapper');
+    const addContactBtn = document.getElementById('add-contact');
+    
+    if (addContactBtn && contactsWrapper) {
+        // Supprimer les anciens écouteurs
+        const newAddBtn = addContactBtn.cloneNode(true);
+        addContactBtn.parentNode.replaceChild(newAddBtn, addContactBtn);
+        
+        newAddBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const prototype = contactsWrapper.dataset.prototype;
+            const index = contactsWrapper.querySelectorAll('.contact-item').length;
+            const newForm = prototype.replace(/__name__/g, index);
+            
+            const div = document.createElement('div');
+            div.className = 'contact-item border-bottom pb-3 mb-3';
+            div.innerHTML = newForm;
+            
+            // Ajouter le bouton supprimer
+            const headerDiv = div.querySelector('.d-flex');
+            if (headerDiv) {
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'btn btn-sm btn-outline-danger ms-2 remove-contact';
+                removeBtn.title = 'Supprimer ce contact';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                headerDiv.appendChild(removeBtn);
+                
+                removeBtn.addEventListener('click', function() {
+                    div.remove();
+                });
+            }
+            
+            contactsWrapper.appendChild(div);
+        });
+    }
+    
+    // Gestion de la suppression des contacts existants
+    document.querySelectorAll('.remove-contact').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const contactItem = this.closest('.contact-item');
+            if (contactItem) {
+                contactItem.remove();
+            }
+        });
+    });
 }
 
 function handleStatutChange(e) {
@@ -219,5 +315,13 @@ textarea.custom-input {
 }
 .filiere-checkbox-list div:hover {
     background-color: #f8f9fa;
+}
+
+/* Style pour les contacts */
+.contact-item {
+    transition: background-color 0.2s;
+}
+.contact-item:hover {
+    background-color: #f8fafc;
 }
 </style>

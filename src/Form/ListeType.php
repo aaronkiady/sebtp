@@ -14,6 +14,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\Extension\Core\Type\CollectionType;
 
 class ListeType extends AbstractType
 {
@@ -143,6 +144,21 @@ class ListeType extends AbstractType
             ->add('observation', TextType::class, [
                 'required' => false,
                 'label' => 'Observation',
+            ])
+            ->add('contacts', CollectionType::class, [
+                'label' => 'Contacts',
+                'entry_type' => ContactType::class,
+                'entry_options' => [
+                    'label' => false,
+                ],
+                'allow_add' => true,
+                'allow_delete' => true,
+                'by_reference' => false,
+                'prototype' => true,
+                'required' => false,
+                'attr' => [
+                    'class' => 'contacts-collection',
+                ],
             ]);
 
 
