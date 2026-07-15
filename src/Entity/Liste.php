@@ -123,12 +123,19 @@ class Liste
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $mailRef = null;
 
+    /**
+     * @var Collection<int, Document>
+     */
+    #[ORM\OneToMany(targetEntity: Document::class, mappedBy: 'aherent')]
+    private Collection $documents;
+
     public function __construct()
     {
         $this->formations = new ArrayCollection();
         $this->cotisations = new ArrayCollection();
         $this->contacts = new ArrayCollection();
         $this->filiere = [];
+        $this->documents = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -597,6 +604,36 @@ class Liste
     public function setMailRef(?string $mailRef): static
     {
         $this->mailRef = $mailRef;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Document>
+     */
+    public function getDocuments(): Collection
+    {
+        return $this->documents;
+    }
+
+    public function addDocument(Document $document): static
+    {
+        if (!$this->documents->contains($document)) {
+            $this->documents->add($document);
+            $document->setAherent($this);
+        }
+
+        return $this;
+    }
+
+    public function removeDocument(Document $document): static
+    {
+        if ($this->documents->removeElement($document)) {
+            // set the owning side to null (unless already changed)
+            if ($document->getAherent() === $this) {
+                $document->setAherent(null);
+            }
+        }
 
         return $this;
     }

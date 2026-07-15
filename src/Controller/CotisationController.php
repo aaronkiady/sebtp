@@ -9,6 +9,7 @@ use App\Form\PaiementType;
 use App\Repository\CotisationRepository;
 use App\Service\AuditLogger;
 use App\Service\CotisationCalculator;
+use App\Service\DocumentGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -85,7 +86,8 @@ final class CotisationController extends AbstractController
         int $adherent_id,
         Request $request,
         EntityManagerInterface $em,
-        CotisationCalculator $calculator
+        CotisationCalculator $calculator,
+        DocumentGenerator $documentGenerator
     ): Response {
         $adherent = $em->getRepository(Liste::class)->find($adherent_id);
         
@@ -145,6 +147,14 @@ final class CotisationController extends AbstractController
             $cotisation->setMontantPaye($cotisation->getMontantPaye() + $paiement->getMontant());
             
             $em->flush();
+
+            if ($cotisation->getStatut() === 'paye') {
+    try {
+        $documentGenerator->generateRecu($cotisation);
+    } catch (\Exception $e) {
+        // Log l'erreur mais ne bloque pas le paiement
+    }
+}
 
             $this->auditLogger->logPayment(
                 'Paiement',

@@ -192,15 +192,22 @@
                                                         </span>
                                                     {% endif %}
                                                 </td>
+                                                {# Dans la liste des participants #}
                                                 <td>
                                                     <div class="btn-group" role="group">
+                                                        {% if participation.statutPaiement == 'paye' %}
+                                                            <a href="{{ path('app_document_generer_recu_evenement', {'participation_id': participation.id}) }}" 
+                                                            class="btn btn-sm btn-success" title="Générer le reçu">
+                                                                <i class="fas fa-file-pdf"></i>
+                                                            </a>
+                                                        {% endif %}
                                                         <a href="{{ path('app_participation_toggle', {'id': participation.id}) }}" 
-                                                           class="btn btn-sm btn-outline-secondary">
+                                                        class="btn btn-sm btn-outline-secondary">
                                                             <i class="fas fa-exchange-alt"></i> Changer statut
                                                         </a>
                                                         <form method="post" action="{{ path('app_evenement_supprimer_participant', {'id': evenement.id, 'participation_id': participation.id}) }}" 
-                                                              onsubmit="return confirm('Êtes-vous sûr de vouloir retirer ce participant ?');" 
-                                                              style="display: inline-block;">
+                                                            onsubmit="return confirm('Êtes-vous sûr de vouloir retirer ce participant ?');" 
+                                                            style="display: inline-block;">
                                                             <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ participation.id) }}">
                                                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                                                 <i class="fas fa-trash"></i> Retirer

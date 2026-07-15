@@ -1,0 +1,96 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Documents - {{ adherent.nom }}{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_liste_show', {'id': adherent.id}) }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-file-pdf"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Documents</h1>
+                    <p class="text-muted mb-0">{{ adherent.nom }}</p>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ path('app_document_generer_note_debit', {'adherent_id': adherent.id}) }}" class="btn btn-outline-warning">
+                    <i class="fas fa-file-invoice me-2"></i>Note de débit
+                </a>
+            </div>
+        </div>
+
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Information :</strong> 
+            <ul class="mb-0 mt-2">
+                <li>Les reçus sont générés à partir des paiements existants</li>
+                <li>Cliquez sur "Générer un reçu" depuis les cotisations ou événements</li>
+            </ul>
+        </div>
+
+        {% if documents|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>N°</th>
+                            <th>Type</th>
+                            <th>Montant</th>
+                            <th>Période</th>
+                            <th>Date</th>
+                            <th>Référence</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for doc in documents %}
+                        <tr>
+                            <td class="fw-bold text-primary">{{ doc.numero }}</td>
+                            <td>
+                                {% if doc.type == 'recu' %}
+                                    <span class="badge bg-success">Reçu</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Note de débit</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">{{ doc.montant|number_format(0, '.', ' ') }} MGA</td>
+                            <td>{{ doc.periode }}</td>
+                            <td>{{ doc.dateCreation|date('d/m/Y H:i') }}</td>
+                            <td>{{ doc.reference|default('-') }}</td>
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <a href="{{ path('app_document_download', {'id': doc.id}) }}" class="btn btn-sm btn-success" title="Télécharger" target="_blank">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    <form method="post" action="{{ path('app_document_delete', {'id': doc.id}) }}" 
+                                          onsubmit="return confirm('Supprimer ce document ?')" style="display:inline">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_document_' ~ doc.id) }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="fas fa-file-pdf fa-4x text-muted opacity-25"></i>
+                </div>
+                <p class="text-muted fw-bold">Aucun document généré pour cet adhérent.</p>
+                <p class="text-muted small">Générez des reçus depuis les cotisations ou événements payés.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
