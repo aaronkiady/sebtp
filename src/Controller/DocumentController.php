@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Document;
 use App\Entity\Liste;
 use App\Entity\Cotisation;
+use App\Entity\Paiement;
 use App\Entity\Participation;
 use App\Repository\DocumentRepository;
 use App\Service\DocumentGenerator;
@@ -158,4 +159,25 @@ class DocumentController extends AbstractController
             'adherents' => $adherents,
         ]);
     }
+
+    #[Route('/generer-recu-paiement/{paiement_id}', name: 'app_document_generer_recu_paiement', methods: ['GET'])]
+public function genererRecuPaiement(int $paiement_id, EntityManagerInterface $em): Response
+{
+    $paiement = $em->getRepository(Paiement::class)->find($paiement_id);
+    
+    if (!$paiement) {
+        $this->addFlash('error', 'Paiement non trouvé');
+        return $this->redirectToRoute('app_home');
+    }
+    
+    try {
+        $document = $this->documentGenerator->generateRecu($paiement);
+        $this->addFlash('success', 'Reçu généré avec succès !');
+        
+        return $this->redirectToRoute('app_document_adherent', ['id' => $paiement->getCotisation()->getAdherent()->getId()]);
+    } catch (\Exception $e) {
+        $this->addFlash('error', 'Erreur lors de la génération du reçu : ' . $e->getMessage());
+        return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $paiement->getCotisation()->getAdherent()->getId()]);
+    }
+}
 }

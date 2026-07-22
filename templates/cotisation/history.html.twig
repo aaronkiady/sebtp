@@ -14,7 +14,6 @@
         </a>
     </div>
 
-    {# Accordéon des cotisations par période #}
     <div class="accordion" id="accordionCotisations">
         {% for cotisation in cotisations %}
         <div class="accordion-item mb-3 border rounded shadow-sm">
@@ -82,11 +81,10 @@
                                             <td class="text-success fw-bold">{{ paiement.montant|number_format(0, '.', ' ') }} MGA</td>
                                             <td>{{ paiement.modePaiement|default('-') }}</td>
                                             <td>{{ paiement.reference|default('-') }}</td>
-                                            {# Dans la liste des paiements, ajoutez une colonne action #}
                                             <td class="text-center">
                                                 <div class="btn-group">
-                                                    <a href="{{ path('app_document_generer_recu', {'cotisation_id': cotisation.id}) }}" 
-                                                    class="btn btn-sm btn-success" title="Générer le reçu">
+                                                    <a href="{{ path('app_document_generer_recu_paiement', {'paiement_id': paiement.id}) }}" 
+                                                    class="btn btn-sm btn-success" title="Générer le reçu pour ce paiement">
                                                         <i class="fas fa-file-pdf"></i>
                                                     </a>
                                                     <a href="{{ path('app_paiement_edit', {'id': paiement.id}) }}" 
@@ -102,7 +100,7 @@
                                                     </form>
                                                 </div>
                                             </td>
-                                        </table>
+                                        </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>

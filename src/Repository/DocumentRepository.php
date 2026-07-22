@@ -38,17 +38,34 @@ class DocumentRepository extends ServiceEntityRepository
     }
 
     /**
-     * Compte les documents par année (version avec SQL natif)
+     * Compte les documents par année - Version DQL (recommandée)
      */
     public function countByYear(string $type, int $year): int
     {
-        $conn = $this->getEntityManager()->getConnection();
-        $sql = 'SELECT COUNT(*) FROM document d WHERE d.type = :type AND YEAR(d.date_creation) = :year';
-        $stmt = $conn->prepare($sql);
-        $stmt->bindValue('type', $type);
-        $stmt->bindValue('year', $year);
-        $result = $stmt->executeQuery();
+        $qb = $this->createQueryBuilder('d');
+        $qb->select('COUNT(d.id)')
+           ->where('d.type = :type')
+           ->andWhere('YEAR(d.dateCreation) = :year')
+           ->setParameter('type', $type)
+           ->setParameter('year', $year);
         
-        return (int) $result->fetchOne();
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Compte les documents par adhérent, type et année
+     */
+    public function countByAdherentTypeAndYear(int $adherentId, string $type, int $year): int
+    {
+        $qb = $this->createQueryBuilder('d');
+        $qb->select('COUNT(d.id)')
+           ->where('d.adherent = :adherentId')
+           ->andWhere('d.type = :type')
+           ->andWhere('YEAR(d.dateCreation) = :year')
+           ->setParameter('adherentId', $adherentId)
+           ->setParameter('type', $type)
+           ->setParameter('year', $year);
+        
+        return (int) $qb->getQuery()->getSingleScalarResult();
     }
 }

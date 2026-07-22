@@ -95,16 +95,13 @@ final class CotisationController extends AbstractController
             throw $this->createNotFoundException('Adhérent non trouvé');
         }
 
-        // Récupérer la période depuis l'URL ou depuis le formulaire
         $periode = $request->query->get('periode');
         if (!$periode) {
             $periode = $request->request->get('periode', date('Y'));
         }
         
-        // Calculer le montant attendu avec le barème de la période
         $montantAttendu = $calculator->calculateMontant($adherent, $periode);
         
-        // Récupérer la cotisation existante ou en créer une nouvelle
         $cotisation = $em->getRepository(Cotisation::class)
             ->findOneBy([
                 'adherent' => $adherent,
@@ -117,7 +114,7 @@ final class CotisationController extends AbstractController
             $cotisation = new Cotisation();
             $cotisation->setAdherent($adherent);
             $cotisation->setPeriode($periode);
-            $cotisation->setMontant($result['montant']);  // Stocker le montant calculé
+            $cotisation->setMontant($result['montant']);
             $cotisation->setMontantPaye(0);
             $cotisation->setStatut('impaye');
             $cotisation->setBaremeId($result['baremeId']);
@@ -126,10 +123,8 @@ final class CotisationController extends AbstractController
             $em->persist($cotisation);
             $em->flush();
             
-            // Recalculer le montantAttendu après création
             $montantAttendu = $cotisation->getMontant();
         } else {
-            // Si la cotisation existe, utiliser son montant stocké
             $montantAttendu = $cotisation->getMontant();
         }
 
@@ -148,13 +143,13 @@ final class CotisationController extends AbstractController
             
             $em->flush();
 
-            if ($cotisation->getStatut() === 'paye') {
-    try {
-        $documentGenerator->generateRecu($cotisation);
-    } catch (\Exception $e) {
-        // Log l'erreur mais ne bloque pas le paiement
-    }
-}
+            // Générer le reçu pour ce paiement spécifique
+            try {
+                $document = $documentGenerator->generateRecu($paiement);
+                $this->addFlash('success', 'Paiement enregistré et reçu généré avec succès!');
+            } catch (\Exception $e) {
+                $this->addFlash('warning', 'Paiement enregistré mais erreur lors de la génération du reçu.');
+            }
 
             $this->auditLogger->logPayment(
                 'Paiement',
@@ -170,7 +165,6 @@ final class CotisationController extends AbstractController
                 ]
             );
 
-            $this->addFlash('success', 'Paiement enregistré avec succès!');
             return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $adherent_id]);
         }
 
@@ -349,7 +343,6 @@ final class CotisationController extends AbstractController
                     }
                 }
                 
-                // Audit log
                 $this->auditLogger->logExport(
                     'ImportCotisationExcel',
                     sprintf('Import Excel cotisations - %d lignes', $result['success'])
