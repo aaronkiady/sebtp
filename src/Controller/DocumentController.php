@@ -8,6 +8,7 @@ use App\Entity\Cotisation;
 use App\Entity\Paiement;
 use App\Entity\Participation;
 use App\Repository\DocumentRepository;
+use App\Service\CotisationCalculator;
 use App\Service\DocumentGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -96,6 +97,62 @@ class DocumentController extends AbstractController
 
         return $this->render('document/note_debit_form.html.twig', [
             'adherent' => $adherent,
+        ]);
+    }
+
+    #[Route('/generer-cotisation/{adherent_id}', name: 'app_document_generer_cotisation', methods: ['GET', 'POST'])]
+    public function genererCotisation(Request $request, int $adherent_id, EntityManagerInterface $em, CotisationCalculator $calculator): Response
+    {
+        $adherent = $em->getRepository(Liste::class)->find($adherent_id);
+        
+        if (!$adherent) {
+            $this->addFlash('error', 'Adhérent non trouvé');
+            return $this->redirectToRoute('app_document_adherent', ['id' => $adherent_id]);
+        }
+        
+        // Récupérer la période depuis le formulaire ou l'URL
+        $periode = $request->query->get('periode') ?? date('Y');
+        
+        if ($request->isMethod('POST')) {
+            $periode = $request->request->get('periode', date('Y'));
+            
+            try {
+                // Calculer le montant de la cotisation avec le barème
+                $result = $calculator->calculateMontantWithBareme($adherent, $calculator->createDateFromPeriode($periode));
+                $montant = $result['montant'];
+                $baremeLibelle = $result['baremeLibelle'] ?? 'Barème ' . $periode;
+                
+                // Créer le motif
+                $motif = sprintf('Cotisation %s - %s (%s)', $periode, $adherent->getNom(), $baremeLibelle);
+                
+                // Générer la note de débit
+                $document = $this->documentGenerator->generateNoteDebit($adherent, $montant, $periode, $motif);
+                
+                $this->addFlash('success', sprintf('Note de débit pour cotisation %s générée avec succès ! Montant : %s MGA', $periode, number_format($montant, 0, '.', ' ')));
+                
+                return $this->redirectToRoute('app_document_adherent', ['id' => $adherent->getId()]);
+            } catch (\Exception $e) {
+                $this->addFlash('error', 'Erreur lors de la génération : ' . $e->getMessage());
+            }
+        }
+        
+        // Calculer le montant pour la période sélectionnée (affichage)
+        $montantCalcule = 0;
+        $baremeLibelle = 'Non défini';
+        try {
+            $result = $calculator->calculateMontantWithBareme($adherent, $calculator->createDateFromPeriode($periode));
+            $montantCalcule = $result['montant'];
+            $baremeLibelle = $result['baremeLibelle'] ?? 'Barème ' . $periode;
+        } catch (\Exception $e) {
+            // Pas de barème trouvé
+        }
+        
+        return $this->render('document/cotisation_form.html.twig', [
+            'adherent' => $adherent,
+            'periode' => $periode,
+            'montantCalcule' => $montantCalcule,
+            'baremeLibelle' => $baremeLibelle,
+            'nbEmployes' => $adherent->getNbEmployes(),
         ]);
     }
 

@@ -1,0 +1,86 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Détails - {{ dirigeant.president }}{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_dirigeant_index') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">{{ dirigeant.president }}</h1>
+                    <p class="text-muted mb-0">Détails du dirigeant SEBTP</p>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ path('app_dirigeant_edit', {'id': dirigeant.id}) }}" class="btn-action btn-cute text-decoration-none">
+                    <i class="fas fa-pen"></i> Modifier
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted mb-3">
+                            <i class="fas fa-info-circle me-2"></i>Informations générales
+                        </h6>
+                        <div class="mb-3">
+                            <label class="text-muted small">Président</label>
+                            <div class="fw-bold">
+                                <i class="fas fa-user-tie me-2 text-primary"></i>
+                                {{ dirigeant.president }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted mb-3">
+                            <i class="fas fa-users me-2"></i>Bureau exécutif
+                        </h6>
+                        <div class="mb-3">
+                            <label class="text-muted small">Secrétaire</label>
+                            <div class="fw-bold">
+                                {% if dirigeant.secretaire %}
+                                    <i class="fas fa-user me-2 text-info"></i>
+                                    {{ dirigeant.secretaire }}
+                                {% else %}
+                                    <span class="text-muted">Non renseigné</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Trésorier</label>
+                            <div class="fw-bold">
+                                {% if dirigeant.tresorier %}
+                                    <i class="fas fa-coins me-2 text-warning"></i>
+                                    {{ dirigeant.tresorier }}
+                                {% else %}
+                                    <span class="text-muted">Non renseigné</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5 pt-4 border-top d-flex justify-content-between align-items-center">
+            <a href="{{ path('app_dirigeant_index') }}" class="btn-action btn-cancel text-decoration-none">
+                <i class="fas fa-arrow-left"></i> Retour à la liste
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

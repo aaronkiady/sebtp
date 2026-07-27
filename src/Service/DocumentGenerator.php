@@ -554,7 +554,7 @@ HTML;
         $nom = $this->e(self::SYNDICAT_NOM);
 
         return <<<HTML
-<u>Mode de paiement :</u><br>
+<strong><u>Mode de paiement :</u><br>
 Par virement bancaire au nom de {$nom}<br>
 RIB SG :  {$rib}<br>
 <br>
@@ -562,7 +562,7 @@ Ou<br>
 <br>
 Par chèque au nom de « {$nom} »<br>
 <br>
-A déposer au siège {$nom} Lot IA 58 Ampatsakana
+A déposer au siège {$nom} Lot IA 58 Ampatsakana <strong>
 HTML;
     }
 

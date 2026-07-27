@@ -1,0 +1,48 @@
+{{ form_start(form, {'attr': {'class': 'needs-validation'}}) }}
+    <div class="row g-4">
+        <div class="col-md-6">
+            <label class="form-label">
+                <i class="fas fa-user-tie me-2 opacity-50"></i>
+                {{ form.president.vars.label|default('Président') }}
+            </label>
+            {{ form_widget(form.president, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: Hary ANDRIANTEFIHASINA'}}) }}
+            <div class="text-danger small mt-1">{{ form_errors(form.president) }}</div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">
+                <i class="fas fa-user me-2 opacity-50"></i>
+                {{ form.secretaire.vars.label|default('Secrétaire') }}
+            </label>
+            {{ form_widget(form.secretaire, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: Jeanne RANDRIANARIVO'}}) }}
+            <div class="text-danger small mt-1">{{ form_errors(form.secretaire) }}</div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">
+                <i class="fas fa-coins me-2 opacity-50"></i>
+                {{ form.tresorier.vars.label|default('Trésorier') }}
+            </label>
+            {{ form_widget(form.tresorier, {'attr': {'class': 'form-control custom-input', 'placeholder': 'Ex: Michel RAKOTOBE'}}) }}
+            <div class="text-danger small mt-1">{{ form_errors(form.tresorier) }}</div>
+        </div>
+    </div>
+
+    {{ form_rest(form) }}
+
+    <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
+        <a href="{{ path('app_dirigeant_index') }}" class="btn-action btn-cancel text-decoration-none">
+            <i class="fas fa-times me-2"></i> Annuler
+        </a>
+        <button type="submit" class="btn-action btn-update">
+            <i class="fas fa-save me-2"></i> {{ button_label|default('Enregistrer') }}
+        </button>
+    </div>
+{{ form_end(form) }}
+
+<style>
+.custom-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+</style>

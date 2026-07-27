@@ -1,0 +1,112 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Cotisation - {{ adherent.nom }}{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_document_adherent', {'id': adherent.id}) }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Cotisation</h1>
+                    <p class="text-muted mb-0">{{ adherent.nom }}</p>
+                </div>
+            </div>
+        </div>
+
+        {% for message in app.flashes('error') %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <!-- Informations de l'adhérent -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="p-3 rounded-3" style="background: #f8fafc;">
+                            <small class="text-muted d-block">Adhérent</small>
+                            <strong>{{ adherent.nom }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 rounded-3" style="background: #f8fafc;">
+                            <small class="text-muted d-block">Nombre d'employés</small>
+                            <strong>{{ nbEmployes|default('Non renseigné') }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 rounded-3" style="background: #f8fafc;">
+                            <small class="text-muted d-block">Statut</small>
+                            <strong>
+                                {% if adherent.statutMenmbre == 'sponsor' %}
+                                    <span class="badge bg-primary">Sponsor</span>
+                                {% elseif adherent.type == 'ong' or 'ONG' in adherent.activite %}
+                                    <span class="badge bg-info">ONG</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Entreprise</span>
+                                {% endif %}
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" action="{{ path('app_document_generer_cotisation', {'adherent_id': adherent.id}) }}" class="row g-4" novalidate>
+                    <div class="col-md-6">
+                        <label class="form-label">Période <span class="text-danger">*</span></label>
+                        <select name="periode" class="form-select" required onchange="this.form.submit()">
+                            <option value="">-- Sélectionnez --</option>
+                            {% set currentYear = "now"|date('Y') %}
+                            {% for year in range(currentYear, currentYear - 5) %}
+                                <option value="{{ year }}" {% if periode == year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Montant calculé (MGA)</label>
+                        <div class="p-3 rounded-3" style="background: #f0f7ee; border: 2px solid #2d5a27;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fas fa-calculator text-success me-2"></i>
+                                    <strong>{{ montantCalcule|number_format(0, '.', ' ') }} MGA</strong>
+                                </span>
+                                <span class="badge bg-success">{{ baremeLibelle }}</span>
+                            </div>
+                        </div>
+                        <small class="text-muted">Montant calculé selon le barème en vigueur</small>
+                    </div>
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Récapitulatif :</strong>
+                            <ul class="mt-2 mb-0">
+                                <li><strong>Adhérent :</strong> {{ adherent.nom }}</li>
+                                <li><strong>Période :</strong> {{ periode }}</li>
+                                <li><strong>Montant :</strong> {{ montantCalcule|number_format(0, '.', ' ') }} MGA</li>
+                                <li><strong>Barème appliqué :</strong> {{ baremeLibelle }}</li>
+                                <li><strong>Nombre d'employés :</strong> {{ nbEmployes|default('Non renseigné') }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-file-pdf me-2"></i>Générer la note de débit
+                        </button>
+                        <a href="{{ path('app_document_adherent', {'id': adherent.id}) }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i> Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
