@@ -1,0 +1,109 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dirigeant index{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_sebtp_index') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Les dirigeants du SEBTP</h1>
+                </div>
+            </div>
+        </div>
+
+    {#<table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>President</th>
+                <th>Secretaire</th>
+                <th>Tresorier</th>
+                <th>actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for dirigeant in dirigeants %}
+            <tr>
+                <td>{{ dirigeant.id }}</td>
+                <td>{{ dirigeant.president }}</td>
+                <td>{{ dirigeant.secretaire }}</td>
+                <td>{{ dirigeant.tresorier }}</td>
+                <td>
+                    <a href="{{ path('app_dirigeant_show', {'id': dirigeant.id}) }}">show</a>
+                    <a href="{{ path('app_dirigeant_edit', {'id': dirigeant.id}) }}">edit</a>
+                </td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="5">no records found</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>#}
+
+    <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>President</th>
+                        <th>Secretaire</th>
+                        <th>Tresorier</th>
+                        <th class="text-end">actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for dirigeant in dirigeants %}
+                    <tr>
+                        <td>
+                            <span class="fw-bold text-primary">{{ dirigeant.president }}</span>
+                        </td>
+                        <td>{{ dirigeant.secretaire }}</td>
+                        <td>{{ dirigeant.tresorier }}</td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                <a href="{{ path('app_dirigeant_show', {'id': dirigeant.id}) }}" 
+                                   class="btn btn-sm btn-outline-secondary border-0 bg-light" 
+                                   title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ path('app_dirigeant_edit', {'id': dirigeant.id}) }}" 
+                                   class="btn btn-sm btn-outline-secondary border-0 bg-light ms-1" 
+                                   title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="mb-3">
+                                <i class="fas fa-building fa-4x text-muted opacity-25"></i>
+                            </div>
+                            <p class="text-muted fw-bold">
+                                {#{% if searchTerm is defined and searchTerm %}
+                                    Aucun organisme trouvé pour "{{ searchTerm }}"
+                                {% else %}#}
+                                    Aucun organisme enregistré.
+                                {#{% endif %}#}
+                            </p>
+                            <a href="{{ path('app_dirigeant_new') }}" class="btn btn-primary mt-2">
+                                <i class="fas fa-plus me-2"></i>Ajouter les dirigeants
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
