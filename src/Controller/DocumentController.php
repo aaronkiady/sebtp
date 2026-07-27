@@ -123,7 +123,7 @@ class DocumentController extends AbstractController
                 $baremeLibelle = $result['baremeLibelle'] ?? 'Barème ' . $periode;
                 
                 // Créer le motif
-                $motif = sprintf('Cotisation %s - %s (%s)', $periode, $adherent->getNom(), $baremeLibelle);
+                $motif = sprintf('Cotisation %s', $periode);
                 
                 // Générer la note de débit
                 $document = $this->documentGenerator->generateNoteDebit($adherent, $montant, $periode, $motif);

@@ -59,7 +59,8 @@
                     </div>
                 </div>
 
-                <form method="post" action="{{ path('app_document_generer_cotisation', {'adherent_id': adherent.id}) }}" class="row g-4" novalidate>
+                <!-- Formulaire avec auto-submit sur changement de période -->
+                <form method="get" action="{{ path('app_document_generer_cotisation', {'adherent_id': adherent.id}) }}" class="row g-4" id="cotisationForm">
                     <div class="col-md-6">
                         <label class="form-label">Période <span class="text-danger">*</span></label>
                         <select name="periode" class="form-select" required onchange="this.form.submit()">
@@ -69,6 +70,7 @@
                                 <option value="{{ year }}" {% if periode == year %}selected{% endif %}>{{ year }}</option>
                             {% endfor %}
                         </select>
+                        <small class="text-muted">Le montant se met à jour automatiquement</small>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Montant calculé (MGA)</label>
@@ -83,6 +85,12 @@
                         </div>
                         <small class="text-muted">Montant calculé selon le barème en vigueur</small>
                     </div>
+                </form>
+
+                <!-- Formulaire de génération (POST) -->
+                <form method="post" action="{{ path('app_document_generer_cotisation', {'adherent_id': adherent.id}) }}" class="row g-4 mt-3" id="generationForm">
+                    <input type="hidden" name="periode" value="{{ periode }}">
+                    
                     <div class="col-12">
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
@@ -97,16 +105,38 @@
                         </div>
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-success">
+                        <button type="submit" class="btn btn-success" {% if montantCalcule == 0 %}disabled{% endif %}>
                             <i class="fas fa-file-pdf me-2"></i>Générer la note de débit
                         </button>
                         <a href="{{ path('app_document_adherent', {'id': adherent.id}) }}" class="btn btn-outline-secondary">
                             <i class="fas fa-times me-2"></i> Annuler
                         </a>
+                        {% if montantCalcule == 0 %}
+                            <small class="text-danger d-block mt-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Aucun barème trouvé pour cette période. Veuillez sélectionner une autre période ou créer un barème.
+                            </small>
+                        {% endif %}
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+{% block javascripts %}
+<script>
+    // Synchroniser la période entre les deux formulaires
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectPeriode = document.querySelector('select[name="periode"]');
+        const hiddenPeriode = document.querySelector('input[name="periode"]');
+        
+        if (selectPeriode && hiddenPeriode) {
+            selectPeriode.addEventListener('change', function() {
+                hiddenPeriode.value = this.value;
+            });
+        }
+    });
+</script>
+{% endblock %}
 {% endblock %}
