@@ -1,0 +1,79 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Générer une note de débit - {{ adherent.nom }}{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_document_adherent', {'id': adherent.id}) }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Note de débit</h1>
+                    <p class="text-muted mb-0">{{ adherent.nom }}</p>
+                </div>
+            </div>
+        </div>
+
+        {% for message in app.flashes('error') %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post" action="{{ path('app_document_generer_note_debit', {'adherent_id': adherent.id}) }}" class="row g-4" novalidate>
+                    <div class="col-md-6">
+                        <label class="form-label">Montant (MGA) <span class="text-danger">*</span></label>
+                        <input type="number" name="montant" class="form-control" step="1000" required min="0" placeholder="Ex: 500000">
+                        <small class="text-muted">Saisissez le montant en Ariary</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Période <span class="text-danger">*</span></label>
+                        <select name="periode" class="form-select" required>
+                            <option value="">-- Sélectionnez --</option>
+                            {% set currentYear = "now"|date('Y') %}
+                            <option value="{{ currentYear }}">{{ currentYear }}</option>
+                            <option value="{{ currentYear - 1 }}">{{ currentYear - 1 }}</option>
+                            <option value="{{ currentYear - 2 }}">{{ currentYear - 2 }}</option>
+                            <option value="{{ currentYear - 3 }}">{{ currentYear - 3 }}</option>
+                            <option value="{{ currentYear - 4 }}">{{ currentYear - 4 }}</option>
+                            <option value="{{ currentYear - 5 }}">{{ currentYear - 5 }}</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Motif <span class="text-danger">*</span></label>
+                        <textarea name="motif" class="form-control" rows="3" required placeholder="Ex: Cotisation annuelle 2024, Frais d'adhésion..."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Information :</strong> La note de débit sera générée avec :
+                            <ul class="mt-2 mb-0">
+                                <li>Une numérotation automatique (ND-2026-0001)</li>
+                                <li>Le montant en lettres</li>
+                                <li>Une échéance à 30 jours</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-file-pdf me-2"></i>Générer la note de débit
+                        </button>
+                        <a href="{{ path('app_document_adherent', {'id': adherent.id}) }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i> Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

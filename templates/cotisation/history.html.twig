@@ -14,7 +14,6 @@
         </a>
     </div>
 
-    {# Accordéon des cotisations par période #}
     <div class="accordion" id="accordionCotisations">
         {% for cotisation in cotisations %}
         <div class="accordion-item mb-3 border rounded shadow-sm">
@@ -84,21 +83,24 @@
                                             <td>{{ paiement.reference|default('-') }}</td>
                                             <td class="text-center">
                                                 <div class="btn-group">
-                                                    <a href="{{ path('app_paiement_edit', {'id': paiement.id}) }}" class="btn btn-sm btn-outline-warning">
+                                                    <a href="{{ path('app_document_generer_recu_paiement', {'paiement_id': paiement.id}) }}" 
+                                                    class="btn btn-sm btn-success" title="Générer le reçu pour ce paiement">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </a>
+                                                    <a href="{{ path('app_paiement_edit', {'id': paiement.id}) }}" 
+                                                    class="btn btn-sm btn-outline-warning" title="Modifier">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
-                                                    <form method="post" 
-                                                          action="{{ path('app_paiement_delete', {'id': paiement.id}) }}" 
-                                                          onsubmit="return confirm('Supprimer ce paiement ?')" 
-                                                          style="display:inline">
+                                                    <form method="post" action="{{ path('app_paiement_delete', {'id': paiement.id}) }}" 
+                                                        onsubmit="return confirm('Supprimer ce paiement ?')" style="display:inline">
                                                         <input type="hidden" name="_token" value="{{ csrf_token('delete_paiement_' ~ paiement.id) }}">
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
                                                     </form>
                                                 </div>
                                             </td>
-                                        </table>
+                                        </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>

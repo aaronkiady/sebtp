@@ -33,6 +33,9 @@ class Participation
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $reference = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $datePaiement = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -116,6 +119,18 @@ class Participation
     public function setReference(?string $reference): static
     {
         $this->reference = $reference;
+
+        return $this;
+    }
+
+    public function getDatePaiement(): ?\DateTime
+    {
+        return $this->datePaiement;
+    }
+
+    public function setDatePaiement(?\DateTime $datePaiement): static
+    {
+        $this->datePaiement = $datePaiement;
 
         return $this;
     }
