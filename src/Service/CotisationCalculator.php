@@ -30,22 +30,31 @@ class CotisationCalculator
     /**
      * Calcule le montant de la cotisation en fonction de l'adhérent et de la date
      * Retourne également l'ID et le libellé du barème utilisé
+     * 
+     * Règles de calcul :
+     * - SPONSOR : catégorie 'sponsor' (identifié par $adherent->getType() === 'sponsor')
+     * - ONG : catégorie 'ong' (identifié par $adherent->getType() === 'ong')
+     * - ENTREPRISE : catégorie 'entreprise' + sous-catégorie basée sur nbEmployes
      */
     public function calculateMontantWithBareme(Liste $adherent, ?\DateTimeInterface $date = null): array
     {
         $date = $date ?? new \DateTime();
         
-        if ($adherent->getStatutMenmbre() === 'sponsor') {
+        // Déterminer la catégorie et la sous-catégorie
+        // CORRECTION : Utiliser getType() pour identifier les sponsors, pas getStatutMenmbre()
+        if ($adherent->getType() === 'sponsor') {
             $categorie = 'sponsor';
             $sousCategorie = null;
         } elseif ($this->isONG($adherent)) {
             $categorie = 'ong';
             $sousCategorie = null;
         } else {
+            // Entreprise : dépend de la tranche d'employés
             $categorie = 'entreprise';
             $sousCategorie = $this->getTrancheEmployesKey($adherent->getNbEmployes());
         }
 
+        // Rechercher un barème actif pour cette catégorie/sous-catégorie
         $bareme = $this->baremeRepository->getBaremeActif($categorie, $sousCategorie, $date);
         
         if ($bareme) {
@@ -57,6 +66,7 @@ class CotisationCalculator
             ];
         }
 
+        // Fallback : montant par défaut si aucun barème trouvé
         $montant = $this->getDefaultMontant($categorie, $sousCategorie);
         return [
             'montant' => $montant,
@@ -106,7 +116,8 @@ class CotisationCalculator
     {
         $date = $this->createDateFromPeriode($periode);
         
-        if ($adherent->getStatutMenmbre() === 'sponsor') {
+        // CORRECTION : Utiliser getType() pour identifier les sponsors
+        if ($adherent->getType() === 'sponsor') {
             $categorie = 'sponsor';
             $sousCategorie = null;
         } elseif ($this->isONG($adherent)) {
@@ -162,6 +173,9 @@ class CotisationCalculator
         return false;
     }
 
+    /**
+     * Vérifie si l'adhérent est une ONG
+     */
     private function isONG(Liste $adherent): bool
     {
         if ($adherent->getType() === 'ong') {
@@ -172,6 +186,10 @@ class CotisationCalculator
         return str_contains($activite, 'ong') || str_contains($nom, 'ong');
     }
 
+    /**
+     * Retourne la clé de la tranche d'employés pour la recherche en base de données
+     * Uniquement utilisé pour les ENTREPRISES
+     */
     private function getTrancheEmployesKey(?string $nbEmployes): string
     {
         $nb = $this->parseEmployesNumber($nbEmployes);
@@ -180,6 +198,10 @@ class CotisationCalculator
         return '51+';
     }
 
+    /**
+     * Retourne le libellé lisible de la tranche d'employés
+     * Uniquement utilisé pour les ENTREPRISES
+     */
     public function getTrancheEmployes(?string $nbEmployes): string
     {
         $nb = $this->parseEmployesNumber($nbEmployes);
@@ -188,12 +210,18 @@ class CotisationCalculator
         return 'Plus de 50 employés';
     }
 
+    /**
+     * Extrait le nombre d'employés d'une chaîne
+     */
     private function parseEmployesNumber(?string $nbEmployes): int
     {
         if (empty($nbEmployes)) return 0;
         return (int) preg_replace('/[^0-9]/', '', $nbEmployes);
     }
 
+    /**
+     * Montants par défaut (fallback si aucun barème n'est trouvé)
+     */
     private function getDefaultMontant(string $categorie, ?string $sousCategorie = null): float
     {
         $defaults = [
@@ -213,6 +241,9 @@ class CotisationCalculator
         return $defaults[$categorie] ?? 400000;
     }
 
+    /**
+     * Génère le libellé d'un barème
+     */
     private function getBaremeLibelle(Bareme $bareme): string
     {
         if ($bareme->getCategorie() === 'entreprise') {
@@ -230,7 +261,7 @@ class CotisationCalculator
     }
 
     /**
-     * Retourne le barème complet pour affichage
+     * Retourne tous les barèmes actifs pour affichage
      */
     public function getBaremeComplete(): array
     {

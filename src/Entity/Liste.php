@@ -84,7 +84,7 @@ class Liste
     /**
      * @var Collection<int, Contact>
      */
-    #[ORM\OneToMany(targetEntity: Contact::class, mappedBy: 'liste')]
+    #[ORM\OneToMany(targetEntity: Contact::class, mappedBy: 'liste', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $contacts;
 
     #[ORM\Column(length: 255, nullable: true)]

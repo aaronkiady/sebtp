@@ -110,22 +110,47 @@ class DocumentController extends AbstractController
             return $this->redirectToRoute('app_document_adherent', ['id' => $adherent_id]);
         }
         
-        // Récupérer la période depuis le formulaire ou l'URL
         $periode = $request->query->get('periode') ?? date('Y');
         
         if ($request->isMethod('POST')) {
             $periode = $request->request->get('periode', date('Y'));
             
             try {
-                // Calculer le montant de la cotisation avec le barème
+                // Calculer le montant avec le barème actuel (pas celui stocké)
                 $result = $calculator->calculateMontantWithBareme($adherent, $calculator->createDateFromPeriode($periode));
                 $montant = $result['montant'];
-                $baremeLibelle = $result['baremeLibelle'] ?? 'Barème ' . $periode;
                 
-                // Créer le motif
+                // Récupérer la cotisation existante ou en créer une nouvelle
+                $cotisation = $em->getRepository(Cotisation::class)
+                    ->findOneBy([
+                        'adherent' => $adherent,
+                        'periode' => $periode
+                    ]);
+                
+                if ($cotisation) {
+                    // Mettre à jour le montant de la cotisation avec le barème actuel
+                    $cotisation->setMontant($montant);
+                    $cotisation->setBaremeId($result['baremeId']);
+                    $cotisation->setBaremeLibelle($result['baremeLibelle']);
+                    $em->flush();
+                } else {
+                    // Créer une nouvelle cotisation
+                    $cotisation = new Cotisation();
+                    $cotisation->setAdherent($adherent);
+                    $cotisation->setPeriode($periode);
+                    $cotisation->setMontant($montant);
+                    $cotisation->setMontantPaye(0);
+                    $cotisation->setStatut('impaye');
+                    $cotisation->setBaremeId($result['baremeId']);
+                    $cotisation->setBaremeLibelle($result['baremeLibelle']);
+                    $em->persist($cotisation);
+                    $em->flush();
+                }
+                
+                // Motif = juste "Cotisation {période}"
                 $motif = sprintf('Cotisation %s', $periode);
                 
-                // Générer la note de débit
+                // Générer la note de débit avec le montant recalculé
                 $document = $this->documentGenerator->generateNoteDebit($adherent, $montant, $periode, $motif);
                 
                 $this->addFlash('success', sprintf('Note de débit pour cotisation %s générée avec succès ! Montant : %s MGA', $periode, number_format($montant, 0, '.', ' ')));
@@ -133,10 +158,11 @@ class DocumentController extends AbstractController
                 return $this->redirectToRoute('app_document_adherent', ['id' => $adherent->getId()]);
             } catch (\Exception $e) {
                 $this->addFlash('error', 'Erreur lors de la génération : ' . $e->getMessage());
+                return $this->redirectToRoute('app_document_generer_cotisation', ['adherent_id' => $adherent->getId(), 'periode' => $periode]);
             }
         }
         
-        // Calculer le montant pour la période sélectionnée (affichage)
+        // Calculer le montant pour la période sélectionnée (affichage GET)
         $montantCalcule = 0;
         $baremeLibelle = 'Non défini';
         try {
