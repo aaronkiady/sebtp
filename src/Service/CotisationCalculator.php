@@ -40,8 +40,7 @@ class CotisationCalculator
     {
         $date = $date ?? new \DateTime();
         
-        // Déterminer la catégorie et la sous-catégorie
-        // CORRECTION : Utiliser getType() pour identifier les sponsors, pas getStatutMenmbre()
+        // Déterminer la catégorie
         if ($adherent->getType() === 'sponsor') {
             $categorie = 'sponsor';
             $sousCategorie = null;
@@ -49,7 +48,6 @@ class CotisationCalculator
             $categorie = 'ong';
             $sousCategorie = null;
         } else {
-            // Entreprise : dépend de la tranche d'employés
             $categorie = 'entreprise';
             $sousCategorie = $this->getTrancheEmployesKey($adherent->getNbEmployes());
         }
@@ -116,7 +114,6 @@ class CotisationCalculator
     {
         $date = $this->createDateFromPeriode($periode);
         
-        // CORRECTION : Utiliser getType() pour identifier les sponsors
         if ($adherent->getType() === 'sponsor') {
             $categorie = 'sponsor';
             $sousCategorie = null;
@@ -145,6 +142,8 @@ class CotisationCalculator
 
     /**
      * Crée un objet DateTime à partir d'une année
+     * Pour la recherche de barème, on utilise la date du jour si elle est dans l'année,
+     * sinon on prend le 1er juillet pour être au milieu de l'année
      */
     public function createDateFromPeriode($periode): \DateTimeInterface
     {
@@ -153,7 +152,16 @@ class CotisationCalculator
         }
         
         $year = (int) $periode;
-        $date = \DateTime::createFromFormat('Y-m-d', $year . '-01-01');
+        $now = new \DateTime();
+        $currentYear = (int) $now->format('Y');
+        
+        // Si l'année demandée est l'année en cours, utiliser la date du jour
+        if ($year === $currentYear) {
+            return $now;
+        }
+        
+        // Sinon, utiliser le 1er juillet de l'année demandée
+        $date = \DateTime::createFromFormat('Y-m-d', $year . '-07-01');
         if (!$date) {
             $date = new \DateTime();
         }
@@ -188,7 +196,6 @@ class CotisationCalculator
 
     /**
      * Retourne la clé de la tranche d'employés pour la recherche en base de données
-     * Uniquement utilisé pour les ENTREPRISES
      */
     private function getTrancheEmployesKey(?string $nbEmployes): string
     {
@@ -200,7 +207,6 @@ class CotisationCalculator
 
     /**
      * Retourne le libellé lisible de la tranche d'employés
-     * Uniquement utilisé pour les ENTREPRISES
      */
     public function getTrancheEmployes(?string $nbEmployes): string
     {
