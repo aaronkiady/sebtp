@@ -91,6 +91,16 @@
                 <form method="post" action="{{ path('app_document_generer_cotisation', {'adherent_id': adherent.id}) }}" class="row g-4 mt-3" id="generationForm">
                     <input type="hidden" name="periode" value="{{ periode }}">
                     
+                    <div class="col-md-6">
+                        <label class="form-label">Signataire <span class="text-danger">*</span></label>
+                        <select name="signataire" class="form-select" required>
+                            <option value="president">Président SEBTP</option>
+                            <option value="secretaire">Secrétaire SEBTP</option>
+                            <option value="tresorier">Trésorier SEBTP</option>
+                        </select>
+                        <small class="text-muted">Le signataire apparaîtra sur le document</small>
+                    </div>
+                    
                     <div class="col-12">
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
@@ -126,7 +136,6 @@
 
 {% block javascripts %}
 <script>
-    // Synchroniser la période entre les deux formulaires
     document.addEventListener('DOMContentLoaded', function() {
         const selectPeriode = document.querySelector('select[name="periode"]');
         const hiddenPeriode = document.querySelector('input[name="periode"]');

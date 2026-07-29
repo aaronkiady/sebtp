@@ -80,6 +80,7 @@ class DocumentController extends AbstractController
             $montant = $request->request->get('montant');
             $periode = $request->request->get('periode');
             $motif = $request->request->get('motif');
+            $signataire = $request->request->get('signataire', 'president');
 
             if (!$montant || !$periode || !$motif) {
                 $this->addFlash('error', 'Tous les champs sont obligatoires.');
@@ -87,7 +88,7 @@ class DocumentController extends AbstractController
             }
 
             try {
-                $document = $this->documentGenerator->generateNoteDebit($adherent, (float) $montant, $periode, $motif);
+                $document = $this->documentGenerator->generateNoteDebit($adherent, (float) $montant, $periode, $motif, $signataire);
                 $this->addFlash('success', 'Note de débit générée avec succès !');
                 return $this->redirectToRoute('app_document_adherent', ['id' => $adherent->getId()]);
             } catch (\Exception $e) {
@@ -114,6 +115,7 @@ class DocumentController extends AbstractController
         
         if ($request->isMethod('POST')) {
             $periode = $request->request->get('periode', date('Y'));
+            $signataire = $request->request->get('signataire', 'president');
             
             try {
                 // Calculer le montant avec le barème actuel (pas celui stocké)
@@ -150,8 +152,8 @@ class DocumentController extends AbstractController
                 // Motif = juste "Cotisation {période}"
                 $motif = sprintf('Cotisation %s', $periode);
                 
-                // Générer la note de débit avec le montant recalculé
-                $document = $this->documentGenerator->generateNoteDebit($adherent, $montant, $periode, $motif);
+                // Générer la note de débit avec le montant recalculé et le signataire choisi
+                $document = $this->documentGenerator->generateNoteDebit($adherent, $montant, $periode, $motif, $signataire);
                 
                 $this->addFlash('success', sprintf('Note de débit pour cotisation %s générée avec succès ! Montant : %s MGA', $periode, number_format($montant, 0, '.', ' ')));
                 
@@ -244,23 +246,23 @@ class DocumentController extends AbstractController
     }
 
     #[Route('/generer-recu-paiement/{paiement_id}', name: 'app_document_generer_recu_paiement', methods: ['GET'])]
-public function genererRecuPaiement(int $paiement_id, EntityManagerInterface $em): Response
-{
-    $paiement = $em->getRepository(Paiement::class)->find($paiement_id);
-    
-    if (!$paiement) {
-        $this->addFlash('error', 'Paiement non trouvé');
-        return $this->redirectToRoute('app_home');
-    }
-    
-    try {
-        $document = $this->documentGenerator->generateRecu($paiement);
-        $this->addFlash('success', 'Reçu généré avec succès !');
+    public function genererRecuPaiement(int $paiement_id, EntityManagerInterface $em): Response
+    {
+        $paiement = $em->getRepository(Paiement::class)->find($paiement_id);
         
-        return $this->redirectToRoute('app_document_adherent', ['id' => $paiement->getCotisation()->getAdherent()->getId()]);
-    } catch (\Exception $e) {
-        $this->addFlash('error', 'Erreur lors de la génération du reçu : ' . $e->getMessage());
-        return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $paiement->getCotisation()->getAdherent()->getId()]);
+        if (!$paiement) {
+            $this->addFlash('error', 'Paiement non trouvé');
+            return $this->redirectToRoute('app_home');
+        }
+        
+        try {
+            $document = $this->documentGenerator->generateRecu($paiement);
+            $this->addFlash('success', 'Reçu généré avec succès !');
+            
+            return $this->redirectToRoute('app_document_adherent', ['id' => $paiement->getCotisation()->getAdherent()->getId()]);
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'Erreur lors de la génération du reçu : ' . $e->getMessage());
+            return $this->redirectToRoute('app_cotisation_history', ['adherent_id' => $paiement->getCotisation()->getAdherent()->getId()]);
+        }
     }
-}
 }

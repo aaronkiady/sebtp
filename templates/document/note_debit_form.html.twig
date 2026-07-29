@@ -52,6 +52,15 @@
                         <label class="form-label">Motif <span class="text-danger">*</span></label>
                         <textarea name="motif" class="form-control" rows="3" required placeholder="Ex: Cotisation annuelle 2024, Frais d'adhésion..."></textarea>
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Signataire <span class="text-danger">*</span></label>
+                        <select name="signataire" class="form-select" required>
+                            <option value="president">Président SEBTP</option>
+                            <option value="secretaire">Secrétaire SEBTP</option>
+                            <option value="tresorier">Trésorier SEBTP</option>
+                        </select>
+                        <small class="text-muted">Le signataire apparaîtra sur le document</small>
+                    </div>
                     <div class="col-12">
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
@@ -60,6 +69,7 @@
                                 <li>Une numérotation automatique (ND-2026-0001)</li>
                                 <li>Le montant en lettres</li>
                                 <li>Une échéance à 30 jours</li>
+                                <li>Le signataire choisi</li>
                             </ul>
                         </div>
                     </div>

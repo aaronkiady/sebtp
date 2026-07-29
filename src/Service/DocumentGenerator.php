@@ -7,6 +7,7 @@ use App\Entity\Liste;
 use App\Entity\Cotisation;
 use App\Entity\Paiement;
 use App\Entity\Participation;
+use App\Entity\Dirigeant;
 use App\Repository\DocumentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Dompdf\Dompdf;
@@ -39,6 +40,41 @@ class DocumentGenerator
         $this->entityManager = $entityManager;
         $this->documentRepository = $documentRepository;
         $this->projectDir = __DIR__ . '/../../';
+    }
+
+    /**
+     * Récupère le dirigeant actif (le premier en base)
+     */
+    private function getDirigeant(): ?Dirigeant
+    {
+        $repo = $this->entityManager->getRepository(Dirigeant::class);
+        $dirigeants = $repo->findAll();
+        return $dirigeants[0] ?? null;
+    }
+
+    /**
+     * Récupère le nom du signataire en fonction de la fonction
+     */
+    private function getSignataireNom(string $fonction): string
+    {
+        $dirigeant = $this->getDirigeant();
+        if (!$dirigeant) {
+            return self::PRESIDENT_NOM;
+        }
+        $nom = $dirigeant->getSignataireByFonction($fonction);
+        return $nom ?? self::PRESIDENT_NOM;
+    }
+
+    /**
+     * Récupère le titre du signataire en fonction de la fonction
+     */
+    private function getSignataireTitre(string $fonction): string
+    {
+        $dirigeant = $this->getDirigeant();
+        if (!$dirigeant) {
+            return self::PRESIDENT_TITRE;
+        }
+        return $dirigeant->getTitreByFonction($fonction);
     }
 
     /**
@@ -113,7 +149,7 @@ class DocumentGenerator
     /**
      * Génère une note de débit
      */
-    public function generateNoteDebit(Liste $adherent, float $montant, string $periode, string $motif): Document
+    public function generateNoteDebit(Liste $adherent, float $montant, string $periode, string $motif, string $signataireFonction = 'president'): Document
     {
         [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('note_debit', $adherent);
 
@@ -128,7 +164,7 @@ class DocumentGenerator
         $this->entityManager->persist($document);
         $this->entityManager->flush();
 
-        $html = $this->renderNoteDebitHtml($document, $motif);
+        $html = $this->renderNoteDebitHtml($document, $motif, $signataireFonction);
         $pdfContent = $this->generatePdf($html);
 
         $fileName = $this->buildFileName($adherent, 'NDD', $year, $compteur);
@@ -149,83 +185,74 @@ class DocumentGenerator
      *
      * @return array{0: string, 1: string, 2: string} [numero, compteur (4 chiffres), année]
      */
-    /**
- * Génère le numéro de document ainsi que le compteur brut
- */
-    /**
- * Génère le numéro de document ainsi que le compteur brut (utilisé aussi pour le nom de fichier)
- * Le compteur est spécifique à l'adhérent pour le nom de fichier
- *
- * @return array{0: string, 1: string, 2: string} [numero, compteur (4 chiffres), année]
- */
     private function generateNumeroAndCompteur(string $type, Liste $adherent): array
-{
-    $year = date('Y');
-    $adherentId = $adherent->getId();
+    {
+        $year = date('Y');
+        $adherentId = $adherent->getId();
 
-    // Correspondance entre type en base et préfixe affiché
-    $prefixe = match ($type) {
-        'note_debit' => 'NDD',
-        'recu' => 'RECU',
-        default => strtoupper($type),
-    };
+        // Correspondance entre type en base et préfixe affiché
+        $prefixe = match ($type) {
+            'note_debit' => 'NDD',
+            'recu' => 'RECU',
+            default => strtoupper($type),
+        };
 
-    $conn = $this->entityManager->getConnection();
+        $conn = $this->entityManager->getConnection();
 
-    // ===== Compteur global =====
-    $sqlGlobal = "
-        SELECT COUNT(*)
-        FROM document
-        WHERE type = :type
-        AND YEAR(date_creation) = :year
-    ";
+        // ===== Compteur global =====
+        $sqlGlobal = "
+            SELECT COUNT(*)
+            FROM document
+            WHERE type = :type
+            AND YEAR(date_creation) = :year
+        ";
 
-    $stmtGlobal = $conn->prepare($sqlGlobal);
-    $stmtGlobal->bindValue('type', $type);
-    $stmtGlobal->bindValue('year', $year);
+        $stmtGlobal = $conn->prepare($sqlGlobal);
+        $stmtGlobal->bindValue('type', $type);
+        $stmtGlobal->bindValue('year', $year);
 
-    $countGlobal = (int) $stmtGlobal->executeQuery()->fetchOne() + 1;
+        $countGlobal = (int) $stmtGlobal->executeQuery()->fetchOne() + 1;
 
-    $compteurGlobal = str_pad(
-        (string) $countGlobal,
-        4,
-        '0',
-        STR_PAD_LEFT
-    );
+        $compteurGlobal = str_pad(
+            (string) $countGlobal,
+            4,
+            '0',
+            STR_PAD_LEFT
+        );
 
-    // Numéro affiché dans le document
-    $numero = sprintf(
-        '%s-%s-%s',
-        $prefixe,
-        $year,
-        $compteurGlobal
-    );
+        // Numéro affiché dans le document
+        $numero = sprintf(
+            '%s-%s-%s',
+            $prefixe,
+            $year,
+            $compteurGlobal
+        );
 
-    // ===== Compteur fichier par adhérent =====
-    $sqlAdherent = "
-        SELECT COUNT(*)
-        FROM document
-        WHERE adherent_id = :adherentId
-        AND type = :type
-        AND YEAR(date_creation) = :year
-    ";
+        // ===== Compteur fichier par adhérent =====
+        $sqlAdherent = "
+            SELECT COUNT(*)
+            FROM document
+            WHERE adherent_id = :adherentId
+            AND type = :type
+            AND YEAR(date_creation) = :year
+        ";
 
-    $stmtAdherent = $conn->prepare($sqlAdherent);
-    $stmtAdherent->bindValue('adherentId', $adherentId);
-    $stmtAdherent->bindValue('type', $type);
-    $stmtAdherent->bindValue('year', $year);
+        $stmtAdherent = $conn->prepare($sqlAdherent);
+        $stmtAdherent->bindValue('adherentId', $adherentId);
+        $stmtAdherent->bindValue('type', $type);
+        $stmtAdherent->bindValue('year', $year);
 
-    $countAdherent = (int) $stmtAdherent->executeQuery()->fetchOne() + 1;
+        $countAdherent = (int) $stmtAdherent->executeQuery()->fetchOne() + 1;
 
-    $compteurFichier = str_pad(
-        (string) $countAdherent,
-        4,
-        '0',
-        STR_PAD_LEFT
-    );
+        $compteurFichier = str_pad(
+            (string) $countAdherent,
+            4,
+            '0',
+            STR_PAD_LEFT
+        );
 
-    return [$numero, $compteurFichier, $year];
-}
+        return [$numero, $compteurFichier, $year];
+    }
 
     /**
      * Nettoie une chaîne pour l'utiliser dans un nom de fichier
@@ -379,10 +406,16 @@ class DocumentGenerator
         array $lignes,
         string $totalFormate,
         string $montantLettres,
-        string $blocPaiementGaucheHtml
+        string $blocPaiementGaucheHtml,
+        string $signataireNom = null,
+        string $signataireTitre = null
     ): string {
         $logoHtml = $this->buildLogoHtml();
         $signatureHtml = $this->buildSignatureHtml();
+
+        // Utiliser les valeurs par défaut si non fournies
+        $signataireNom = $signataireNom ?? self::PRESIDENT_NOM;
+        $signataireTitre = $signataireTitre ?? self::PRESIDENT_TITRE;
 
         $lignesHtml = '';
         foreach ($lignes as $ligne) {
@@ -524,9 +557,9 @@ class DocumentGenerator
             <tr>
                 <td class="footer-left">{$blocPaiementGaucheHtml}</td>
                 <td class="footer-right">
-                    <div class="president-titre">{$this->e(self::PRESIDENT_TITRE)}</div>
+                    <div class="president-titre">{$this->e($signataireTitre)}</div>
                     {$signatureHtml}
-                    <div class="president-nom">{$this->e(self::PRESIDENT_NOM)}</div>
+                    <div class="president-nom">{$this->e($signataireNom)}</div>
                 </td>
             </tr>
         </table>
@@ -675,7 +708,7 @@ HTML;
     /**
      * Rendu HTML de la note de débit
      */
-    private function renderNoteDebitHtml(Document $document, string $motif): string
+    private function renderNoteDebitHtml(Document $document, string $motif, string $signataireFonction = 'president'): string
     {
         $adherent = $document->getAdherent();
         $numero = $document->getNumero();
@@ -690,6 +723,10 @@ HTML;
         $adherentStat = $adherent->getStat() ?? 'Non renseigné';
         $periode = $document->getPeriode() ?? 'Non définie';
         $motif = $document->getReference() ?? 'Non définie';
+
+        // Récupérer le signataire dynamique
+        $signataireNom = $this->getSignataireNom($signataireFonction);
+        $signataireTitre = $this->getSignataireTitre($signataireFonction);
 
         $lignes = [[
             'designation' => $motif,
@@ -711,7 +748,9 @@ HTML;
             $lignes,
             $montantFormate,
             $montantLettres,
-            $this->buildModePaiementInstructionsHtml()
+            $this->buildModePaiementInstructionsHtml(),
+            $signataireNom,
+            $signataireTitre
         );
     }
 

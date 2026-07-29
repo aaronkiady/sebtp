@@ -107,7 +107,6 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>ID</th>
                         <th>Nom</th>
                         <th>Email</th>
                         <th>Téléphone</th>
@@ -120,7 +119,6 @@
                 <tbody>
                 {% for liste in listes %}
                     <tr>
-                        <td class="text-muted">#{{ liste.id }}</td>
                         <td class="fw-bold">{{ liste.nom }}</td>
                         <td>{{ liste.email }}</td>
                         <td>{{ liste.numero }}</td>

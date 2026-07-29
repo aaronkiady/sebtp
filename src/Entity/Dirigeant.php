@@ -62,4 +62,31 @@ class Dirigeant
 
         return $this;
     }
+
+     /**
+     * Récupère le nom du signataire en fonction de la fonction
+     */
+    public function getSignataireByFonction(string $fonction): ?string
+    {
+        return match ($fonction) {
+            'president' => $this->getPresident(),
+            'secretaire' => $this->getSecretaire(),
+            'tresorier' => $this->getTresorier(),
+            default => $this->getPresident(),
+        };
+    }
+
+    /**
+     * Récupère le titre du signataire en fonction de la fonction
+     */
+    public function getTitreByFonction(string $fonction): string
+    {
+        return match ($fonction) {
+            'president' => 'Le Président du SEBTP',
+            'secretaire' => 'Le Secrétaire du SEBTP',
+            'tresorier' => 'Le Trésorier du SEBTP',
+            default => 'Le Président du SEBTP',
+        };
+    }
 }
+
