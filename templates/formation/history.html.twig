@@ -14,12 +14,12 @@
         </a>
     </div>
 
-    {% for message in app.flashes('info') %}
+    {#{% for message in app.flashes('info') %}
         <div class="alert alert-info alert-dismissible fade show" role="alert">
             <i class="fas fa-info-circle me-2"></i>{{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-    {% endfor %}
+    {% endfor %}#}
 
     {% if adherent.statut == 'radie' %}
         <div class="alert alert-warning">

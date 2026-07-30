@@ -91,13 +91,13 @@
                                                     class="btn btn-sm btn-outline-warning" title="Modifier">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
-                                                    <form method="post" action="{{ path('app_paiement_delete', {'id': paiement.id}) }}" 
+                                                    {#<form method="post" action="{{ path('app_paiement_delete', {'id': paiement.id}) }}" 
                                                         onsubmit="return confirm('Supprimer ce paiement ?')" style="display:inline">
                                                         <input type="hidden" name="_token" value="{{ csrf_token('delete_paiement_' ~ paiement.id) }}">
                                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
-                                                    </form>
+                                                    </form>#}
                                                 </div>
                                             </td>
                                         </tr>
