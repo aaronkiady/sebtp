@@ -32,7 +32,7 @@ class PaiementType extends AbstractType
                     'Espèces' => 'Especes',
                     'Chèque' => 'Cheque',
                     'Virement bancaire' => 'Virement',
-                    'Mobile Money' => 'Mobile Money',
+                    //'Mobile Money' => 'Mobile Money',
                 ],
                 'attr' => ['class' => 'form-select custom-input'],
                 'required' => true,

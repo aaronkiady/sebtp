@@ -43,6 +43,10 @@ class DocumentGenerator
         $this->projectDir = __DIR__ . '/../../';
     }
 
+    // ============================================================
+    // MÉTHODES PRIVÉES UTILITAIRES
+    // ============================================================
+
     /**
      * Récupère le dirigeant actif (le premier en base)
      */
@@ -76,174 +80,6 @@ class DocumentGenerator
             return self::PRESIDENT_TITRE;
         }
         return $dirigeant->getTitreByFonction($fonction);
-    }
-
-    /**
-     * Génère un reçu de paiement pour un paiement de cotisation
-     */
-    public function generateRecu(Paiement $paiement): Document
-    {
-        $cotisation = $paiement->getCotisation();
-        $adherent = $cotisation->getAdherent();
-        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('RECU', $adherent);
-
-        $document = new Document();
-        $document->setType('recu');
-        $document->setNumero($numero);
-        $document->setAdherent($adherent);
-        $document->setMontant($paiement->getMontant());
-        $document->setPeriode($paiement->getPeriode());
-        $document->setReference($paiement->getReference() ?? 'N/A');
-
-        $this->entityManager->persist($document);
-        $this->entityManager->flush();
-
-        $html = $this->renderRecuHtml($document, $paiement);
-        $pdfContent = $this->generatePdf($html);
-
-        $fileName = $this->buildFileName($adherent, 'RECU', $year, $compteur);
-        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
-
-        $document->setCheminFichier($path);
-        $document->setNomFichier($fileName);
-        $document->setContenu($html);
-
-        $this->entityManager->flush();
-
-        return $document;
-    }
-
-    /**
-     * Génère un reçu pour un paiement d'événement (PaiementEvenement)
-     */
-    public function generateRecuFromPaiementEvenement(PaiementEvenement $paiement): Document
-    {
-        $participation = $paiement->getParticipation();
-        $adherent = $participation->getAdherent();
-        $evenement = $participation->getEvenement();
-        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('RECU', $adherent);
-
-        $document = new Document();
-        $document->setType('recu');
-        $document->setNumero($numero);
-        $document->setAdherent($adherent);
-        $document->setMontant($paiement->getMontant());
-        $document->setPeriode($evenement->getDate() ? $evenement->getDate()->format('Y') : date('Y'));
-        $document->setReference($paiement->getReference() ?? 'Evenement: ' . $evenement->getNom());
-
-        $this->entityManager->persist($document);
-        $this->entityManager->flush();
-
-        $html = $this->renderRecuFromPaiementEvenementHtml($document, $paiement);
-        $pdfContent = $this->generatePdf($html);
-
-        $fileName = $this->buildFileName($adherent, 'RECU_EVENT', $year, $compteur);
-        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
-
-        $document->setCheminFichier($path);
-        $document->setNomFichier($fileName);
-        $document->setContenu($html);
-
-        $this->entityManager->flush();
-
-        return $document;
-    }
-
-    /**
-     * Génère un reçu à partir d'une participation (pour les événements - méthode de fallback)
-     */
-    public function generateRecuFromParticipation(Participation $participation): Document
-    {
-        $adherent = $participation->getAdherent();
-        $evenement = $participation->getEvenement();
-        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('RECU', $adherent);
-
-        $document = new Document();
-        $document->setType('recu');
-        $document->setNumero($numero);
-        $document->setAdherent($adherent);
-        $document->setMontant($participation->getMontantTotal());
-        $document->setPeriode($evenement->getDate() ? $evenement->getDate()->format('Y') : date('Y'));
-        $document->setReference('Evenement: ' . $evenement->getNom());
-
-        $this->entityManager->persist($document);
-        $this->entityManager->flush();
-
-        $html = $this->renderRecuFromParticipationHtml($document, $participation);
-        $pdfContent = $this->generatePdf($html);
-
-        $fileName = $this->buildFileName($adherent, 'RECU_EVENT', $year, $compteur);
-        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
-
-        $document->setCheminFichier($path);
-        $document->setNomFichier($fileName);
-        $document->setContenu($html);
-
-        $this->entityManager->flush();
-
-        return $document;
-    }
-
-    /**
-     * Génère une note de débit avec plusieurs lignes
-     * 
-     * @param Liste $adherent L'adhérent
-     * @param float $montantTotal Le montant total
-     * @param string $periode La période
-     * @param array<int, array{designation:string, quantite:int, prixUnitaire:float, montant:float}> $lignes Les lignes de la note
-     * @param string $motif Le motif global
-     * @param string $signataireFonction La fonction du signataire
-     */
-    public function generateNoteDebitWithLines(
-        Liste $adherent, 
-        float $montantTotal, 
-        string $periode, 
-        array $lignes, 
-        string $motif, 
-        string $signataireFonction = 'president'
-    ): Document {
-        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('note_debit', $adherent);
-
-        $document = new Document();
-        $document->setType('note_debit');
-        $document->setNumero($numero);
-        $document->setAdherent($adherent);
-        $document->setMontant($montantTotal);
-        $document->setPeriode($periode);
-        $document->setReference($motif);
-
-        $this->entityManager->persist($document);
-        $this->entityManager->flush();
-
-        $html = $this->renderNoteDebitWithLinesHtml($document, $lignes, $motif, $signataireFonction);
-        $pdfContent = $this->generatePdf($html);
-
-        $fileName = $this->buildFileName($adherent, 'NDD', $year, $compteur);
-        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
-
-        $document->setCheminFichier($path);
-        $document->setNomFichier($fileName);
-        $document->setContenu($html);
-
-        $this->entityManager->flush();
-
-        return $document;
-    }
-
-    /**
-     * Génère une note de débit (méthode simple pour compatibilité)
-     */
-    public function generateNoteDebit(Liste $adherent, float $montant, string $periode, string $motif, string $signataireFonction = 'president'): Document
-    {
-        // Convertir en une seule ligne pour compatibilité
-        $lignes = [[
-            'designation' => $motif,
-            'quantite' => 1,
-            'prixUnitaire' => $montant,
-            'montant' => $montant
-        ]];
-        
-        return $this->generateNoteDebitWithLines($adherent, $montant, $periode, $lignes, $motif, $signataireFonction);
     }
 
     /**
@@ -410,7 +246,7 @@ class DocumentGenerator
             return '<img src="' . $logoBase64 . '" alt="SEBTP Logo" style="width:250px;height:auto;object-fit:contain;">';
         }
 
-        return '<div style="width:200px;height:90px;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;">SEBTP</div>';
+        return '<div style="width:90px;height:90px;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;">SEBTP</div>';
     }
 
     /**
@@ -442,290 +278,6 @@ class DocumentGenerator
         );
         
         return $formatter->format($date);
-    }
-
-    /**
-     * Gabarit HTML commun aux reçus et notes de débit avec lignes personnalisées
-     */
-    private function renderDocumentHtmlWithLines(
-        string $titrePage,
-        string $titreDocument,
-        string $numero,
-        \DateTimeInterface $dateCreation,
-        string $clientNom,
-        string $clientTel,
-        string $clientAdresse,
-        string $clientNif,
-        string $clientStat,
-        string $lignesHtml,
-        string $totalFormate,
-        string $montantLettres,
-        string $blocPaiementGaucheHtml,
-        string $signataireNom = null,
-        string $signataireTitre = null,
-        string $labelDoit = 'DOIT :'
-    ): string {
-        $logoHtml = $this->buildLogoHtml();
-        $signatureHtml = $this->buildSignatureHtml();
-
-        $dateCreationFormatee = $this->formatDateFrancaise($dateCreation, 'dd MMMM yyyy');
-
-        $signataireNom = $signataireNom ?? self::PRESIDENT_NOM;
-        $signataireTitre = $signataireTitre ?? self::PRESIDENT_TITRE;
-
-        return <<<HTML
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>{$titrePage} N° {$numero}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Arial', sans-serif;
-            font-size: 13px;
-            color: #000;
-            background: #fff;
-            padding: 35px 40px;
-        }
-        .page { max-width: 760px; margin: 0 auto; }
-
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .header-table td { vertical-align: top; border: none; padding: 0; }
-        .logo-cell { width: 130px; }
-
-        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .info-table td { vertical-align: top; border: none; padding: 0; }
-        .info-left { width: 55%; font-size: 13px; line-height: 1.9; }
-        .info-right { width: 45%; font-size: 13px; line-height: 1.7; text-align: right; }
-
-        .doit-label {
-            font-weight: 700;
-            text-decoration: underline;
-            font-size: 15px;
-            margin: 6px 0 6px 0;
-        }
-        .client-nom { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
-        .client-info { font-size: 13px; margin-top: 2px; }
-
-        .doc-title-box {
-            border: 1px solid #000;
-            text-align: center;
-            font-weight: 700;
-            font-size: 14px;
-            padding: 10px;
-            margin: 22px 0 22px 0;
-            letter-spacing: 0.5px;
-        }
-
-        table.details { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-        table.details th, table.details td {
-            border: 1px solid #000;
-            padding: 10px;
-            font-size: 13px;
-            text-align: center;
-        }
-        table.details th { font-weight: 700; }
-        table.details td:first-child, table.details th:first-child { text-align: left; }
-        table.details tfoot td { font-weight: 700; }
-        table.details tfoot td.total-label { text-align: right; }
-
-        .montant-lettres { margin: 22px 0 26px 0; font-size: 14px; }
-        .montant-lettres strong { font-weight: 700; }
-
-        .footer-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
-        .footer-table td { vertical-align: top; border: none; padding: 0; font-size: 13px; }
-        .footer-left { width: 58%; line-height: 1.6; }
-        .footer-right { width: 42%; text-align: center; line-height: 1.4; padding-top: 15px; }
-        .footer-left u { text-decoration: underline; }
-        .footer-right .president-titre { font-size: 13px; }
-        .footer-right .president-nom { font-weight: 700; font-size: 13px; margin-top: 4px; }
-    </style>
-</head>
-<body>
-    <div class="page">
-
-        <table class="header-table">
-            <tr>
-                <td class="logo-cell">{$logoHtml}</td>
-                <td></td>
-            </tr>
-        </table>
-
-        <table class="info-table">
-            <tr>
-                <td class="info-left">
-                    <div><strong>{$this->e(self::SYNDICAT_SOUS_TITRE)}</strong></div>
-                    <div><strong>{$this->e(self::SYNDICAT_ADRESSE)}</strong></div>
-                    <div>Tel : {$this->e(self::SYNDICAT_TEL)}</div>
-                    <div>Email : {$this->e(self::SYNDICAT_EMAIL)}</div>
-                    <div style="margin-top:6px;">NIF : {$this->e(self::SYNDICAT_NIF)}</div>
-                    <div>STAT: {$this->e(self::SYNDICAT_STAT)}</div>
-                </td>
-                <td class="info-right">
-                    <div>Antananarivo, le {$dateCreationFormatee}</div>
-                    <div class="doit-label">{$this->e($labelDoit)}</div>
-                    <div class="client-nom">{$this->e($clientNom)}</div>
-                    <div class="client-info">Tél : {$this->e($clientTel)}</div>
-                    <div class="client-info">Adresse : {$this->e($clientAdresse)}</div>
-                    <div class="client-info">NIF : {$this->e($clientNif)}</div>
-                    <div class="client-info">STAT: {$this->e($clientStat)}</div>
-                </td>
-            </tr>
-        </table>
-
-        <div class="doc-title-box">{$this->e($titreDocument)} N°{$this->e($numero)}</div>
-
-        <table class="details">
-            <thead>
-                <tr>
-                    <th>DESIGNATION</th>
-                    <th>QUANTITE</th>
-                    <th>PU</th>
-                    <th>MONTANT</th>
-                </tr>
-            </thead>
-            <tbody>
-                {$lignesHtml}
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3" class="total-label">TOTAL</td>
-                    <td>{$totalFormate}</td>
-                </tr>
-            </tfoot>
-        </table>
-
-        <div class="montant-lettres">
-            Arrêtée à la somme de <strong>{$this->e($montantLettres)}</strong>
-        </div>
-
-        <table class="footer-table">
-            <tr>
-                <td class="footer-left">{$blocPaiementGaucheHtml}</td>
-                <td class="footer-right">
-                    <div class="president-titre">{$this->e($signataireTitre)}</div>
-                    {$signatureHtml}
-                    <div class="president-nom">{$this->e($signataireNom)}</div>
-                </td>
-            </tr>
-        </table>
-
-    </div>
-</body>
-</html>
-HTML;
-    }
-
-    /**
-     * Rendu HTML de la note de débit avec plusieurs lignes
-     * 
-     * @param Document $document Le document
-     * @param array<int, array{designation:string, quantite:int, prixUnitaire:float, montant:float}> $lignes Les lignes
-     * @param string $motif Le motif global
-     * @param string $signataireFonction La fonction du signataire
-     */
-    private function renderNoteDebitWithLinesHtml(Document $document, array $lignes, string $motif, string $signataireFonction = 'president'): string
-    {
-        $adherent = $document->getAdherent();
-        $numero = $document->getNumero();
-        $montantTotal = $document->getMontant();
-        $montantFormate = number_format($montantTotal, 0, '.', ' ');
-        $montantLettres = ucfirst($this->nombreEnLettres($montantTotal)) . ' Ariary';
-        $dateCreation = $document->getDateCreation();
-
-        $adherentNom = $adherent->getNom() ?? 'Non renseigné';
-        $adherentAdresse = $adherent->getAdresse() ?? 'Non renseignée';
-        $adherentNumero = $adherent->getNumero() ?? 'Non renseigné';
-        $adherentNif = $adherent->getNif() ?? 'Non renseigné';
-        $adherentStat = $adherent->getStat() ?? 'Non renseigné';
-        $periode = $document->getPeriode() ?? 'Non définie';
-
-        // Récupérer le signataire dynamique
-        $signataireNom = $this->getSignataireNom($signataireFonction);
-        $signataireTitre = $this->getSignataireTitre($signataireFonction);
-
-        // Construire les lignes pour le tableau HTML
-        $lignesHtml = '';
-        foreach ($lignes as $ligne) {
-            $montantLigneFormate = number_format($ligne['montant'], 0, '.', ' ');
-            $prixUnitaireFormate = number_format($ligne['prixUnitaire'], 0, '.', ' ');
-            $lignesHtml .= '<tr>'
-                . '<td style="text-align:left;">' . htmlspecialchars($ligne['designation']) . '</td>'
-                . '<td>' . $ligne['quantite'] . '</td>'
-                . '<td>' . $prixUnitaireFormate . '</td>'
-                . '<td>' . $montantLigneFormate . '</td>'
-                . '</tr>';
-        }
-
-        return $this->renderDocumentHtmlWithLines(
-            'Note de débit',
-            'NOTE DE DEBIT',
-            $numero,
-            $dateCreation,
-            $adherentNom,
-            $adherentNumero,
-            $adherentAdresse,
-            $adherentNif,
-            $adherentStat,
-            $lignesHtml,
-            $montantFormate,
-            $montantLettres,
-            $this->buildModePaiementInstructionsHtml(),
-            $signataireNom,
-            $signataireTitre
-        );
-    }
-
-    /**
-     * Gabarit HTML commun aux reçus et notes de débit (méthode existante pour compatibilité)
-     */
-    private function renderDocumentHtml(
-        string $titrePage,
-        string $titreDocument,
-        string $numero,
-        \DateTimeInterface $dateCreation,
-        string $clientNom,
-        string $clientTel,
-        string $clientAdresse,
-        string $clientNif,
-        string $clientStat,
-        array $lignes,
-        string $totalFormate,
-        string $montantLettres,
-        string $blocPaiementGaucheHtml,
-        string $signataireNom = null,
-        string $signataireTitre = null,
-        string $labelDoit = 'DOIT :'
-    ): string {
-        $lignesHtml = '';
-        foreach ($lignes as $ligne) {
-            $lignesHtml .= '<tr>'
-                . '<td style="text-align:left;">' . htmlspecialchars($ligne['designation']) . '</td>'
-                . '<td>' . htmlspecialchars($ligne['quantite']) . '</td>'
-                . '<td>' . htmlspecialchars($ligne['pu']) . '</td>'
-                . '<td>' . htmlspecialchars($ligne['montant']) . '</td>'
-                . '</tr>';
-        }
-
-        return $this->renderDocumentHtmlWithLines(
-            $titrePage,
-            $titreDocument,
-            $numero,
-            $dateCreation,
-            $clientNom,
-            $clientTel,
-            $clientAdresse,
-            $clientNif,
-            $clientStat,
-            $lignesHtml,
-            $totalFormate,
-            $montantLettres,
-            $blocPaiementGaucheHtml,
-            $signataireNom,
-            $signataireTitre,
-            $labelDoit
-        );
     }
 
     /**
@@ -772,6 +324,547 @@ HTML;
     }
 
     /**
+     * Rend le contenu texte pour les reçus
+     */
+    private function renderRecuContent(
+        string $modePaiement,
+        string $reference,
+        string $montantEnLettres,
+        string $montantFormate,
+        string $motif
+    ): string {
+        return <<<HTML
+<div class="recu-content">
+    <p>
+        Le SEBTP accuse réception de <strong>{$this->e($modePaiement)}</strong> / Réf: <strong>{$this->e($reference)}</strong> 
+        d'un montant de <strong>{$this->e($montantEnLettres)}</strong> ({$this->e($montantFormate)} MGA).
+    </p>
+    <p style="margin-top: 10px;">
+        En paiement de <strong>{$this->e($motif)}</strong>.
+    </p>
+</div>
+HTML;
+    }
+
+    /**
+     * Rend le tableau HTML pour les notes de débit
+     */
+    private function renderTableauLignes(string $lignesHtml, string $totalFormate): string
+    {
+        return <<<HTML
+<table class="details">
+    <thead>
+        <tr>
+            <th>DESIGNATION</th>
+            <th>QUANTITE</th>
+            <th>PU</th>
+            <th>MONTANT</th>
+        </tr>
+    </thead>
+    <tbody>
+        {$lignesHtml}
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="3" class="total-label">TOTAL</td>
+            <td>{$totalFormate}</td>
+        </tr>
+    </tfoot>
+</table>
+HTML;
+    }
+
+    // ============================================================
+    // MÉTHODES DE GÉNÉRATION DE DOCUMENTS (PUBLIQUES)
+    // ============================================================
+
+    /**
+     * Génère un reçu de paiement pour un paiement de cotisation
+     * 
+     * @param Paiement $paiement Le paiement de cotisation
+     * @return Document Le document généré
+     */
+    public function generateRecu(Paiement $paiement): Document
+    {
+        $cotisation = $paiement->getCotisation();
+        $adherent = $cotisation->getAdherent();
+        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('RECU', $adherent);
+
+        $document = new Document();
+        $document->setType('recu');
+        $document->setNumero($numero);
+        $document->setAdherent($adherent);
+        $document->setMontant($paiement->getMontant());
+        $document->setPeriode($paiement->getPeriode());
+        $document->setReference($paiement->getReference() ?? 'N/A');
+
+        $this->entityManager->persist($document);
+        $this->entityManager->flush();
+
+        $html = $this->renderRecuHtml($document, $paiement);
+        $pdfContent = $this->generatePdf($html);
+
+        $fileName = $this->buildFileName($adherent, 'RECU', $year, $compteur);
+        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
+
+        $document->setCheminFichier($path);
+        $document->setNomFichier($fileName);
+        $document->setContenu($html);
+
+        $this->entityManager->flush();
+
+        return $document;
+    }
+
+    /**
+     * Génère un reçu pour un paiement d'événement (PaiementEvenement)
+     * 
+     * @param PaiementEvenement $paiement Le paiement d'événement
+     * @return Document Le document généré
+     */
+    public function generateRecuFromPaiementEvenement(PaiementEvenement $paiement): Document
+    {
+        $participation = $paiement->getParticipation();
+        $adherent = $participation->getAdherent();
+        $evenement = $participation->getEvenement();
+        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('RECU', $adherent);
+
+        $document = new Document();
+        $document->setType('recu');
+        $document->setNumero($numero);
+        $document->setAdherent($adherent);
+        $document->setMontant($paiement->getMontant());
+        $document->setPeriode($evenement->getDate() ? $evenement->getDate()->format('Y') : date('Y'));
+        $document->setReference($paiement->getReference() ?? 'Evenement: ' . $evenement->getNom());
+
+        $this->entityManager->persist($document);
+        $this->entityManager->flush();
+
+        $html = $this->renderRecuFromPaiementEvenementHtml($document, $paiement);
+        $pdfContent = $this->generatePdf($html);
+
+        $fileName = $this->buildFileName($adherent, 'RECU_EVENT', $year, $compteur);
+        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
+
+        $document->setCheminFichier($path);
+        $document->setNomFichier($fileName);
+        $document->setContenu($html);
+
+        $this->entityManager->flush();
+
+        return $document;
+    }
+
+    /**
+     * @deprecated Utiliser generateRecuFromPaiementEvenement() à la place
+     * Génère un reçu à partir d'une participation (méthode de fallback)
+     */
+    public function generateRecuFromParticipation(Participation $participation): Document
+    {
+        $adherent = $participation->getAdherent();
+        $evenement = $participation->getEvenement();
+        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('RECU', $adherent);
+
+        $document = new Document();
+        $document->setType('recu');
+        $document->setNumero($numero);
+        $document->setAdherent($adherent);
+        $document->setMontant($participation->getMontantTotal());
+        $document->setPeriode($evenement->getDate() ? $evenement->getDate()->format('Y') : date('Y'));
+        $document->setReference('Evenement: ' . $evenement->getNom());
+
+        $this->entityManager->persist($document);
+        $this->entityManager->flush();
+
+        $html = $this->renderRecuFromParticipationHtml($document, $participation);
+        $pdfContent = $this->generatePdf($html);
+
+        $fileName = $this->buildFileName($adherent, 'RECU_EVENT', $year, $compteur);
+        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
+
+        $document->setCheminFichier($path);
+        $document->setNomFichier($fileName);
+        $document->setContenu($html);
+
+        $this->entityManager->flush();
+
+        return $document;
+    }
+
+    /**
+     * Génère une note de débit avec plusieurs lignes
+     * 
+     * @param Liste $adherent L'adhérent
+     * @param float $montantTotal Le montant total
+     * @param string $periode La période
+     * @param array<int, array{designation:string, quantite:int, prixUnitaire:float, montant:float}> $lignes Les lignes de la note
+     * @param string $motif Le motif global
+     * @param string $signataireFonction La fonction du signataire
+     * @return Document Le document généré
+     */
+    public function generateNoteDebitWithLines(
+        Liste $adherent, 
+        float $montantTotal, 
+        string $periode, 
+        array $lignes, 
+        string $motif, 
+        string $signataireFonction = 'president'
+    ): Document {
+        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('note_debit', $adherent);
+
+        $document = new Document();
+        $document->setType('note_debit');
+        $document->setNumero($numero);
+        $document->setAdherent($adherent);
+        $document->setMontant($montantTotal);
+        $document->setPeriode($periode);
+        $document->setReference($motif);
+
+        $this->entityManager->persist($document);
+        $this->entityManager->flush();
+
+        $html = $this->renderNoteDebitWithLinesHtml($document, $lignes, $motif, $signataireFonction);
+        $pdfContent = $this->generatePdf($html);
+
+        $fileName = $this->buildFileName($adherent, 'NDD', $year, $compteur);
+        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
+
+        $document->setCheminFichier($path);
+        $document->setNomFichier($fileName);
+        $document->setContenu($html);
+
+        $this->entityManager->flush();
+
+        return $document;
+    }
+
+    /**
+     * Génère une note de débit simple (méthode de compatibilité)
+     * Convertit un motif unique en une ligne unique
+     * 
+     * @deprecated Utiliser generateNoteDebitWithLines() à la place
+     */
+    public function generateNoteDebit(Liste $adherent, float $montant, string $periode, string $motif, string $signataireFonction = 'president'): Document
+    {
+        $lignes = [[
+            'designation' => $motif,
+            'quantite' => 1,
+            'prixUnitaire' => $montant,
+            'montant' => $montant
+        ]];
+        
+        return $this->generateNoteDebitWithLines($adherent, $montant, $periode, $lignes, $motif, $signataireFonction);
+    }
+
+    // ============================================================
+    // MÉTHODES DE RENDU HTML (PRIVÉES)
+    // ============================================================
+
+    /**
+     * Gabarit HTML commun aux reçus et notes de débit
+     */
+    private function renderDocumentHtmlWithLines(
+        string $titrePage,
+        string $titreDocument,
+        string $numero,
+        \DateTimeInterface $dateCreation,
+        string $clientNom,
+        string $clientTel,
+        string $clientAdresse,
+        string $clientNif,
+        string $clientStat,
+        string $contenuPrincipal,
+        string $totalFormate,
+        string $montantLettres,
+        string $blocPaiementGaucheHtml,
+        string $signataireNom = null,
+        string $signataireTitre = null,
+        string $labelDoit = 'DOIT :',
+        bool $isRecu = false
+    ): string {
+        $logoHtml = $this->buildLogoHtml();
+        $signatureHtml = $this->buildSignatureHtml();
+
+        $dateCreationFormatee = $this->formatDateFrancaise($dateCreation, 'dd MMMM yyyy');
+
+        $signataireNom = $signataireNom ?? self::PRESIDENT_NOM;
+        $signataireTitre = $signataireTitre ?? self::PRESIDENT_TITRE;
+
+        // Pour les reçus, on affiche le texte directement
+        // Pour les notes de débit, on affiche le tableau
+        $contenuHtml = $isRecu 
+            ? $contenuPrincipal 
+            : $this->renderTableauLignes($contenuPrincipal, $totalFormate);
+
+        // Afficher le montant en lettres UNIQUEMENT pour les notes de débit (pas pour les reçus)
+        $montantLettresHtml = '';
+        if (!$isRecu) {
+            $montantLettresHtml = <<<HTML
+            <div class="montant-lettres">
+                Arrêtée à la somme de <strong>{$this->e($montantLettres)}</strong>
+            </div>
+    HTML;
+        }
+
+        return <<<HTML
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>{$titrePage} N° {$numero}</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: 'Arial', sans-serif;
+                font-size: 13px;
+                color: #000;
+                background: #fff;
+                padding: 35px 40px;
+            }
+            .page { max-width: 760px; margin: 0 auto; }
+
+            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .header-table td { vertical-align: top; border: none; padding: 0; }
+            .logo-cell { width: 130px; }
+
+            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            .info-table td { vertical-align: top; border: none; padding: 0; }
+            .info-left { width: 55%; font-size: 13px; line-height: 1.9; }
+            .info-right { width: 45%; font-size: 13px; line-height: 1.7; text-align: right; }
+
+            .doit-label {
+                font-weight: 700;
+                text-decoration: underline;
+                font-size: 15px;
+                margin: 6px 0 6px 0;
+            }
+            .client-nom { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+            .client-info { font-size: 13px; margin-top: 2px; }
+
+            .doc-title-box {
+                border: 1px solid #000;
+                text-align: center;
+                font-weight: 700;
+                font-size: 14px;
+                padding: 10px;
+                margin: 22px 0 22px 0;
+                letter-spacing: 0.5px;
+            }
+
+            /* Styles pour le tableau des notes de débit */
+            table.details { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+            table.details th, table.details td {
+                border: 1px solid #000;
+                padding: 10px;
+                font-size: 13px;
+                text-align: center;
+            }
+            table.details th { font-weight: 700; }
+            table.details td:first-child, table.details th:first-child { text-align: left; }
+            table.details tfoot td { font-weight: 700; }
+            table.details tfoot td.total-label { text-align: right; }
+
+            .montant-lettres { 
+                margin: 22px 0 26px 0; 
+                font-size: 14px; 
+                text-align: center;
+            }
+            .montant-lettres strong { font-weight: 700; }
+
+            .footer-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+            .footer-table td { vertical-align: top; border: none; padding: 0; font-size: 13px; }
+            .footer-left { width: 58%; line-height: 1.6; }
+            .footer-right { width: 42%; text-align: center; line-height: 1.4; padding-top: 15px; }
+            .footer-left u { text-decoration: underline; }
+            .footer-right .president-titre { font-size: 13px; }
+            .footer-right .president-nom { font-weight: 700; font-size: 13px; margin-top: 4px; }
+
+            /* Styles pour le contenu des reçus */
+            .recu-content {
+                margin: 30px 0;
+                font-size: 14px;
+                line-height: 1.8;
+            }
+            .recu-content p {
+                text-align: justify;
+                margin-bottom: 10px;
+            }
+            .recu-content strong {
+                font-weight: 700;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+
+            <table class="header-table">
+                <tr>
+                    <td class="logo-cell">{$logoHtml}</td>
+                    <td></td>
+                </tr>
+            </table>
+
+            <table class="info-table">
+                <tr>
+                    <td class="info-left">
+                        <div><strong>{$this->e(self::SYNDICAT_SOUS_TITRE)}</strong></div>
+                        <div><strong>{$this->e(self::SYNDICAT_ADRESSE)}</strong></div>
+                        <div>Tel : {$this->e(self::SYNDICAT_TEL)}</div>
+                        <div>Email : {$this->e(self::SYNDICAT_EMAIL)}</div>
+                        <div style="margin-top:6px;">NIF : {$this->e(self::SYNDICAT_NIF)}</div>
+                        <div>STAT: {$this->e(self::SYNDICAT_STAT)}</div>
+                    </td>
+                    <td class="info-right">
+                        <div>Antananarivo, le {$dateCreationFormatee}</div>
+                        <div class="doit-label">{$this->e($labelDoit)}</div>
+                        <div class="client-nom">{$this->e($clientNom)}</div>
+                        <div class="client-info">Tél : {$this->e($clientTel)}</div>
+                        <div class="client-info">Adresse : {$this->e($clientAdresse)}</div>
+                        <div class="client-info">NIF : {$this->e($clientNif)}</div>
+                        <div class="client-info">STAT: {$this->e($clientStat)}</div>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="doc-title-box">{$this->e($titreDocument)} N°{$this->e($numero)}</div>
+
+            <!-- Contenu principal : soit tableau (ND), soit texte (Reçu) -->
+            {$contenuHtml}
+
+            <!-- Montant en lettres (UNIQUEMENT pour les notes de débit) -->
+            {$montantLettresHtml}
+
+            <table class="footer-table">
+                <tr>
+                    <td class="footer-left">{$blocPaiementGaucheHtml}</td>
+                    <td class="footer-right">
+                        <div class="president-titre">{$this->e($signataireTitre)}</div>
+                        {$signatureHtml}
+                        <div class="president-nom">{$this->e($signataireNom)}</div>
+                    </td>
+                </tr>
+            </table>
+
+        </div>
+    </body>
+    </html>
+    HTML;
+        }
+
+    /**
+     * @deprecated Utiliser renderDocumentHtmlWithLines() à la place
+     * Gabarit HTML pour notes de débit avec tableau (méthode de compatibilité)
+     */
+    private function renderDocumentHtml(
+        string $titrePage,
+        string $titreDocument,
+        string $numero,
+        \DateTimeInterface $dateCreation,
+        string $clientNom,
+        string $clientTel,
+        string $clientAdresse,
+        string $clientNif,
+        string $clientStat,
+        array $lignes,
+        string $totalFormate,
+        string $montantLettres,
+        string $blocPaiementGaucheHtml,
+        string $signataireNom = null,
+        string $signataireTitre = null,
+        string $labelDoit = 'DOIT :'
+    ): string {
+        // Construire les lignes HTML
+        $lignesHtml = '';
+        foreach ($lignes as $ligne) {
+            $lignesHtml .= '<tr>'
+                . '<td style="text-align:left;">' . htmlspecialchars($ligne['designation']) . '</td>'
+                . '<td>' . htmlspecialchars($ligne['quantite']) . '</td>'
+                . '<td>' . htmlspecialchars($ligne['pu']) . '</td>'
+                . '<td>' . htmlspecialchars($ligne['montant']) . '</td>'
+                . '</tr>';
+        }
+
+        return $this->renderDocumentHtmlWithLines(
+            $titrePage,
+            $titreDocument,
+            $numero,
+            $dateCreation,
+            $clientNom,
+            $clientTel,
+            $clientAdresse,
+            $clientNif,
+            $clientStat,
+            $lignesHtml,
+            $totalFormate,
+            $montantLettres,
+            $blocPaiementGaucheHtml,
+            $signataireNom,
+            $signataireTitre,
+            $labelDoit,
+            false  // isRecu = false car c'est une note de débit
+        );
+    }
+
+    /**
+     * Rendu HTML de la note de débit avec plusieurs lignes
+     */
+    private function renderNoteDebitWithLinesHtml(Document $document, array $lignes, string $motif, string $signataireFonction = 'president'): string
+    {
+        $adherent = $document->getAdherent();
+        $numero = $document->getNumero();
+        $montantTotal = $document->getMontant();
+        $montantFormate = number_format($montantTotal, 0, '.', ' ');
+        $montantLettres = ucfirst($this->nombreEnLettres($montantTotal)) . ' Ariary';
+        $dateCreation = $document->getDateCreation();
+
+        $adherentNom = $adherent->getNom() ?? 'Non renseigné';
+        $adherentAdresse = $adherent->getAdresse() ?? 'Non renseignée';
+        $adherentNumero = $adherent->getNumero() ?? 'Non renseigné';
+        $adherentNif = $adherent->getNif() ?? 'Non renseigné';
+        $adherentStat = $adherent->getStat() ?? 'Non renseigné';
+
+        $signataireNom = $this->getSignataireNom($signataireFonction);
+        $signataireTitre = $this->getSignataireTitre($signataireFonction);
+
+        // Construire les lignes HTML pour le tableau
+        $lignesHtml = '';
+        foreach ($lignes as $ligne) {
+            $montantLigneFormate = number_format($ligne['montant'], 0, '.', ' ');
+            $prixUnitaireFormate = number_format($ligne['prixUnitaire'], 0, '.', ' ');
+            $lignesHtml .= '<tr>'
+                . '<td style="text-align:left;">' . htmlspecialchars($ligne['designation']) . '</td>'
+                . '<td>' . $ligne['quantite'] . '</td>'
+                . '<td>' . $prixUnitaireFormate . '</td>'
+                . '<td>' . $montantLigneFormate . '</td>'
+                . '</tr>';
+        }
+
+        return $this->renderDocumentHtmlWithLines(
+            'Note de débit',
+            'NOTE DE DEBIT',
+            $numero,
+            $dateCreation,
+            $adherentNom,
+            $adherentNumero,
+            $adherentAdresse,
+            $adherentNif,
+            $adherentStat,
+            $lignesHtml,
+            $montantFormate,
+            $montantLettres,
+            $this->buildModePaiementInstructionsHtml(),
+            $signataireNom,
+            $signataireTitre,
+            'DOIT :',
+            false  // isRecu = false
+        );
+    }
+
+    // ============================================================
+    // MÉTHODES DE RENDU POUR LES REÇUS
+    // ============================================================
+
+    /**
      * Rendu HTML du reçu pour un paiement de cotisation
      */
     private function renderRecuHtml(Document $document, Paiement $paiement): string
@@ -791,15 +884,12 @@ HTML;
         $periode = $document->getPeriode() ?? 'Non définie';
         $reference = $paiement->getReference() ?? 'N/A';
         $modePaiement = $paiement->getModePaiement() ?? 'Non spécifié';
+        $motif = 'Cotisation ' . $periode;
 
-        $lignes = [[
-            'designation' => 'Cotisation ' . $periode,
-            'quantite' => '1',
-            'pu' => $montantFormate,
-            'montant' => $montantFormate,
-        ]];
+        // Contenu texte pour le reçu
+        $contenuPrincipal = $this->renderRecuContent($modePaiement, $reference, $montantLettres, $montantFormate, $motif);
 
-        return $this->renderDocumentHtml(
+        return $this->renderDocumentHtmlWithLines(
             'Reçu de paiement',
             'REÇU',
             $numero,
@@ -809,13 +899,14 @@ HTML;
             $adherentAdresse,
             $adherentNif,
             $adherentStat,
-            $lignes,
+            $contenuPrincipal,
             $montantFormate,
             $montantLettres,
             $this->buildPaiementEffectueHtml($modePaiement, $reference, $datePaiement),
             null,
             null,
-            'A'
+            'A',
+            true  // isRecu = true
         );
     }
 
@@ -838,20 +929,14 @@ HTML;
         $adherentNumero = $adherent->getNumero() ?? 'Non renseigné';
         $adherentNif = $adherent->getNif() ?? 'Non renseigné';
         $adherentStat = $adherent->getStat() ?? 'Non renseigné';
-        $evenementNom = $evenement->getNom() ?? 'Événement';
-        $prixUnit = number_format($evenement->getMontant() ?? 0, 0, '.', ' ');
-        $quantite = (string) ($participation->getQuantite() ?? '1');
         $reference = $paiement->getReference() ?? 'N/A';
         $modePaiement = $paiement->getModePaiement() ?? 'Non spécifié';
+        $motif = 'Participation - ' . $evenement->getNom();
 
-        $lignes = [[
-            'designation' => 'Participation - ' . $evenementNom,
-            'quantite' => $quantite,
-            'pu' => $prixUnit,
-            'montant' => $montantFormate,
-        ]];
+        // Contenu texte pour le reçu
+        $contenuPrincipal = $this->renderRecuContent($modePaiement, $reference, $montantLettres, $montantFormate, $motif);
 
-        return $this->renderDocumentHtml(
+        return $this->renderDocumentHtmlWithLines(
             'Reçu de paiement',
             'REÇU',
             $numero,
@@ -861,18 +946,20 @@ HTML;
             $adherentAdresse,
             $adherentNif,
             $adherentStat,
-            $lignes,
+            $contenuPrincipal,
             $montantFormate,
             $montantLettres,
             $this->buildPaiementEffectueHtml($modePaiement, $reference, $datePaiement),
             null,
             null,
-            'A'
+            'A',
+            true  // isRecu = true
         );
     }
 
     /**
-     * Rendu HTML du reçu pour une participation (événement - méthode de fallback)
+     * @deprecated Utiliser renderRecuFromPaiementEvenementHtml() à la place
+     * Rendu HTML du reçu pour une participation (méthode de fallback)
      */
     private function renderRecuFromParticipationHtml(Document $document, Participation $participation): string
     {
@@ -888,11 +975,8 @@ HTML;
         $adherentNumero = $adherent->getNumero() ?? 'Non renseigné';
         $adherentNif = $adherent->getNif() ?? 'Non renseigné';
         $adherentStat = $adherent->getStat() ?? 'Non renseigné';
-        $evenementNom = $evenement->getNom() ?? 'Événement';
-        $prixUnit = number_format($evenement->getMontant() ?? 0, 0, '.', ' ');
-        $quantite = (string) ($participation->getQuantite() ?? '1');
 
-        // Récupérer les informations de paiement depuis les paiements de la participation
+        // Récupérer les informations de paiement
         $paiements = $participation->getPaiements();
         $reference = 'N/A';
         $modePaiement = 'Non spécifié';
@@ -912,14 +996,12 @@ HTML;
                 : $dateCreation;
         }
 
-        $lignes = [[
-            'designation' => 'Participation - ' . $evenementNom,
-            'quantite' => $quantite,
-            'pu' => $prixUnit,
-            'montant' => $montantFormate,
-        ]];
+        $motif = 'Participation - ' . $evenement->getNom();
 
-        return $this->renderDocumentHtml(
+        // Contenu texte pour le reçu
+        $contenuPrincipal = $this->renderRecuContent($modePaiement, $reference, $montantLettres, $montantFormate, $motif);
+
+        return $this->renderDocumentHtmlWithLines(
             'Reçu de paiement',
             'REÇU',
             $numero,
@@ -929,60 +1011,14 @@ HTML;
             $adherentAdresse,
             $adherentNif,
             $adherentStat,
-            $lignes,
+            $contenuPrincipal,
             $montantFormate,
             $montantLettres,
             $this->buildPaiementEffectueHtml($modePaiement, $reference, $datePaiement),
             null,
             null,
-            'A'
-        );
-    }
-
-    /**
-     * Rendu HTML de la note de débit (méthode simple pour compatibilité)
-     */
-    private function renderNoteDebitHtml(Document $document, string $motif, string $signataireFonction = 'president'): string
-    {
-        $adherent = $document->getAdherent();
-        $numero = $document->getNumero();
-        $montantFormate = number_format($document->getMontant(), 0, '.', ' ');
-        $montantLettres = ucfirst($this->nombreEnLettres($document->getMontant())) . ' Ariary';
-        $dateCreation = $document->getDateCreation();
-
-        $adherentNom = $adherent->getNom() ?? 'Non renseigné';
-        $adherentAdresse = $adherent->getAdresse() ?? 'Non renseignée';
-        $adherentNumero = $adherent->getNumero() ?? 'Non renseigné';
-        $adherentNif = $adherent->getNif() ?? 'Non renseigné';
-        $adherentStat = $adherent->getStat() ?? 'Non renseigné';
-        $periode = $document->getPeriode() ?? 'Non définie';
-
-        $signataireNom = $this->getSignataireNom($signataireFonction);
-        $signataireTitre = $this->getSignataireTitre($signataireFonction);
-
-        $lignes = [[
-            'designation' => $motif,
-            'quantite' => '1',
-            'pu' => $montantFormate,
-            'montant' => $montantFormate,
-        ]];
-
-        return $this->renderDocumentHtml(
-            'Note de débit',
-            'NOTE DE DEBIT',
-            $numero,
-            $dateCreation,
-            $adherentNom,
-            $adherentNumero,
-            $adherentAdresse,
-            $adherentNif,
-            $adherentStat,
-            $lignes,
-            $montantFormate,
-            $montantLettres,
-            $this->buildModePaiementInstructionsHtml(),
-            $signataireNom,
-            $signataireTitre
+            'A',
+            true  // isRecu = true
         );
     }
 
@@ -1004,15 +1040,12 @@ HTML;
         $adherentStat = $adherent->getStat() ?? 'Non renseigné';
         $periode = $document->getPeriode() ?? 'Non définie';
         $reference = $document->getReference() ?? 'N/A';
+        $motif = 'Cotisation ' . $periode;
 
-        $lignes = [[
-            'designation' => 'Cotisation ' . $periode,
-            'quantite' => '1',
-            'pu' => $montantFormate,
-            'montant' => $montantFormate,
-        ]];
+        // Contenu texte pour le reçu
+        $contenuPrincipal = $this->renderRecuContent('Non spécifié', $reference, $montantLettres, $montantFormate, $motif);
 
-        return $this->renderDocumentHtml(
+        return $this->renderDocumentHtmlWithLines(
             'Reçu de paiement',
             'REÇU',
             $numero,
@@ -1022,15 +1055,20 @@ HTML;
             $adherentAdresse,
             $adherentNif,
             $adherentStat,
-            $lignes,
+            $contenuPrincipal,
             $montantFormate,
             $montantLettres,
             $this->buildPaiementEffectueHtml('Non spécifié', $reference, $dateCreation),
             null,
             null,
-            'A'
+            'A',
+            true  // isRecu = true
         );
     }
+
+    // ============================================================
+    // MÉTHODES DE CONVERSION (PRIVÉES)
+    // ============================================================
 
     /**
      * Convertit un nombre en lettres
@@ -1125,8 +1163,12 @@ HTML;
         return $result . ' ' . $this->nombreEnLettresMoinsDeMille($reste);
     }
 
+    // ============================================================
+    // MÉTHODE PUBLIQUE POUR RÉCUPÉRER LE CONTENU D'UN DOCUMENT
+    // ============================================================
+
     /**
-     * Récupère le contenu d'un document
+     * Récupère le contenu HTML d'un document existant
      */
     public function getDocumentContent(Document $document): string
     {
@@ -1139,5 +1181,52 @@ HTML;
         }
 
         return $this->renderNoteDebitHtml($document, $document->getReference() ?? '');
+    }
+
+    /**
+     * @deprecated Utiliser renderNoteDebitWithLinesHtml() à la place
+     * Rendu HTML de la note de débit simple (méthode de compatibilité)
+     */
+    private function renderNoteDebitHtml(Document $document, string $motif, string $signataireFonction = 'president'): string
+    {
+        $adherent = $document->getAdherent();
+        $numero = $document->getNumero();
+        $montantFormate = number_format($document->getMontant(), 0, '.', ' ');
+        $montantLettres = ucfirst($this->nombreEnLettres($document->getMontant())) . ' Ariary';
+        $dateCreation = $document->getDateCreation();
+
+        $adherentNom = $adherent->getNom() ?? 'Non renseigné';
+        $adherentAdresse = $adherent->getAdresse() ?? 'Non renseignée';
+        $adherentNumero = $adherent->getNumero() ?? 'Non renseigné';
+        $adherentNif = $adherent->getNif() ?? 'Non renseigné';
+        $adherentStat = $adherent->getStat() ?? 'Non renseigné';
+
+        $signataireNom = $this->getSignataireNom($signataireFonction);
+        $signataireTitre = $this->getSignataireTitre($signataireFonction);
+
+        $lignes = [[
+            'designation' => $motif,
+            'quantite' => '1',
+            'pu' => $montantFormate,
+            'montant' => $montantFormate,
+        ]];
+
+        return $this->renderDocumentHtml(
+            'Note de débit',
+            'NOTE DE DEBIT',
+            $numero,
+            $dateCreation,
+            $adherentNom,
+            $adherentNumero,
+            $adherentAdresse,
+            $adherentNif,
+            $adherentStat,
+            $lignes,
+            $montantFormate,
+            $montantLettres,
+            $this->buildModePaiementInstructionsHtml(),
+            $signataireNom,
+            $signataireTitre
+        );
     }
 }
