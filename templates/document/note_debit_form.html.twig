@@ -20,70 +20,224 @@
             </div>
         </div>
 
-        {#{% for message in app.flashes('error') %}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}#}
-
         <div class="card shadow-sm">
             <div class="card-body">
-                <form method="post" action="{{ path('app_document_generer_note_debit', {'adherent_id': adherent.id}) }}" class="row g-4" novalidate>
-                    <div class="col-md-6">
-                        <label class="form-label">Montant (MGA) <span class="text-danger">*</span></label>
-                        <input type="number" name="montant" class="form-control" step="1000" required min="0" placeholder="Ex: 500000">
-                        <small class="text-muted">Saisissez le montant en Ariary</small>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Période <span class="text-danger">*</span></label>
-                        <select name="periode" class="form-select" required>
-                            <option value="">-- Sélectionnez --</option>
-                            {% set currentYear = "now"|date('Y') %}
-                            <option value="{{ currentYear }}">{{ currentYear }}</option>
-                            <option value="{{ currentYear - 1 }}">{{ currentYear - 1 }}</option>
-                            <option value="{{ currentYear - 2 }}">{{ currentYear - 2 }}</option>
-                            <option value="{{ currentYear - 3 }}">{{ currentYear - 3 }}</option>
-                            <option value="{{ currentYear - 4 }}">{{ currentYear - 4 }}</option>
-                            <option value="{{ currentYear - 5 }}">{{ currentYear - 5 }}</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Motif <span class="text-danger">*</span></label>
-                        <textarea name="motif" class="form-control" rows="3" required placeholder="Ex: Cotisation annuelle 2024, Frais d'adhésion..."></textarea>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Signataire <span class="text-danger">*</span></label>
-                        <select name="signataire" class="form-select" required>
-                            <option value="president">Président SEBTP</option>
-                            <option value="secretaire">Secrétaire SEBTP</option>
-                            <option value="tresorier">Trésorier SEBTP</option>
-                        </select>
-                        <small class="text-muted">Le signataire apparaîtra sur le document</small>
-                    </div>
-                    <div class="col-12">
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Information :</strong> La note de débit sera générée avec :
-                            <ul class="mt-2 mb-0">
-                                <li>Une numérotation automatique (ND-2026-0001)</li>
-                                <li>Le montant en lettres</li>
-                                <li>Une échéance à 30 jours</li>
-                                <li>Le signataire choisi</li>
-                            </ul>
+                <form method="post" action="{{ path('app_document_generer_note_debit', {'adherent_id': adherent.id}) }}" id="noteDebitForm" novalidate>
+                    
+                    <!-- Période et Signataire -->
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Période <span class="text-danger">*</span></label>
+                            <select name="periode" class="form-select" required>
+                                <option value="">-- Sélectionnez --</option>
+                                {% set currentYear = "now"|date('Y') %}
+                                <option value="{{ currentYear }}">{{ currentYear }}</option>
+                                <option value="{{ currentYear - 1 }}">{{ currentYear - 1 }}</option>
+                                <option value="{{ currentYear - 2 }}">{{ currentYear - 2 }}</option>
+                                <option value="{{ currentYear - 3 }}">{{ currentYear - 3 }}</option>
+                                <option value="{{ currentYear - 4 }}">{{ currentYear - 4 }}</option>
+                                <option value="{{ currentYear - 5 }}">{{ currentYear - 5 }}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Signataire <span class="text-danger">*</span></label>
+                            <select name="signataire" class="form-select" required>
+                                <option value="president">Président SEBTP</option>
+                                <option value="secretaire">Secrétaire SEBTP</option>
+                                <option value="tresorier">Trésorier SEBTP</option>
+                            </select>
+                            <small class="text-muted">Le signataire apparaîtra sur le document</small>
                         </div>
                     </div>
-                    <div class="col-12">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-file-pdf me-2"></i>Générer la note de débit
-                        </button>
+
+                    <!-- Lignes de la note de débit -->
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0">
+                                <i class="fas fa-list me-2 text-primary"></i>Lignes de la note de débit
+                            </h5>
+                            <button type="button" class="btn btn-sm btn-success" id="add-line">
+                                <i class="fas fa-plus me-1"></i> Ajouter une ligne
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="lines-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 45%;">Désignation <span class="text-danger">*</span></th>
+                                        <th style="width: 15%;">Quantité <span class="text-danger">*</span></th>
+                                        <th style="width: 20%;">Prix unitaire (MGA) <span class="text-danger">*</span></th>
+                                        <th style="width: 15%;">Montant</th>
+                                        <th style="width: 5%;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lines-container">
+                                    <!-- Ligne initiale -->
+                                    <tr class="line-row">
+                                        <td>
+                                            <input type="text" name="designation[]" class="form-control form-control-sm" placeholder="Ex: Cotisation annuelle" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="quantite[]" class="form-control form-control-sm quantite-input" value="1" min="1" step="1" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="prix_unitaire[]" class="form-control form-control-sm prix-input" value="0" min="0" step="1000" required>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm montant-ligne" readonly style="font-weight:bold;background:#f8f9fa;">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-danger remove-line" title="Supprimer cette ligne">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-active">
+                                        <td colspan="3" class="text-end fw-bold">TOTAL</td>
+                                        <td>
+                                            <input type="text" id="total-montant" class="form-control form-control-sm" readonly style="font-weight:bold;background:#e8f5e9;color:#2e7d32;font-size:16px;">
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <small class="text-muted">Ajoutez autant de lignes que nécessaire. Le total se calcule automatiquement.</small>
+                    </div>
+
+                    <!-- Montant caché pour le formulaire -->
+                    <input type="hidden" name="montant" id="montant-hidden" value="0">
+
+                    <!-- Information -->
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Information :</strong> La note de débit sera générée avec :
+                        <ul class="mt-2 mb-0">
+                            <li>Une numérotation automatique (NDD-2026-0001)</li>
+                            <li>Le montant total en lettres</li>
+                            <li>Le signataire choisi</li>
+                            <li>Toutes les lignes saisies</li>
+                        </ul>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-3">
                         <a href="{{ path('app_document_adherent', {'id': adherent.id}) }}" class="btn btn-outline-secondary">
                             <i class="fas fa-times me-2"></i> Annuler
                         </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-file-pdf me-2"></i>Générer la note de débit
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('lines-container');
+    const addButton = document.getElementById('add-line');
+    const totalInput = document.getElementById('total-montant');
+    const hiddenMontant = document.getElementById('montant-hidden');
+
+    // Fonction pour calculer le total
+    function calculerTotal() {
+        let total = 0;
+        const rows = container.querySelectorAll('.line-row');
+        rows.forEach(function(row) {
+            const quantite = parseFloat(row.querySelector('.quantite-input').value) || 0;
+            const prix = parseFloat(row.querySelector('.prix-input').value) || 0;
+            const montant = quantite * prix;
+            const montantInput = row.querySelector('.montant-ligne');
+            montantInput.value = montant.toLocaleString('fr-FR');
+            total += montant;
+        });
+        totalInput.value = total.toLocaleString('fr-FR');
+        hiddenMontant.value = total;
+    }
+
+    // Fonction pour créer une nouvelle ligne
+    function createRow() {
+        const row = document.createElement('tr');
+        row.className = 'line-row';
+        row.innerHTML = `
+            <td>
+                <input type="text" name="designation[]" class="form-control form-control-sm" placeholder="Ex: Cotisation annuelle" required>
+            </td>
+            <td>
+                <input type="number" name="quantite[]" class="form-control form-control-sm quantite-input" value="1" min="1" step="1" required>
+            </td>
+            <td>
+                <input type="number" name="prix_unitaire[]" class="form-control form-control-sm prix-input" value="0" min="0" step="1000" required>
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm montant-ligne" readonly style="font-weight:bold;background:#f8f9fa;">
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-line" title="Supprimer cette ligne">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        `;
+        return row;
+    }
+
+    // Ajouter une ligne
+    addButton.addEventListener('click', function() {
+        const row = createRow();
+        container.appendChild(row);
+        // Attacher les événements
+        const quantiteInput = row.querySelector('.quantite-input');
+        const prixInput = row.querySelector('.prix-input');
+        const removeButton = row.querySelector('.remove-line');
+        
+        quantiteInput.addEventListener('input', calculerTotal);
+        prixInput.addEventListener('input', calculerTotal);
+        
+        removeButton.addEventListener('click', function() {
+            if (container.querySelectorAll('.line-row').length > 1) {
+                row.remove();
+                calculerTotal();
+            } else {
+                alert('Vous devez garder au moins une ligne.');
+            }
+        });
+        
+        // Focus sur le premier champ de la nouvelle ligne
+        row.querySelector('input[name="designation[]"]').focus();
+        calculerTotal();
+    });
+
+    // Événements sur les lignes existantes
+    container.querySelectorAll('.line-row').forEach(function(row) {
+        const quantiteInput = row.querySelector('.quantite-input');
+        const prixInput = row.querySelector('.prix-input');
+        const removeButton = row.querySelector('.remove-line');
+        
+        quantiteInput.addEventListener('input', calculerTotal);
+        prixInput.addEventListener('input', calculerTotal);
+        
+        if (removeButton) {
+            removeButton.addEventListener('click', function() {
+                if (container.querySelectorAll('.line-row').length > 1) {
+                    row.remove();
+                    calculerTotal();
+                } else {
+                    alert('Vous devez garder au moins une ligne.');
+                }
+            });
+        }
+    });
+
+    // Calcul initial
+    calculerTotal();
+});
+</script>
+{% endblock %}
 {% endblock %}

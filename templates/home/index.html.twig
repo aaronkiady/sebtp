@@ -5,20 +5,17 @@
 {% block body %}
 <div class="container-fluid py-4">
 
-    {# 1. ENTÊTE DU DASHBOARD #}
+    {# 1. ENTÊTE DU DASHBOARD 
     <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap mb-4">
         <div>
-            <h2 class="fw-bold">
-                Bonjour, <span class="text-gradient">{{ app.user.nom|default('Admin') }}</span> 👋
-            </h2>
-            <p class="text-muted mb-0">Voici ce qui se passe aujourd'hui dans votre organisation.</p>
+             
         </div>
         <div class="text-end d-none d-md-block">
             <span class="badge bg-light text-dark border p-2 rounded-3">
                 <i class="far fa-calendar-alt me-1"></i> {{ "now"|date("d/m/Y") }}
             </span>
         </div>
-    </div>
+    </div>#}
 
     {# 2. LIGNE HAUTE : Plateforme SEBTP | Résumé adhérents | Total + Demandes #}
     <div class="row g-3 mb-4">

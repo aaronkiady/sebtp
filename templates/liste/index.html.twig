@@ -108,9 +108,9 @@
                 <thead class="table-light">
                     <tr>
                         <th>Nom</th>
-                        <th>Email</th>
-                        <th>Téléphone</th>
-                        <th>Activité</th>
+                        <th>Nom DG</th>
+                        <th>Type</th>
+                        <th>Statut membre</th>
                         <th>Filière(s)</th>
                         <th>Statut</th>
                         <th class="text-end">Actions</th>
@@ -120,9 +120,9 @@
                 {% for liste in listes %}
                     <tr>
                         <td class="fw-bold">{{ liste.nom }}</td>
-                        <td>{{ liste.email }}</td>
-                        <td>{{ liste.numero }}</td>
-                        <td>{{ liste.activite }}</td>
+                        <td>{{ liste.dg }}</td>
+                        <td>{{ liste.type }}</td>
+                        <td>{{ liste.statutMenmbre }}</td>
                         <td>
                             {# Affichage sécurisé des filières #}
                             {% set filieresValue = liste.filiere %}

@@ -77,19 +77,73 @@ class DocumentController extends AbstractController
         }
         
         if ($request->isMethod('POST')) {
-            $montant = $request->request->get('montant');
             $periode = $request->request->get('periode');
-            $motif = $request->request->get('motif');
             $signataire = $request->request->get('signataire', 'president');
+            
+            // Récupérer les lignes du formulaire
+            $designations = $request->request->all('designation');
+            $quantites = $request->request->all('quantite');
+            $prixUnitaires = $request->request->all('prix_unitaire');
+            $montantTotal = (float) $request->request->get('montant', 0);
 
-            if (!$montant || !$periode || !$motif) {
-                $this->addFlash('error', 'Tous les champs sont obligatoires.');
+            // Valider qu'il y a au moins une ligne avec une désignation
+            $hasValidLine = false;
+            $lignes = [];
+            $motifComplet = '';
+
+            for ($i = 0; $i < count($designations); $i++) {
+                $designation = trim($designations[$i] ?? '');
+                $quantite = (int) ($quantites[$i] ?? 0);
+                $prixUnitaire = (float) ($prixUnitaires[$i] ?? 0);
+                
+                // Ignorer les lignes vides
+                if (empty($designation) || $quantite <= 0 || $prixUnitaire <= 0) {
+                    continue;
+                }
+                
+                $hasValidLine = true;
+                $montantLigne = $quantite * $prixUnitaire;
+                $lignes[] = [
+                    'designation' => $designation,
+                    'quantite' => $quantite,
+                    'prixUnitaire' => $prixUnitaire,
+                    'montant' => $montantLigne
+                ];
+            }
+
+            if (!$hasValidLine || $montantTotal <= 0) {
+                $this->addFlash('error', 'Veuillez saisir au moins une ligne valide avec désignation, quantité et prix unitaire.');
                 return $this->redirectToRoute('app_document_generer_note_debit', ['adherent_id' => $adherent->getId()]);
             }
 
             try {
-                $document = $this->documentGenerator->generateNoteDebit($adherent, (float) $montant, $periode, $motif, $signataire);
-                $this->addFlash('success', 'Note de débit générée avec succès !');
+                // Construire le motif à partir des lignes pour l'affichage
+                $motifComplet = '';
+                foreach ($lignes as $index => $ligne) {
+                    $motifComplet .= sprintf(
+                        "%d. %s (x%d à %s MGA) = %s MGA\n",
+                        $index + 1,
+                        $ligne['designation'],
+                        $ligne['quantite'],
+                        number_format($ligne['prixUnitaire'], 0, '.', ' '),
+                        number_format($ligne['montant'], 0, '.', ' ')
+                    );
+                }
+
+                // Stocker les lignes dans la référence pour les retrouver
+                $motif = sprintf("Note de débit - %d lignes", count($lignes));
+                
+                // Générer le document avec le montant total calculé
+                $document = $this->documentGenerator->generateNoteDebitWithLines(
+                    $adherent, 
+                    $montantTotal, 
+                    $periode, 
+                    $lignes,
+                    $motif,
+                    $signataire
+                );
+                
+                $this->addFlash('success', sprintf('Note de débit générée avec succès ! Montant total : %s MGA', number_format($montantTotal, 0, '.', ' ')));
                 return $this->redirectToRoute('app_document_adherent', ['id' => $adherent->getId()]);
             } catch (\Exception $e) {
                 $this->addFlash('error', 'Erreur lors de la génération : ' . $e->getMessage());

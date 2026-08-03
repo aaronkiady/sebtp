@@ -5,9 +5,12 @@ namespace App\Controller;
 use App\Entity\Evenement;
 use App\Entity\Liste;
 use App\Entity\Participation;
+use App\Entity\PaiementEvenement;
 use App\Form\EvenementType;
+use App\Form\PaiementEvenementType;
 use App\Repository\EvenementRepository;
 use App\Service\AuditLogger;
+use App\Service\DocumentGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,10 +24,12 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 final class EvenementController extends AbstractController
 {
     private AuditLogger $auditLogger;
+    private DocumentGenerator $documentGenerator;
 
-    public function __construct(AuditLogger $auditLogger)
+    public function __construct(AuditLogger $auditLogger, DocumentGenerator $documentGenerator)
     {
         $this->auditLogger = $auditLogger;
+        $this->documentGenerator = $documentGenerator;
     }
 
     #[Route(name: 'app_evenement_index', methods: ['GET'])]
@@ -46,7 +51,7 @@ final class EvenementController extends AbstractController
             throw $this->createNotFoundException('Adhérent non trouvé');
         }
 
-         if ($adherent->getStatut() === 'radie') {
+        if ($adherent->getStatut() === 'radie') {
             $participations = [];
             $this->addFlash('info', 'Cet adhérent est radié. Ses participations aux événements ne sont plus affichées.');
         } else {
@@ -67,7 +72,7 @@ final class EvenementController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            //$participants = $form->get('participantsTemp')->getData();
+            $participants = $form->get('participantsTemp')->getData();
             
             if (!empty($participants)) {
                 foreach ($participants as $liste) {
@@ -82,7 +87,6 @@ final class EvenementController extends AbstractController
             $em->persist($evenement);
             $em->flush();
 
-            // Audit log
             $this->auditLogger->logCreate(
                 'Evenement',
                 $evenement->getId(),
@@ -106,7 +110,6 @@ final class EvenementController extends AbstractController
     #[Route('/{id}', name: 'app_evenement_show', methods: ['GET'])]
     public function show(Evenement $evenement): Response
     {
-        // Filtrer les participations pour exclure les adhérents radiés
         $participationsFiltrees = $evenement->getParticipations()->filter(function($participation) {
             $adherent = $participation->getAdherent();
             return $adherent && $adherent->getStatut() !== 'radie';
@@ -115,7 +118,6 @@ final class EvenementController extends AbstractController
         return $this->render('evenement/show.html.twig', [
             'evenement' => $evenement,
             'participationsFiltrees' => $participationsFiltrees,
-
         ]);
     }
 
@@ -142,7 +144,6 @@ final class EvenementController extends AbstractController
                 'commentaire' => $evenement->getCommentaire(),
             ];
 
-            // Audit log
             $this->auditLogger->logUpdate(
                 'Evenement',
                 $evenement->getId(),
@@ -163,7 +164,6 @@ final class EvenementController extends AbstractController
     #[Route('/{id}/gerer-participants', name: 'app_evenement_gerer_participants', methods: ['GET', 'POST'])]
     public function gererParticipants(Request $request, Evenement $evenement, EntityManagerInterface $em): Response
     {
-        // Ne récupérer que les participants non radiés
         $participantsActuels = [];
         foreach ($evenement->getParticipations() as $participation) {
             $adherent = $participation->getAdherent();
@@ -190,7 +190,6 @@ final class EvenementController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $nouveauxParticipants = $form->get('participants')->getData();
             
-            // Supprimer les participants qui ne sont plus sélectionnés (sauf les radiés déjà exclus)
             foreach ($evenement->getParticipations() as $participation) {
                 $adherent = $participation->getAdherent();
                 if ($adherent && $adherent->getStatut() !== 'radie' && !in_array($adherent, $nouveauxParticipants)) {
@@ -198,7 +197,6 @@ final class EvenementController extends AbstractController
                 }
             }
             
-            // Ajouter les nouveaux participants
             foreach ($nouveauxParticipants as $participant) {
                 $existe = false;
                 foreach ($evenement->getParticipations() as $participation) {
@@ -233,7 +231,6 @@ final class EvenementController extends AbstractController
     #[Route('/{id}/ajouter-participant', name: 'app_evenement_ajouter_participant', methods: ['GET', 'POST'])]
     public function ajouterParticipant(Request $request, Evenement $evenement, EntityManagerInterface $em): Response
     {
-        // Récupérer uniquement les adhérents non radiés
         $adherentsActifs = $em->getRepository(Liste::class)->createQueryBuilder('l')
             ->where('l.statut != :statutRadie')
             ->setParameter('statutRadie', 'radie')
@@ -250,7 +247,7 @@ final class EvenementController extends AbstractController
                 'required' => true,
                 'label' => 'Ajouter un participant',
                 'attr' => ['class' => 'form-control custom-input'],
-                'choices' => $adherentsActifs  // Utiliser la liste filtrée
+                'choices' => $adherentsActifs
             ])
             ->add('quantite', IntegerType::class, [
                 'label' => 'Nombre de représentants',
@@ -271,7 +268,6 @@ final class EvenementController extends AbstractController
             $quantite = $form->get('quantite')->getData();
             $reference = $form->get('reference')->getData();
             
-            // Vérifier si le participant existe déjà
             $existe = false;
             foreach ($evenement->getParticipations() as $participation) {
                 if ($participation->getAdherent() === $participant) {
@@ -322,7 +318,6 @@ final class EvenementController extends AbstractController
                 $em->remove($participation);
                 $em->flush();
                 
-                // Audit log
                 $this->auditLogger->logUpdate(
                     'Evenement',
                     $evenement->getId(),
@@ -357,7 +352,6 @@ final class EvenementController extends AbstractController
             $entityManager->remove($evenement);
             $entityManager->flush();
             
-            // Audit log
             $this->auditLogger->logDelete(
                 'Evenement',
                 $evenement->getId(),
@@ -376,7 +370,6 @@ final class EvenementController extends AbstractController
     {
         $adherent = $participation->getAdherent();
 
-        // Vérifier si l'adhérent n'est pas radié
         if ($adherent->getStatut() === 'radie') {
             $this->addFlash('error', 'Impossible de modifier le statut : cet adhérent est radié.');
             return $this->redirectToRoute('app_evenement_history', [
@@ -385,12 +378,10 @@ final class EvenementController extends AbstractController
         }
 
         $oldStatut = $participation->getStatutPaiement();
-        // Correction: utiliser 'impaye' (sans accent) au lieu de 'impayé'
         $newStatus = $oldStatut === 'paye' ? 'impaye' : 'paye';
         $participation->setStatutPaiement($newStatus);
         $em->flush();
 
-        // Audit log
         $this->auditLogger->logUpdate(
             'Participation',
             $participation->getId(),
@@ -405,5 +396,119 @@ final class EvenementController extends AbstractController
         return $this->redirectToRoute('app_evenement_history', [
             'adherent_id' => $participation->getAdherent()->getId()
         ]);
+    }
+
+    #[Route('/participation/paiement/new/{participation_id}', name: 'app_participation_paiement_new', methods: ['GET', 'POST'])]
+    public function newPaiementParticipation(
+        int $participation_id,
+        Request $request,
+        EntityManagerInterface $em
+    ): Response {
+        $participation = $em->getRepository(Participation::class)->find($participation_id);
+        
+        if (!$participation) {
+            throw $this->createNotFoundException('Participation non trouvée');
+        }
+        
+        $adherent = $participation->getAdherent();
+        $evenement = $participation->getEvenement();
+        
+        if ($adherent->getStatut() === 'radie') {
+            $this->addFlash('error', 'Impossible : cet adhérent est radié.');
+            return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
+        }
+        
+        $montantTotal = $evenement->getMontant() * $participation->getQuantite();
+        $resteAPayer = $participation->getResteAPayer();
+        
+        $paiement = new PaiementEvenement();
+        $paiement->setParticipation($participation);
+        $paiement->setMontant($resteAPayer);
+        $paiement->setDatePaiement(new \DateTime());
+        
+        $form = $this->createForm(PaiementEvenementType::class, $paiement);
+        $form->handleRequest($request);
+        
+        if ($form->isSubmitted() && $form->isValid()) {
+            $em->persist($paiement);
+            
+            $participation->addPaiement($paiement);
+            $participation->setStatutPaiement('paye');
+            
+            $em->flush();
+            
+            $this->auditLogger->logPayment(
+                'PaiementEvenement',
+                $paiement->getId(),
+                $adherent->getNom() . ' - ' . $evenement->getNom(),
+                [
+                    'adherent' => $adherent->getNom(),
+                    'evenement' => $evenement->getNom(),
+                    'montant' => $paiement->getMontant(),
+                    'mode_paiement' => $paiement->getModePaiement(),
+                ]
+            );
+            
+            $this->addFlash('success', 'Paiement enregistré avec succès !');
+            return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
+        }
+        
+        return $this->render('evenement/paiement_new.html.twig', [
+            'participation' => $participation,
+            'adherent' => $adherent,
+            'evenement' => $evenement,
+            'montantTotal' => $montantTotal,
+            'resteAPayer' => $resteAPayer,
+            'form' => $form->createView(),
+        ]);
+    }
+
+    #[Route('/participation/paiement/{id}/delete', name: 'app_participation_paiement_delete', methods: ['POST'])]
+    public function deletePaiementParticipation(
+        Request $request,
+        PaiementEvenement $paiement,
+        EntityManagerInterface $em
+    ): Response {
+        $participation = $paiement->getParticipation();
+        $evenement = $participation->getEvenement();
+        
+        if ($this->isCsrfTokenValid('delete_paiement_evenement_' . $paiement->getId(), $request->request->get('_token'))) {
+            $participation->removePaiement($paiement);
+            $em->remove($paiement);
+            $em->flush();
+            
+            $this->addFlash('success', 'Paiement supprimé avec succès.');
+        }
+        
+        return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
+    }
+
+    #[Route('/generer-recu-evenement/{participation_id}', name: 'app_document_generer_recu_evenement', methods: ['GET'])]
+    public function genererRecuEvenement(int $participation_id, EntityManagerInterface $em): Response
+    {
+        $participation = $em->getRepository(Participation::class)->find($participation_id);
+        
+        if (!$participation) {
+            $this->addFlash('error', 'Participation non trouvée');
+            return $this->redirectToRoute('app_home');
+        }
+        
+        $paiements = $participation->getPaiements();
+        
+        try {
+            if (!$paiements->isEmpty()) {
+                $dernierPaiement = $paiements->last();
+                $document = $this->documentGenerator->generateRecuFromPaiementEvenement($dernierPaiement);
+            } else {
+                $document = $this->documentGenerator->generateRecuFromParticipation($participation);
+            }
+            
+            $this->addFlash('success', 'Reçu généré avec succès !');
+            
+            return $this->redirectToRoute('app_document_adherent', ['id' => $participation->getAdherent()->getId()]);
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'Erreur lors de la génération du reçu : ' . $e->getMessage());
+            return $this->redirectToRoute('app_evenement_history', ['adherent_id' => $participation->getAdherent()->getId()]);
+        }
     }
 }

@@ -83,7 +83,7 @@ class Dirigeant
     {
         return match ($fonction) {
             'president' => 'Le Président du SEBTP',
-            'secretaire' => 'Le Secrétaire du SEBTP',
+            'secretaire' => 'Secrétaire Exécutive du SEBTP',
             'tresorier' => 'Le Trésorier du SEBTP',
             default => 'Le Président du SEBTP',
         };

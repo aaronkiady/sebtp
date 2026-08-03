@@ -15,7 +15,7 @@ class Document
     private ?int $id = null;
 
     #[ORM\Column(length: 50)]
-    private ?string $type = null; // 'recu' ou 'note_debit'
+    private ?string $type = null;
 
     #[ORM\Column(length: 50)]
     private ?string $numero = null;
@@ -44,6 +44,12 @@ class Document
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $reference = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $prixUnitaire = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $quantite = null;
 
     public function __construct()
     {
@@ -172,5 +178,29 @@ class Document
         $year = date('Y');
         $random = str_pad(random_int(1, 99999), 5, '0', STR_PAD_LEFT);
         return sprintf('%s-%s-%s', $prefix, $year, $random);
+    }
+
+    public function getPrixUnitaire(): ?float
+    {
+        return $this->prixUnitaire;
+    }
+
+    public function setPrixUnitaire(?float $prixUnitaire): static
+    {
+        $this->prixUnitaire = $prixUnitaire;
+
+        return $this;
+    }
+
+    public function getQuantite(): ?int
+    {
+        return $this->quantite;
+    }
+
+    public function setQuantite(?int $quantite): static
+    {
+        $this->quantite = $quantite;
+
+        return $this;
     }
 }
