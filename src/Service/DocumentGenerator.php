@@ -84,11 +84,11 @@ class DocumentGenerator
 
     /**
      * Génère le numéro de document ainsi que le compteur brut (utilisé aussi pour le nom de fichier)
+     * Le numéro dans le nom de fichier est le même que celui du document
      */
     private function generateNumeroAndCompteur(string $type, Liste $adherent): array
     {
         $year = date('Y');
-        $adherentId = $adherent->getId();
 
         $prefixe = match ($type) {
             'note_debit' => 'NDD',
@@ -96,40 +96,15 @@ class DocumentGenerator
             default => strtoupper($type),
         };
 
-        $conn = $this->entityManager->getConnection();
-
-        // Compteur global
-        $sqlGlobal = "
-            SELECT COUNT(*)
-            FROM document
-            WHERE type = :type
-            AND YEAR(date_creation) = :year
-        ";
-
-        $stmtGlobal = $conn->prepare($sqlGlobal);
-        $stmtGlobal->bindValue('type', $type);
-        $stmtGlobal->bindValue('year', $year);
-
-        $countGlobal = (int) $stmtGlobal->executeQuery()->fetchOne() + 1;
+        // Récupérer le dernier numéro de séquence pour ce type et année (même après suppression)
+        $lastSequence = $this->documentRepository->getLastSequenceNumber($type, (int) $year);
+        $countGlobal = $lastSequence + 1;
         $compteurGlobal = str_pad((string) $countGlobal, 4, '0', STR_PAD_LEFT);
         $numero = sprintf('%s-%s-%s', $prefixe, $year, $compteurGlobal);
 
-        // Compteur par adhérent
-        $sqlAdherent = "
-            SELECT COUNT(*)
-            FROM document
-            WHERE adherent_id = :adherentId
-            AND type = :type
-            AND YEAR(date_creation) = :year
-        ";
-
-        $stmtAdherent = $conn->prepare($sqlAdherent);
-        $stmtAdherent->bindValue('adherentId', $adherentId);
-        $stmtAdherent->bindValue('type', $type);
-        $stmtAdherent->bindValue('year', $year);
-
-        $countAdherent = (int) $stmtAdherent->executeQuery()->fetchOne() + 1;
-        $compteurFichier = str_pad((string) $countAdherent, 4, '0', STR_PAD_LEFT);
+        // Le compteur du fichier est le même que le compteur global
+        // pour que le nom du fichier corresponde au numéro du document
+        $compteurFichier = $compteurGlobal;
 
         return [$numero, $compteurFichier, $year];
     }
@@ -209,7 +184,7 @@ class DocumentGenerator
         ];
 
         foreach ($extensions as $ext) {
-            $path = $this->projectDir . '/public/images/' . $baseName . '.' . $ext;
+            $path = $this->projectDir . '/public/uploads/images/' . $baseName . '.' . $ext;
             if (file_exists($path)) {
                 $data = file_get_contents($path);
                 return 'data:' . $mimeMap[$ext] . ';base64,' . base64_encode($data);
@@ -456,42 +431,6 @@ HTML;
     }
 
     /**
-     * @deprecated Utiliser generateRecuFromPaiementEvenement() à la place
-     * Génère un reçu à partir d'une participation (méthode de fallback)
-     */
-    public function generateRecuFromParticipation(Participation $participation): Document
-    {
-        $adherent = $participation->getAdherent();
-        $evenement = $participation->getEvenement();
-        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('RECU', $adherent);
-
-        $document = new Document();
-        $document->setType('recu');
-        $document->setNumero($numero);
-        $document->setAdherent($adherent);
-        $document->setMontant($participation->getMontantTotal());
-        $document->setPeriode($evenement->getDate() ? $evenement->getDate()->format('Y') : date('Y'));
-        $document->setReference('Evenement: ' . $evenement->getNom());
-
-        $this->entityManager->persist($document);
-        $this->entityManager->flush();
-
-        $html = $this->renderRecuFromParticipationHtml($document, $participation);
-        $pdfContent = $this->generatePdf($html);
-
-        $fileName = $this->buildFileName($adherent, 'RECU_EVENT', $year, $compteur);
-        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
-
-        $document->setCheminFichier($path);
-        $document->setNomFichier($fileName);
-        $document->setContenu($html);
-
-        $this->entityManager->flush();
-
-        return $document;
-    }
-
-    /**
      * Génère une note de débit avec plusieurs lignes
      * 
      * @param Liste $adherent L'adhérent
@@ -603,206 +542,152 @@ HTML;
             <div class="montant-lettres">
                 Arrêtée à la somme de <strong>{$this->e($montantLettres)}</strong>
             </div>
-    HTML;
+HTML;
         }
 
         return <<<HTML
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{$titrePage} N° {$numero}</title>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-                font-family: 'Arial', sans-serif;
-                font-size: 13px;
-                color: #000;
-                background: #fff;
-                padding: 35px 40px;
-            }
-            .page { max-width: 760px; margin: 0 auto; }
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{$titrePage} N° {$numero}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 13px;
+            color: #000;
+            background: #fff;
+            padding: 35px 40px;
+        }
+        .page { max-width: 760px; margin: 0 auto; }
 
-            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .header-table td { vertical-align: top; border: none; padding: 0; }
-            .logo-cell { width: 130px; }
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .header-table td { vertical-align: top; border: none; padding: 0; }
+        .logo-cell { width: 130px; }
 
-            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-            .info-table td { vertical-align: top; border: none; padding: 0; }
-            .info-left { width: 55%; font-size: 13px; line-height: 1.9; }
-            .info-right { width: 45%; font-size: 13px; line-height: 1.7; text-align: right; }
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .info-table td { vertical-align: top; border: none; padding: 0; }
+        .info-left { width: 55%; font-size: 13px; line-height: 1.9; }
+        .info-right { width: 45%; font-size: 13px; line-height: 1.7; text-align: right; }
 
-            .doit-label {
-                font-weight: 700;
-                text-decoration: underline;
-                font-size: 15px;
-                margin: 6px 0 6px 0;
-            }
-            .client-nom { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
-            .client-info { font-size: 13px; margin-top: 2px; }
+        .doit-label {
+            font-weight: 700;
+            text-decoration: underline;
+            font-size: 15px;
+            margin: 6px 0 6px 0;
+        }
+        .client-nom { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+        .client-info { font-size: 13px; margin-top: 2px; }
 
-            .doc-title-box {
-                border: 1px solid #000;
-                text-align: center;
-                font-weight: 700;
-                font-size: 14px;
-                padding: 10px;
-                margin: 22px 0 22px 0;
-                letter-spacing: 0.5px;
-            }
-
-            /* Styles pour le tableau des notes de débit */
-            table.details { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-            table.details th, table.details td {
-                border: 1px solid #000;
-                padding: 10px;
-                font-size: 13px;
-                text-align: center;
-            }
-            table.details th { font-weight: 700; }
-            table.details td:first-child, table.details th:first-child { text-align: left; }
-            table.details tfoot td { font-weight: 700; }
-            table.details tfoot td.total-label { text-align: right; }
-
-            .montant-lettres { 
-                margin: 22px 0 26px 0; 
-                font-size: 14px; 
-                text-align: center;
-            }
-            .montant-lettres strong { font-weight: 700; }
-
-            .footer-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
-            .footer-table td { vertical-align: top; border: none; padding: 0; font-size: 13px; }
-            .footer-left { width: 58%; line-height: 1.6; }
-            .footer-right { width: 42%; text-align: center; line-height: 1.4; padding-top: 15px; }
-            .footer-left u { text-decoration: underline; }
-            .footer-right .president-titre { font-size: 13px; }
-            .footer-right .president-nom { font-weight: 700; font-size: 13px; margin-top: 4px; }
-
-            /* Styles pour le contenu des reçus */
-            .recu-content {
-                margin: 30px 0;
-                font-size: 14px;
-                line-height: 1.8;
-            }
-            .recu-content p {
-                text-align: justify;
-                margin-bottom: 10px;
-            }
-            .recu-content strong {
-                font-weight: 700;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="page">
-
-            <table class="header-table">
-                <tr>
-                    <td class="logo-cell">{$logoHtml}</td>
-                    <td></td>
-                </tr>
-            </table>
-
-            <table class="info-table">
-                <tr>
-                    <td class="info-left">
-                        <div><strong>{$this->e(self::SYNDICAT_SOUS_TITRE)}</strong></div>
-                        <div><strong>{$this->e(self::SYNDICAT_ADRESSE)}</strong></div>
-                        <div>Tel : {$this->e(self::SYNDICAT_TEL)}</div>
-                        <div>Email : {$this->e(self::SYNDICAT_EMAIL)}</div>
-                        <div style="margin-top:6px;">NIF : {$this->e(self::SYNDICAT_NIF)}</div>
-                        <div>STAT: {$this->e(self::SYNDICAT_STAT)}</div>
-                    </td>
-                    <td class="info-right">
-                        <div>Antananarivo, le {$dateCreationFormatee}</div>
-                        <div class="doit-label">{$this->e($labelDoit)}</div>
-                        <div class="client-nom">{$this->e($clientNom)}</div>
-                        <div class="client-info">Tél : {$this->e($clientTel)}</div>
-                        <div class="client-info">Adresse : {$this->e($clientAdresse)}</div>
-                        <div class="client-info">NIF : {$this->e($clientNif)}</div>
-                        <div class="client-info">STAT: {$this->e($clientStat)}</div>
-                    </td>
-                </tr>
-            </table>
-
-            <div class="doc-title-box">{$this->e($titreDocument)} N°{$this->e($numero)}</div>
-
-            <!-- Contenu principal : soit tableau (ND), soit texte (Reçu) -->
-            {$contenuHtml}
-
-            <!-- Montant en lettres (UNIQUEMENT pour les notes de débit) -->
-            {$montantLettresHtml}
-
-            <table class="footer-table">
-                <tr>
-                    <td class="footer-left">{$blocPaiementGaucheHtml}</td>
-                    <td class="footer-right">
-                        <div class="president-titre">{$this->e($signataireTitre)}</div>
-                        {$signatureHtml}
-                        <div class="president-nom">{$this->e($signataireNom)}</div>
-                    </td>
-                </tr>
-            </table>
-
-        </div>
-    </body>
-    </html>
-    HTML;
+        .doc-title-box {
+            border: 1px solid #000;
+            text-align: center;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 10px;
+            margin: 22px 0 22px 0;
+            letter-spacing: 0.5px;
         }
 
-    /**
-     * @deprecated Utiliser renderDocumentHtmlWithLines() à la place
-     * Gabarit HTML pour notes de débit avec tableau (méthode de compatibilité)
-     */
-    private function renderDocumentHtml(
-        string $titrePage,
-        string $titreDocument,
-        string $numero,
-        \DateTimeInterface $dateCreation,
-        string $clientNom,
-        string $clientTel,
-        string $clientAdresse,
-        string $clientNif,
-        string $clientStat,
-        array $lignes,
-        string $totalFormate,
-        string $montantLettres,
-        string $blocPaiementGaucheHtml,
-        string $signataireNom = null,
-        string $signataireTitre = null,
-        string $labelDoit = 'DOIT :'
-    ): string {
-        // Construire les lignes HTML
-        $lignesHtml = '';
-        foreach ($lignes as $ligne) {
-            $lignesHtml .= '<tr>'
-                . '<td style="text-align:left;">' . htmlspecialchars($ligne['designation']) . '</td>'
-                . '<td>' . htmlspecialchars($ligne['quantite']) . '</td>'
-                . '<td>' . htmlspecialchars($ligne['pu']) . '</td>'
-                . '<td>' . htmlspecialchars($ligne['montant']) . '</td>'
-                . '</tr>';
+        /* Styles pour le tableau des notes de débit */
+        table.details { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+        table.details th, table.details td {
+            border: 1px solid #000;
+            padding: 10px;
+            font-size: 13px;
+            text-align: center;
         }
+        table.details th { font-weight: 700; }
+        table.details td:first-child, table.details th:first-child { text-align: left; }
+        table.details tfoot td { font-weight: 700; }
+        table.details tfoot td.total-label { text-align: right; }
 
-        return $this->renderDocumentHtmlWithLines(
-            $titrePage,
-            $titreDocument,
-            $numero,
-            $dateCreation,
-            $clientNom,
-            $clientTel,
-            $clientAdresse,
-            $clientNif,
-            $clientStat,
-            $lignesHtml,
-            $totalFormate,
-            $montantLettres,
-            $blocPaiementGaucheHtml,
-            $signataireNom,
-            $signataireTitre,
-            $labelDoit,
-            false  // isRecu = false car c'est une note de débit
-        );
+        .montant-lettres { 
+            margin: 22px 0 26px 0; 
+            font-size: 14px; 
+            text-align: center;
+        }
+        .montant-lettres strong { font-weight: 700; }
+
+        .footer-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+        .footer-table td { vertical-align: top; border: none; padding: 0; font-size: 13px; }
+        .footer-left { width: 58%; line-height: 1.6; }
+        .footer-right { width: 42%; text-align: center; line-height: 1.4; padding-top: 15px; }
+        .footer-left u { text-decoration: underline; }
+        .footer-right .president-titre { font-size: 13px; }
+        .footer-right .president-nom { font-weight: 700; font-size: 13px; margin-top: 4px; }
+
+        /* Styles pour le contenu des reçus */
+        .recu-content {
+            margin: 30px 0;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        .recu-content p {
+            text-align: justify;
+            margin-bottom: 10px;
+        }
+        .recu-content strong {
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">{$logoHtml}</td>
+                <td></td>
+            </tr>
+        </table>
+
+        <table class="info-table">
+            <tr>
+                <td class="info-left">
+                    <div><strong>{$this->e(self::SYNDICAT_SOUS_TITRE)}</strong></div>
+                    <div><strong>{$this->e(self::SYNDICAT_ADRESSE)}</strong></div>
+                    <div>Tel : {$this->e(self::SYNDICAT_TEL)}</div>
+                    <div>Email : {$this->e(self::SYNDICAT_EMAIL)}</div>
+                    <div style="margin-top:6px;">NIF : {$this->e(self::SYNDICAT_NIF)}</div>
+                    <div>STAT: {$this->e(self::SYNDICAT_STAT)}</div>
+                </td>
+                <td class="info-right">
+                    <div>Antananarivo, le {$dateCreationFormatee}</div>
+                    <div class="doit-label">{$this->e($labelDoit)}</div>
+                    <div class="client-nom">{$this->e($clientNom)}</div>
+                    <div class="client-info">Tél : {$this->e($clientTel)}</div>
+                    <div class="client-info">Adresse : {$this->e($clientAdresse)}</div>
+                    <div class="client-info">NIF : {$this->e($clientNif)}</div>
+                    <div class="client-info">STAT: {$this->e($clientStat)}</div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="doc-title-box">{$this->e($titreDocument)} N°{$this->e($numero)}</div>
+
+        <!-- Contenu principal : soit tableau (ND), soit texte (Reçu) -->
+        {$contenuHtml}
+
+        <!-- Montant en lettres (UNIQUEMENT pour les notes de débit) -->
+        {$montantLettresHtml}
+
+        <table class="footer-table">
+            <tr>
+                <td class="footer-left">{$blocPaiementGaucheHtml}</td>
+                <td class="footer-right">
+                    <div class="president-titre">{$this->e($signataireTitre)}</div>
+                    {$signatureHtml}
+                    <div class="president-nom">{$this->e($signataireNom)}</div>
+                </td>
+            </tr>
+        </table>
+
+    </div>
+</body>
+</html>
+HTML;
     }
 
     /**
@@ -931,71 +816,6 @@ HTML;
         $adherentStat = $adherent->getStat() ?? 'Non renseigné';
         $reference = $paiement->getReference() ?? 'N/A';
         $modePaiement = $paiement->getModePaiement() ?? 'Non spécifié';
-        $motif = 'Participation - ' . $evenement->getNom();
-
-        // Contenu texte pour le reçu
-        $contenuPrincipal = $this->renderRecuContent($modePaiement, $reference, $montantLettres, $montantFormate, $motif);
-
-        return $this->renderDocumentHtmlWithLines(
-            'Reçu de paiement',
-            'REÇU',
-            $numero,
-            $dateCreation,
-            $adherentNom,
-            $adherentNumero,
-            $adherentAdresse,
-            $adherentNif,
-            $adherentStat,
-            $contenuPrincipal,
-            $montantFormate,
-            $montantLettres,
-            $this->buildPaiementEffectueHtml($modePaiement, $reference, $datePaiement),
-            null,
-            null,
-            'A',
-            true  // isRecu = true
-        );
-    }
-
-    /**
-     * @deprecated Utiliser renderRecuFromPaiementEvenementHtml() à la place
-     * Rendu HTML du reçu pour une participation (méthode de fallback)
-     */
-    private function renderRecuFromParticipationHtml(Document $document, Participation $participation): string
-    {
-        $adherent = $document->getAdherent();
-        $evenement = $participation->getEvenement();
-        $numero = $document->getNumero();
-        $montantFormate = number_format($document->getMontant(), 0, '.', ' ');
-        $montantLettres = ucfirst($this->nombreEnLettres($document->getMontant())) . ' Ariary';
-        $dateCreation = $document->getDateCreation();
-
-        $adherentNom = $adherent->getNom() ?? 'Non renseigné';
-        $adherentAdresse = $adherent->getAdresse() ?? 'Non renseignée';
-        $adherentNumero = $adherent->getNumero() ?? 'Non renseigné';
-        $adherentNif = $adherent->getNif() ?? 'Non renseigné';
-        $adherentStat = $adherent->getStat() ?? 'Non renseigné';
-
-        // Récupérer les informations de paiement
-        $paiements = $participation->getPaiements();
-        $reference = 'N/A';
-        $modePaiement = 'Non spécifié';
-        $datePaiement = $participation->getDatePaiement() 
-            ? $participation->getDatePaiement()->format('d/m/Y') 
-            : $dateCreation;
-
-        if (!$paiements->isEmpty()) {
-            $dernierPaiement = $paiements->last();
-            $reference = $dernierPaiement->getReference() ?? 'N/A';
-            $modePaiement = $dernierPaiement->getModePaiement() ?? 'Non spécifié';
-            $datePaiement = $dernierPaiement->getDatePaiement()->format('d/m/Y');
-        } else {
-            $reference = $participation->getReference() ?? 'N/A';
-            $datePaiement = $participation->getDatePaiement() 
-                ? $participation->getDatePaiement()->format('d/m/Y') 
-                : $dateCreation;
-        }
-
         $motif = 'Participation - ' . $evenement->getNom();
 
         // Contenu texte pour le reçu
@@ -1227,6 +1047,158 @@ HTML;
             $this->buildModePaiementInstructionsHtml(),
             $signataireNom,
             $signataireTitre
+        );
+    }
+
+    /**
+     * @deprecated Utiliser renderDocumentHtmlWithLines() à la place
+     * Gabarit HTML pour notes de débit avec tableau (méthode de compatibilité)
+     */
+    private function renderDocumentHtml(
+        string $titrePage,
+        string $titreDocument,
+        string $numero,
+        \DateTimeInterface $dateCreation,
+        string $clientNom,
+        string $clientTel,
+        string $clientAdresse,
+        string $clientNif,
+        string $clientStat,
+        array $lignes,
+        string $totalFormate,
+        string $montantLettres,
+        string $blocPaiementGaucheHtml,
+        string $signataireNom = null,
+        string $signataireTitre = null,
+        string $labelDoit = 'DOIT :'
+    ): string {
+        $lignesHtml = '';
+        foreach ($lignes as $ligne) {
+            $lignesHtml .= '<tr>'
+                . '<td style="text-align:left;">' . htmlspecialchars($ligne['designation']) . '</td>'
+                . '<td>' . htmlspecialchars($ligne['quantite']) . '</td>'
+                . '<td>' . htmlspecialchars($ligne['pu']) . '</td>'
+                . '<td>' . htmlspecialchars($ligne['montant']) . '</td>'
+                . '</tr>';
+        }
+
+        return $this->renderDocumentHtmlWithLines(
+            $titrePage,
+            $titreDocument,
+            $numero,
+            $dateCreation,
+            $clientNom,
+            $clientTel,
+            $clientAdresse,
+            $clientNif,
+            $clientStat,
+            $lignesHtml,
+            $totalFormate,
+            $montantLettres,
+            $blocPaiementGaucheHtml,
+            $signataireNom,
+            $signataireTitre,
+            $labelDoit,
+            false
+        );
+    }
+
+    /**
+     * @deprecated Utiliser generateRecuFromPaiementEvenement() à la place
+     * Génère un reçu à partir d'une participation (méthode de fallback)
+     */
+    public function generateRecuFromParticipation(Participation $participation): Document
+    {
+        $adherent = $participation->getAdherent();
+        $evenement = $participation->getEvenement();
+        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('RECU', $adherent);
+
+        $document = new Document();
+        $document->setType('recu');
+        $document->setNumero($numero);
+        $document->setAdherent($adherent);
+        $document->setMontant($participation->getMontantTotal());
+        $document->setPeriode($evenement->getDate() ? $evenement->getDate()->format('Y') : date('Y'));
+        $document->setReference('Evenement: ' . $evenement->getNom());
+
+        $this->entityManager->persist($document);
+        $this->entityManager->flush();
+
+        $html = $this->renderRecuFromParticipationHtml($document, $participation);
+        $pdfContent = $this->generatePdf($html);
+
+        $fileName = $this->buildFileName($adherent, 'RECU_EVENT', $year, $compteur);
+        $path = $this->saveDocument($pdfContent, $adherent, $fileName);
+
+        $document->setCheminFichier($path);
+        $document->setNomFichier($fileName);
+        $document->setContenu($html);
+
+        $this->entityManager->flush();
+
+        return $document;
+    }
+
+    /**
+     * @deprecated Utiliser renderRecuFromPaiementEvenementHtml() à la place
+     * Rendu HTML du reçu pour une participation (méthode de fallback)
+     */
+    private function renderRecuFromParticipationHtml(Document $document, Participation $participation): string
+    {
+        $adherent = $document->getAdherent();
+        $evenement = $participation->getEvenement();
+        $numero = $document->getNumero();
+        $montantFormate = number_format($document->getMontant(), 0, '.', ' ');
+        $montantLettres = ucfirst($this->nombreEnLettres($document->getMontant())) . ' Ariary';
+        $dateCreation = $document->getDateCreation();
+
+        $adherentNom = $adherent->getNom() ?? 'Non renseigné';
+        $adherentAdresse = $adherent->getAdresse() ?? 'Non renseignée';
+        $adherentNumero = $adherent->getNumero() ?? 'Non renseigné';
+        $adherentNif = $adherent->getNif() ?? 'Non renseigné';
+        $adherentStat = $adherent->getStat() ?? 'Non renseigné';
+
+        $paiements = $participation->getPaiements();
+        $reference = 'N/A';
+        $modePaiement = 'Non spécifié';
+        $datePaiement = $participation->getDatePaiement() 
+            ? $participation->getDatePaiement()->format('d/m/Y') 
+            : $dateCreation;
+
+        if (!$paiements->isEmpty()) {
+            $dernierPaiement = $paiements->last();
+            $reference = $dernierPaiement->getReference() ?? 'N/A';
+            $modePaiement = $dernierPaiement->getModePaiement() ?? 'Non spécifié';
+            $datePaiement = $dernierPaiement->getDatePaiement()->format('d/m/Y');
+        } else {
+            $reference = $participation->getReference() ?? 'N/A';
+            $datePaiement = $participation->getDatePaiement() 
+                ? $participation->getDatePaiement()->format('d/m/Y') 
+                : $dateCreation;
+        }
+
+        $motif = 'Participation - ' . $evenement->getNom();
+
+        $contenuPrincipal = $this->renderRecuContent($modePaiement, $reference, $montantLettres, $montantFormate, $motif);
+
+        return $this->renderDocumentHtmlWithLines(
+            'Reçu de paiement',
+            'REÇU',
+            $numero,
+            $dateCreation,
+            $adherentNom,
+            $adherentNumero,
+            $adherentAdresse,
+            $adherentNif,
+            $adherentStat,
+            $contenuPrincipal,
+            $montantFormate,
+            $montantLettres,
+            $this->buildPaiementEffectueHtml($modePaiement, $reference, $datePaiement),
+            null,
+            null,
+            'A',
+            true
         );
     }
 }

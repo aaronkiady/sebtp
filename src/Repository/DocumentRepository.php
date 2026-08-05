@@ -38,7 +38,7 @@ class DocumentRepository extends ServiceEntityRepository
     }
 
     /**
-     * Compte les documents par année - Version DQL (recommandée)
+     * Compte les documents par année (version DQL)
      */
     public function countByYear(string $type, int $year): int
     {
@@ -67,5 +67,24 @@ class DocumentRepository extends ServiceEntityRepository
            ->setParameter('year', $year);
         
         return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Récupère le dernier numéro de séquence pour un type et une année
+     * Utilisé pour que le compteur continue même après suppression
+     */
+    public function getLastSequenceNumber(string $type, int $year): int
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = "SELECT MAX(CAST(SUBSTRING_INDEX(d.numero, '-', -1) AS UNSIGNED)) 
+                FROM document d 
+                WHERE d.type = :type 
+                AND YEAR(d.date_creation) = :year";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindValue('type', $type);
+        $stmt->bindValue('year', $year);
+        $result = $stmt->executeQuery();
+        
+        return (int) $result->fetchOne();
     }
 }

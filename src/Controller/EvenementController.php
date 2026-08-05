@@ -72,7 +72,7 @@ final class EvenementController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $participants = $form->get('participantsTemp')->getData();
+           // $participants = $form->get('participantsTemp')->getData();
             
             if (!empty($participants)) {
                 foreach ($participants as $liste) {

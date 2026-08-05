@@ -37,7 +37,7 @@
                             <th>Date</th>
                             <th>Montant (MGA)</th>
                             <th>Statut de paiement</th>
-                            <th>Action</th>
+                            {#<th>Action</th>#}
                         </tr>
                     </thead>
                     <tbody>
@@ -63,14 +63,14 @@
                                         </span>
                                     {% endif %}
                                 </td>
-                                <td>
+                                {#<td>
                                     <a href="{{ path('app_participation_toggle', {'id': participation.id}) }}" 
                                        class="btn btn-sm {% if participation.statutPaiement == 'paye' %}btn-warning{% else %}btn-success{% endif %}"
                                        onclick="return confirm('Confirmer le changement de statut ?')">
                                         <i class="fas {% if participation.statutPaiement == 'paye' %}fa-undo{% else %}fa-check{% endif %} me-1"></i>
                                         {% if participation.statutPaiement == 'paye' %}Marquer impayé{% else %}Marquer payé{% endif %}
                                     </a>
-                                </td>
+                                </td>#}
                             </tr>
                         {% endfor %}
                     </tbody>

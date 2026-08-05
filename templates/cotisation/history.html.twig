@@ -71,6 +71,7 @@
                                             <th>Montant</th>
                                             <th>Mode</th>
                                             <th>Référence</th>
+                                            <th>Commentaire</th>
                                             <th class="text-center">Actions</th>
                                         </tr>
                                     </thead>
@@ -81,6 +82,7 @@
                                             <td class="text-success fw-bold">{{ paiement.montant|number_format(0, '.', ' ') }} MGA</td>
                                             <td>{{ paiement.modePaiement|default('-') }}</td>
                                             <td>{{ paiement.reference|default('-') }}</td>
+                                            <td>{{ paiement.commentaire|default('-') }}</td>
                                             <td class="text-center">
                                                 <div class="btn-group">
                                                     <a href="{{ path('app_document_generer_recu_paiement', {'paiement_id': paiement.id}) }}" 
