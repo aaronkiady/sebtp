@@ -8,6 +8,7 @@ use App\Entity\Paiement;
 use App\Repository\ListeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class ImportCotisationExcelService
@@ -122,14 +123,10 @@ class ImportCotisationExcelService
                         $paiement->setPeriode($periode);
                         $paiement->setCommentaire('Importé depuis Excel');
                         
-                        // Date de paiement
-                        if ($datePaiement) {
-                            $date = \DateTime::createFromFormat('d/m/Y', $datePaiement);
-                            if ($date) {
-                                $paiement->setDatePaiement($date);
-                            } else {
-                                $paiement->setDatePaiement(new \DateTime());
-                            }
+                        // Date de paiement - CORRECTION ICI
+                        $dateParsed = $this->parseDate($datePaiement);
+                        if ($dateParsed) {
+                            $paiement->setDatePaiement($dateParsed);
                         } else {
                             $paiement->setDatePaiement(new \DateTime());
                         }
@@ -154,6 +151,57 @@ class ImportCotisationExcelService
         }
         
         return $results;
+    }
+
+    /**
+     * Parse une date depuis Excel ou depuis une chaîne de caractères
+     * Supporte plusieurs formats : d/m/Y, d-m-Y, Y-m-d, et les nombres Excel
+     */
+    private function parseDate(?string $dateValue): ?\DateTimeInterface
+    {
+        if (empty($dateValue)) {
+            return null;
+        }
+
+        // Nettoyer la date
+        $dateValue = trim($dateValue);
+
+        // 1. Vérifier si c'est un nombre (format Excel)
+        if (is_numeric($dateValue)) {
+            $timestamp = Date::excelToTimestamp((float) $dateValue);
+            if ($timestamp) {
+                return (new \DateTime())->setTimestamp($timestamp);
+            }
+        }
+
+        // 2. Essayer différents formats
+        $formats = [
+            'd/m/Y',      // 05/08/2026
+            'd/m/y',      // 05/08/26
+            'd-m-Y',      // 05-08-2026
+            'd-m-y',      // 05-08-26
+            'Y-m-d',      // 2026-08-05
+            'Y/m/d',      // 2026/08/05
+            'd M Y',      // 05 Aug 2026
+            'd M y',      // 05 Aug 26
+        ];
+
+        foreach ($formats as $format) {
+            $date = \DateTime::createFromFormat($format, $dateValue);
+            if ($date && $date->format($format) === $dateValue) {
+                // Réinitialiser l'heure à minuit
+                return $date->setTime(0, 0, 0);
+            }
+        }
+
+        // 3. Dernière tentative : utiliser la classe DateTime native
+        try {
+            $date = new \DateTime($dateValue);
+            return $date->setTime(0, 0, 0);
+        } catch (\Exception $e) {
+            // Échec du parsing
+            return null;
+        }
     }
 
     private function getValue(array $row, int $index): ?string
