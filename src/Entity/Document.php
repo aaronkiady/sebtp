@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\DocumentRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: DocumentRepository::class)]
@@ -51,7 +52,7 @@ class Document
     #[ORM\Column(nullable: true)]
     private ?int $quantite = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $commentaire = null;
 
     public function __construct()
@@ -218,4 +219,6 @@ class Document
 
         return $this;
     }
+
+    
 }

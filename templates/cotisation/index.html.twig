@@ -41,12 +41,22 @@
         <div class="card shadow-sm mb-4">
             <div class="card-body">
                 <form method="get" action="{{ path('app_cotisation_index') }}" class="row g-3">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <label class="form-label">Rechercher un adhérent</label>
                         <input type="text" name="search" class="form-control" placeholder="Nom, email ou téléphone..." value="{{ search }}">
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Statut</label>
+                    <div class="col-md-2">
+                        <label class="form-label">Statut adhérent</label>
+                        <select name="statutAdherent" class="form-select">
+                            <option value="">Tous</option>
+                            <option value="actif" {% if statutAdherentFilter == 'actif' %}selected{% endif %}>Actif</option>
+                            <option value="inactif" {% if statutAdherentFilter == 'inactif' %}selected{% endif %}>Inactif</option>
+                            <option value="radie" {% if statutAdherentFilter == 'radie' %}selected{% endif %}>Radié</option>
+                            <option value="demande" {% if statutAdherentFilter == 'demande' %}selected{% endif %}>Demande</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Statut paiement</label>
                         <select name="statut" class="form-select">
                             <option value="">Tous</option>
                             <option value="paye" {% if statutFilter == 'paye' %}selected{% endif %}>Payé</option>
@@ -73,6 +83,51 @@
             </div>
         </div>
 
+        {# TOTAUX 
+        {% set totalAttendu = 0 %}
+        {% set totalPaye = 0 %}
+        {% set totalReste = 0 %}
+        {% for cotisation in cotisations %}
+            {% set totalAttendu = totalAttendu + cotisation.montant %}
+            {% set totalPaye = totalPaye + cotisation.montantPaye %}
+            {% set totalReste = totalReste + cotisation.getResteAPayer %}
+        {% endfor %}
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0f7ee 0%, #e6f0e6 100%);">
+                    <div class="card-body text-center">
+                        <small class="text-muted text-uppercase fw-bold">Montant total attendu</small>
+                        <h3 class="fw-bold text-success mb-0">{{ totalAttendu|number_format(0, '.', ' ') }} MGA</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);">
+                    <div class="card-body text-center">
+                        <small class="text-muted text-uppercase fw-bold">Montant total payé</small>
+                        <h3 class="fw-bold text-primary mb-0">{{ totalPaye|number_format(0, '.', ' ') }} MGA</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);">
+                    <div class="card-body text-center">
+                        <small class="text-muted text-uppercase fw-bold">Reste à payer total</small>
+                        <h3 class="fw-bold text-warning mb-0">{{ totalReste|number_format(0, '.', ' ') }} MGA</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);">
+                    <div class="card-body text-center">
+                        <small class="text-muted text-uppercase fw-bold">Nombre de cotisations</small>
+                        <h3 class="fw-bold text-purple mb-0">{{ cotisations|length }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>#}
+
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="table-light">
@@ -82,7 +137,8 @@
                         <th>Montant attendu</th>
                         <th>Montant payé</th>
                         <th>Reste à payer</th>
-                        <th>Statut</th>
+                        <th>Statut paiement</th>
+                        <th>Statut adhérent</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -91,7 +147,6 @@
                     {% set adherent = cotisation.adherent %}
                     {% set paye = cotisation.montantPaye %}
                     {% set reste = cotisation.getResteAPayer %}
-                    {# Utiliser le montant stocké dans la cotisation, pas recalculé #}
                     {% set montantAttendu = cotisation.montant %}
                     <tr>
                         <td class="fw-bold">
@@ -115,6 +170,19 @@
                                 <span class="badge bg-danger rounded-pill">Impayé</span>
                             {% endif %}
                         </td>
+                        <td>
+                            {% if adherent.statut == 'actif' %}
+                                <span class="badge bg-success rounded-pill">Actif</span>
+                            {% elseif adherent.statut == 'inactif' %}
+                                <span class="badge bg-secondary rounded-pill">Inactif</span>
+                            {% elseif adherent.statut == 'radie' %}
+                                <span class="badge bg-danger rounded-pill">Radié</span>
+                            {% elseif adherent.statut == 'demande' %}
+                                <span class="badge bg-warning rounded-pill">Demande</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark rounded-pill">-</span>
+                            {% endif %}
+                        </td>
                         <td class="text-end">
                             <a href="{{ path('app_cotisation_history', {'adherent_id': adherent.id}) }}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-eye me-1"></i> Voir
@@ -123,7 +191,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             <div class="mb-3">
                                 <i class="fas fa-wallet fa-3x opacity-25 text-muted"></i>
                             </div>

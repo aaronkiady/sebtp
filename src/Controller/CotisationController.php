@@ -33,6 +33,7 @@ final class CotisationController extends AbstractController
         $search = $request->query->get('search');
         $statut = $request->query->get('statut');
         $periode = $request->query->get('periode');
+        $statutAdherent = $request->query->get('statutAdherent');
         
         $cotisations = $repo->search($search, $statut, $periode);
         
@@ -42,6 +43,7 @@ final class CotisationController extends AbstractController
             'search' => $search,
             'statutFilter' => $statut,
             'periodeFilter' => $periode,
+            'statutAdherentFilter' => $statutAdherent,
         ]);
     }
 

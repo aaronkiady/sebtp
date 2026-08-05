@@ -1,32 +1,55 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Modification des dirigeants{% endblock %}
+{% block title %}Modifier les dirigeants{% endblock %}
 
 {% block body %}
 <div class="main-wrapper mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <a href="{{ path('app_dirigeant_index') }}" class="btn btn-outline-secondary btn-sm mb-3">
-                <i class="fas fa-arrow-left"></i> Retour à la liste
-            </a>
-            <h1 class="h2 fw-bold text-dark">Modifier les dirigeants</h1>
-        </div>
-    </div>
-
-    <div class="form-card-wide mx-auto my-4">
-        <div class="card-header-modern">
-            <div class="header-icon">
-                <i class="fas fa-edit"></i>
-            </div>
-            <div>
-                <h4 class="mb-0 fw-800">Modification</h4>
-                <p class="text-muted mb-0 small">Mettez à jour les informations du dirigeant</p>
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_home') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-users-cog"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Dirigeants</h1>
+                    <p class="text-muted mb-0">Configuration des signataires et cachets</p>
+                </div>
             </div>
         </div>
 
-        <div class="p-4 p-md-5">
-            {{ include('dirigeant/_form.html.twig', {'button_label': 'Mettre à jour'}) }}
-        </div>
+        {{ form_start(form) }}
+            <div class="row g-4">
+                <div class="col-md-6">
+                    {{ form_row(form.president) }}
+                </div>
+                <div class="col-md-6">
+                    {{ form_row(form.secretaire) }}
+                </div>
+                <div class="col-md-6">
+                    {{ form_row(form.tresorier) }}
+                </div>
+                <div class="col-md-6">
+                    {{ form_row(form.signatureFile) }}
+                    {% if dirigeant.signature %}
+                        <div class="mt-2">
+                            <small class="text-muted">Signature actuelle :</small>
+                            <img src="{{ asset('uploads/images/' ~ dirigeant.signature) }}" alt="Signature" style="max-height:80px;display:block;margin-top:5px;border:1px solid #ddd;padding:5px;border-radius:4px;">
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-3">
+                <a href="{{ path('app_home') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-2"></i> Annuler
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i> Enregistrer
+                </button>
+            </div>
+        {{ form_end(form) }}
     </div>
 </div>
 {% endblock %}

@@ -37,7 +37,7 @@ class CotisationRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    public function search(?string $term = null, ?string $statut = null, ?string $periode = null): array
+    public function search(?string $term = null, ?string $statut = null, ?string $periode = null, ?string $statutAdherent = null): array
     {
         $qb = $this->createQueryBuilder('c')
             ->leftJoin('c.adherent', 'a')
@@ -59,6 +59,11 @@ class CotisationRepository extends ServiceEntityRepository
         if ($periode && $periode !== '') {
             $qb->andWhere('c.periode = :periode')
                ->setParameter('periode', $periode);
+        }
+
+         if ($statutAdherent) {
+            $qb->andWhere('a.statut = :statutAdherent')
+            ->setParameter('statutAdherent', $statutAdherent);
         }
 
         return $qb->orderBy('c.periode', 'DESC')

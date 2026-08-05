@@ -51,20 +51,32 @@ final class DirigeantController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'app_dirigeant_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Dirigeant $dirigeant, EntityManagerInterface $entityManager): Response
+    public function edit(Request $request, Dirigeant $dirigeant, EntityManagerInterface $em): Response
     {
         $form = $this->createForm(DirigeantType::class, $dirigeant);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
+            // Gérer l'upload de la signature
+            $signatureFile = $form->get('signatureFile')->getData();
+            if ($signatureFile) {
+                $uploadsDir = $this->getParameter('kernel.project_dir') . '/public/uploads/images/';
+                $originalFilename = pathinfo($signatureFile->getClientOriginalName(), PATHINFO_FILENAME);
+                $newFilename = 'signature_' . uniqid() . '.' . $signatureFile->guessExtension();
+                $signatureFile->move($uploadsDir, $newFilename);
+                
+                $dirigeant->setSignature($newFilename);
+            }
 
-            return $this->redirectToRoute('app_dirigeant_index', [], Response::HTTP_SEE_OTHER);
+            $em->flush();
+
+            $this->addFlash('success', 'Dirigeant modifié avec succès !');
+            return $this->redirectToRoute('app_dirigeant_index');
         }
 
         return $this->render('dirigeant/edit.html.twig', [
+            'form' => $form->createView(),
             'dirigeant' => $dirigeant,
-            'form' => $form,
         ]);
     }
 

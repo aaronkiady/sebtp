@@ -22,6 +22,9 @@ class Dirigeant
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $tresorier = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $signature = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -35,7 +38,6 @@ class Dirigeant
     public function setPresident(string $president): static
     {
         $this->president = $president;
-
         return $this;
     }
 
@@ -47,7 +49,6 @@ class Dirigeant
     public function setSecretaire(?string $secretaire): static
     {
         $this->secretaire = $secretaire;
-
         return $this;
     }
 
@@ -59,11 +60,21 @@ class Dirigeant
     public function setTresorier(?string $tresorier): static
     {
         $this->tresorier = $tresorier;
-
         return $this;
     }
 
-     /**
+    public function getSignature(): ?string
+    {
+        return $this->signature;
+    }
+
+    public function setSignature(?string $signature): static
+    {
+        $this->signature = $signature;
+        return $this;
+    }
+
+    /**
      * Récupère le nom du signataire en fonction de la fonction
      */
     public function getSignataireByFonction(string $fonction): ?string
@@ -83,10 +94,22 @@ class Dirigeant
     {
         return match ($fonction) {
             'president' => 'Le Président du SEBTP',
-            'secretaire' => 'Secrétaire Exécutive du SEBTP',
+            'secretaire' => 'Le Secrétaire du SEBTP',
             'tresorier' => 'Le Trésorier du SEBTP',
             default => 'Le Président du SEBTP',
         };
     }
-}
 
+    /**
+     * Récupère le nom du fichier signature en fonction de la fonction
+     */
+    public function getSignatureByFonction(string $fonction): ?string
+    {
+        return match ($fonction) {
+            'president' => $this->getSignature() ?? 'signature_president',
+            'secretaire' => $this->getSignature() ?? 'signature_secretaire',
+            'tresorier' => $this->getSignature() ?? 'signature_tresorier',
+            default => $this->getSignature() ?? 'signature_president',
+        };
+    }
+}

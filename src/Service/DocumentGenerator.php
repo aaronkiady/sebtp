@@ -506,15 +506,39 @@ HTML;
         string $signataireTitre = null,
         string $labelDoit = 'DOIT :',
         bool $isRecu = false,
-        string $commentaireHtml = ''
+        string $commentaireHtml = '',
+        string $signataireFonction = 'president'  // NOUVEAU PARAMÈTRE
     ): string {
         $logoHtml = $this->buildLogoHtml();
-        $signatureHtml = $this->buildSignatureHtml();
 
         $dateCreationFormatee = $this->formatDateFrancaise($dateCreation, 'dd MMMM yyyy');
 
         $signataireNom = $signataireNom ?? self::PRESIDENT_NOM;
         $signataireTitre = $signataireTitre ?? self::PRESIDENT_TITRE;
+
+        // ============================================================
+        // GESTION DE LA SIGNATURE : UNIQUEMENT POUR LE SECRÉTAIRE
+        // ============================================================
+        $signatureHtml = '<div style="height:70px;"></div>'; // Vide par défaut
+        
+        // Si le signataire est le secrétaire, afficher la signature
+        if ($signataireFonction === 'secretaire') {
+            // Chercher la signature dans public/images/
+            $signaturePath = $this->projectDir . '/public/images/signature_secretaire.jpeg';
+            if (file_exists($signaturePath)) {
+                $signatureData = file_get_contents($signaturePath);
+                $signatureBase64 = 'data:image/jpeg;base64,' . base64_encode($signatureData);
+                $signatureHtml = '<img src="' . $signatureBase64 . '" alt="Signature" style="width:130px;height:auto;object-fit:contain;margin-top:8px;">';
+            } else {
+                // Essayer avec .png
+                $signaturePathPng = $this->projectDir . '/public/images/signature_secretaire.png';
+                if (file_exists($signaturePathPng)) {
+                    $signatureData = file_get_contents($signaturePathPng);
+                    $signatureBase64 = 'data:image/png;base64,' . base64_encode($signatureData);
+                    $signatureHtml = '<img src="' . $signatureBase64 . '" alt="Signature" style="width:130px;height:auto;object-fit:contain;margin-top:8px;">';
+                }
+            }
+        }
 
         // Pour les reçus, on affiche le texte directement
         // Pour les notes de débit, on affiche le tableau
@@ -526,10 +550,10 @@ HTML;
         $montantLettresHtml = '';
         if (!$isRecu) {
             $montantLettresHtml = <<<HTML
-        <div class="montant-lettres">
-            Arrêtée à la somme de <strong>{$this->e($montantLettres)}</strong>
-        </div>
-HTML;
+            <div class="montant-lettres">
+                Arrêtée à la somme de <strong>{$this->e($montantLettres)}</strong>
+            </div>
+    HTML;
             
             // Ajouter le commentaire APRÈS "Arrêtée à la somme de..."
             if (!empty($commentaireHtml)) {
@@ -538,164 +562,170 @@ HTML;
         }
 
         return <<<HTML
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>{$titrePage} N° {$numero}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Arial', sans-serif;
-            font-size: 13px;
-            color: #000;
-            background: #fff;
-            padding: 35px 40px;
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>{$titrePage} N° {$numero}</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: 'Arial', sans-serif;
+                font-size: 13px;
+                color: #000;
+                background: #fff;
+                padding: 35px 40px;
+            }
+            .page { max-width: 760px; margin: 0 auto; }
+
+            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .header-table td { vertical-align: top; border: none; padding: 0; }
+            .logo-cell { width: 130px; }
+
+            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            .info-table td { vertical-align: top; border: none; padding: 0; }
+            .info-left { width: 55%; font-size: 13px; line-height: 1.9; }
+            .info-right { width: 45%; font-size: 13px; line-height: 1.7; text-align: right; }
+
+            .doit-label {
+                font-weight: 700;
+                text-decoration: underline;
+                font-size: 15px;
+                margin: 6px 0 6px 0;
+            }
+            .client-nom { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+            .client-info { font-size: 13px; margin-top: 2px; }
+
+            .doc-title-box {
+                border: 1px solid #000;
+                text-align: center;
+                font-weight: 700;
+                font-size: 14px;
+                padding: 10px;
+                margin: 22px 0 22px 0;
+                letter-spacing: 0.5px;
+            }
+
+            /* Styles pour le tableau des notes de débit */
+            table.details { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+            table.details th, table.details td {
+                border: 1px solid #000;
+                padding: 10px;
+                font-size: 13px;
+                text-align: center;
+            }
+            table.details th { font-weight: 700; }
+            table.details td:first-child, table.details th:first-child { text-align: left; }
+            table.details tfoot td { font-weight: 700; }
+            table.details tfoot td.total-label { text-align: right; }
+
+            .montant-lettres { 
+                margin: 22px 0 26px 0; 
+                font-size: 14px; 
+                text-align: center;
+            }
+            .montant-lettres strong { font-weight: 700; }
+
+            /* Styles pour le commentaire */
+            .commentaire-box {
+                margin: 10px 0 15px 0;
+                padding: 10px 15px;
+                background: #f8f9fa;
+                border-left: 4px solid #2d5a27;
+                border-radius: 4px;
+                font-size: 13px;
+                color: #333;
+                text-align: left;
+                line-height: 1.6;
+            }
+            .commentaire-box strong {
+                font-weight: 700;
+            }
+            .commentaire-box br {
+                display: block;
+                content: "";
+                margin-top: 2px;
+            }
+
+            .footer-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+            .footer-table td { vertical-align: top; border: none; padding: 0; font-size: 13px; }
+            .footer-left { width: 58%; line-height: 1.6; }
+            .footer-right { width: 42%; text-align: center; line-height: 1.4; padding-top: 15px; }
+            .footer-left u { text-decoration: underline; }
+            .footer-right .president-titre { font-size: 13px; }
+            .footer-right .president-nom { font-weight: 700; font-size: 13px; margin-top: 4px; }
+
+            /* Styles pour le contenu des reçus */
+            .recu-content {
+                margin: 30px 0;
+                font-size: 14px;
+                line-height: 1.8;
+            }
+            .recu-content p {
+                text-align: justify;
+                margin-bottom: 10px;
+            }
+            .recu-content strong {
+                font-weight: 700;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+
+            <table class="header-table">
+                <tr>
+                    <td class="logo-cell">{$logoHtml}</td>
+                    <td></td>
+                </tr>
+            </table>
+
+            <table class="info-table">
+                <tr>
+                    <td class="info-left">
+                        <div><strong>{$this->e(self::SYNDICAT_SOUS_TITRE)}</strong></div>
+                        <div><strong>{$this->e(self::SYNDICAT_ADRESSE)}</strong></div>
+                        <div>Tel : {$this->e(self::SYNDICAT_TEL)}</div>
+                        <div>Email : {$this->e(self::SYNDICAT_EMAIL)}</div>
+                        <div style="margin-top:6px;">NIF : {$this->e(self::SYNDICAT_NIF)}</div>
+                        <div>STAT: {$this->e(self::SYNDICAT_STAT)}</div>
+                    </td>
+                    <td class="info-right">
+                        <div>Antananarivo, le {$dateCreationFormatee}</div>
+                        <div class="doit-label">{$this->e($labelDoit)}</div>
+                        <div class="client-nom">{$this->e($clientNom)}</div>
+                        <div class="client-info">Tél : {$this->e($clientTel)}</div>
+                        <div class="client-info">Adresse : {$this->e($clientAdresse)}</div>
+                        <div class="client-info">NIF : {$this->e($clientNif)}</div>
+                        <div class="client-info">STAT: {$this->e($clientStat)}</div>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="doc-title-box">{$this->e($titreDocument)} N°{$this->e($numero)}</div>
+
+            <!-- Contenu principal : soit tableau (ND), soit texte (Reçu) -->
+            {$contenuHtml}
+
+            <!-- Montant en lettres + Commentaire (pour les notes de débit) -->
+            {$montantLettresHtml}
+
+            <table class="footer-table">
+                <tr>
+                    <td class="footer-left">{$blocPaiementGaucheHtml}</td>
+                    <td class="footer-right">
+                        <div class="president-titre">{$this->e($signataireTitre)}</div>
+                        {$signatureHtml}
+                        <div class="president-nom">{$this->e($signataireNom)}</div>
+                    </td>
+                </tr>
+            </table>
+
+        </div>
+    </body>
+    </html>
+    HTML;
         }
-        .page { max-width: 760px; margin: 0 auto; }
-
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .header-table td { vertical-align: top; border: none; padding: 0; }
-        .logo-cell { width: 130px; }
-
-        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .info-table td { vertical-align: top; border: none; padding: 0; }
-        .info-left { width: 55%; font-size: 13px; line-height: 1.9; }
-        .info-right { width: 45%; font-size: 13px; line-height: 1.7; text-align: right; }
-
-        .doit-label {
-            font-weight: 700;
-            text-decoration: underline;
-            font-size: 15px;
-            margin: 6px 0 6px 0;
-        }
-        .client-nom { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
-        .client-info { font-size: 13px; margin-top: 2px; }
-
-        .doc-title-box {
-            border: 1px solid #000;
-            text-align: center;
-            font-weight: 700;
-            font-size: 14px;
-            padding: 10px;
-            margin: 22px 0 22px 0;
-            letter-spacing: 0.5px;
-        }
-
-        /* Styles pour le tableau des notes de débit */
-        table.details { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-        table.details th, table.details td {
-            border: 1px solid #000;
-            padding: 10px;
-            font-size: 13px;
-            text-align: center;
-        }
-        table.details th { font-weight: 700; }
-        table.details td:first-child, table.details th:first-child { text-align: left; }
-        table.details tfoot td { font-weight: 700; }
-        table.details tfoot td.total-label { text-align: right; }
-
-        .montant-lettres { 
-            margin: 22px 0 26px 0; 
-            font-size: 14px; 
-            text-align: center;
-        }
-        .montant-lettres strong { font-weight: 700; }
-
-        /* Styles pour le commentaire */
-        .commentaire-box {
-            margin: 10px 0 15px 0;
-            padding: 10px 15px;
-            background: #f8f9fa;
-            border-left: 4px solid #2d5a27;
-            border-radius: 4px;
-            font-size: 13px;
-            color: #333;
-            text-align: left;
-        }
-        .commentaire-box strong {
-            font-weight: 700;
-        }
-
-        .footer-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
-        .footer-table td { vertical-align: top; border: none; padding: 0; font-size: 13px; }
-        .footer-left { width: 58%; line-height: 1.6; }
-        .footer-right { width: 42%; text-align: center; line-height: 1.4; padding-top: 15px; }
-        .footer-left u { text-decoration: underline; }
-        .footer-right .president-titre { font-size: 13px; }
-        .footer-right .president-nom { font-weight: 700; font-size: 13px; margin-top: 4px; }
-
-        /* Styles pour le contenu des reçus */
-        .recu-content {
-            margin: 30px 0;
-            font-size: 14px;
-            line-height: 1.8;
-        }
-        .recu-content p {
-            text-align: justify;
-            margin-bottom: 10px;
-        }
-        .recu-content strong {
-            font-weight: 700;
-        }
-    </style>
-</head>
-<body>
-    <div class="page">
-
-        <table class="header-table">
-            <tr>
-                <td class="logo-cell">{$logoHtml}</td>
-                <td></td>
-            </tr>
-        </table>
-
-        <table class="info-table">
-            <tr>
-                <td class="info-left">
-                    <div><strong>{$this->e(self::SYNDICAT_SOUS_TITRE)}</strong></div>
-                    <div><strong>{$this->e(self::SYNDICAT_ADRESSE)}</strong></div>
-                    <div>Tel : {$this->e(self::SYNDICAT_TEL)}</div>
-                    <div>Email : {$this->e(self::SYNDICAT_EMAIL)}</div>
-                    <div style="margin-top:6px;">NIF : {$this->e(self::SYNDICAT_NIF)}</div>
-                    <div>STAT: {$this->e(self::SYNDICAT_STAT)}</div>
-                </td>
-                <td class="info-right">
-                    <div>Antananarivo, le {$dateCreationFormatee}</div>
-                    <div class="doit-label">{$this->e($labelDoit)}</div>
-                    <div class="client-nom">{$this->e($clientNom)}</div>
-                    <div class="client-info">Tél : {$this->e($clientTel)}</div>
-                    <div class="client-info">Adresse : {$this->e($clientAdresse)}</div>
-                    <div class="client-info">NIF : {$this->e($clientNif)}</div>
-                    <div class="client-info">STAT: {$this->e($clientStat)}</div>
-                </td>
-            </tr>
-        </table>
-
-        <div class="doc-title-box">{$this->e($titreDocument)} N°{$this->e($numero)}</div>
-
-        <!-- Contenu principal : soit tableau (ND), soit texte (Reçu) -->
-        {$contenuHtml}
-
-        <!-- Montant en lettres + Commentaire (pour les notes de débit) -->
-        {$montantLettresHtml}
-
-        <table class="footer-table">
-            <tr>
-                <td class="footer-left">{$blocPaiementGaucheHtml}</td>
-                <td class="footer-right">
-                    <div class="president-titre">{$this->e($signataireTitre)}</div>
-                    {$signatureHtml}
-                    <div class="president-nom">{$this->e($signataireNom)}</div>
-                </td>
-            </tr>
-        </table>
-
-    </div>
-</body>
-</html>
-HTML;
-    }
 
     // ============================================================
     // MÉTHODES DE RENDU POUR LES NOTES DE DÉBIT
@@ -736,14 +766,16 @@ HTML;
                 . '</tr>';
         }
 
-        // Générer le HTML du commentaire
+        // Générer le HTML du commentaire avec nl2br pour les sauts de ligne
         $commentaireHtml = '';
         if (!empty($commentaire)) {
+            $commentaireAvecBr = nl2br(htmlspecialchars($commentaire));
             $commentaireHtml = <<<HTML
-        <div class="commentaire-box">
-            <strong>Commentaire :</strong> {$this->e($commentaire)}
-        </div>
-HTML;
+            <div class="commentaire-box">
+                <strong>Commentaire :</strong><br>
+                {$commentaireAvecBr}
+            </div>
+    HTML;
         }
 
         return $this->renderDocumentHtmlWithLines(
@@ -764,7 +796,8 @@ HTML;
             $signataireTitre,
             'DOIT :',
             false,
-            $commentaireHtml
+            $commentaireHtml,
+            $signataireFonction,
         );
     }
 
@@ -1220,5 +1253,19 @@ HTML;
             'A',
             true
         );
+    }
+
+    /**
+     * Récupère la signature/cachet en base64 pour un signataire spécifique
+     */
+    private function getSignatureBase64ForFonction(string $fonction): string
+    {
+        $dirigeant = $this->getDirigeant();
+        if (!$dirigeant) {
+            return '';
+        }
+        
+        $signatureName = $dirigeant->getSignatureByFonction($fonction);
+        return $this->getImageBase64($signatureName);
     }
 }
