@@ -85,6 +85,7 @@ class DocumentGenerator
     /**
      * Génère le numéro de document ainsi que le compteur brut (utilisé aussi pour le nom de fichier)
      * Le numéro dans le nom de fichier est le même que celui du document
+     * Utilise la table sequence pour un incrément continu même après suppression
      */
     private function generateNumeroAndCompteur(string $type, Liste $adherent): array
     {
@@ -103,7 +104,6 @@ class DocumentGenerator
         $numero = sprintf('%s-%s-%s', $prefixe, $year, $compteurGlobal);
 
         // Le compteur du fichier est le même que le compteur global
-        // pour que le nom du fichier corresponde au numéro du document
         $compteurFichier = $compteurGlobal;
 
         return [$numero, $compteurFichier, $year];
@@ -184,7 +184,7 @@ class DocumentGenerator
         ];
 
         foreach ($extensions as $ext) {
-            $path = $this->projectDir . '/public/uploads/images/' . $baseName . '.' . $ext;
+            $path = $this->projectDir . '/public/images/' . $baseName . '.' . $ext;
             if (file_exists($path)) {
                 $data = file_get_contents($path);
                 return 'data:' . $mimeMap[$ext] . ';base64,' . base64_encode($data);
@@ -221,7 +221,7 @@ class DocumentGenerator
             return '<img src="' . $logoBase64 . '" alt="SEBTP Logo" style="width:250px;height:auto;object-fit:contain;">';
         }
 
-        return '<div style="width:90px;height:90px;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;">SEBTP</div>';
+        return '<div style="width:200px;height:90px;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;">SEBTP</div>';
     }
 
     /**
@@ -275,7 +275,7 @@ class DocumentGenerator
 <strong>Echéance : à reception</strong><br>  
 <strong><u>Mode de paiement :</u><br>
 Par virement bancaire au nom de {$nom}<br>
-RIB SG :  {$rib}<br>
+RIB BRED Madagasikara :  {$rib}<br>
 <br>
 Ou<br>
 <br>
@@ -355,9 +355,6 @@ HTML;
 
     /**
      * Génère un reçu de paiement pour un paiement de cotisation
-     * 
-     * @param Paiement $paiement Le paiement de cotisation
-     * @return Document Le document généré
      */
     public function generateRecu(Paiement $paiement): Document
     {
@@ -393,9 +390,6 @@ HTML;
 
     /**
      * Génère un reçu pour un paiement d'événement (PaiementEvenement)
-     * 
-     * @param PaiementEvenement $paiement Le paiement d'événement
-     * @return Document Le document généré
      */
     public function generateRecuFromPaiementEvenement(PaiementEvenement $paiement): Document
     {
@@ -432,14 +426,6 @@ HTML;
 
     /**
      * Génère une note de débit avec plusieurs lignes
-     * 
-     * @param Liste $adherent L'adhérent
-     * @param float $montantTotal Le montant total
-     * @param string $periode La période
-     * @param array<int, array{designation:string, quantite:int, prixUnitaire:float, montant:float}> $lignes Les lignes de la note
-     * @param string $motif Le motif global
-     * @param string $signataireFonction La fonction du signataire
-     * @return Document Le document généré
      */
     public function generateNoteDebitWithLines(
         Liste $adherent, 
@@ -447,7 +433,8 @@ HTML;
         string $periode, 
         array $lignes, 
         string $motif, 
-        string $signataireFonction = 'president'
+        string $signataireFonction = 'president',
+        string $commentaire = ''
     ): Document {
         [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('note_debit', $adherent);
 
@@ -458,6 +445,7 @@ HTML;
         $document->setMontant($montantTotal);
         $document->setPeriode($periode);
         $document->setReference($motif);
+        $document->setCommentaire($commentaire);
 
         $this->entityManager->persist($document);
         $this->entityManager->flush();
@@ -479,8 +467,6 @@ HTML;
 
     /**
      * Génère une note de débit simple (méthode de compatibilité)
-     * Convertit un motif unique en une ligne unique
-     * 
      * @deprecated Utiliser generateNoteDebitWithLines() à la place
      */
     public function generateNoteDebit(Liste $adherent, float $montant, string $periode, string $motif, string $signataireFonction = 'president'): Document
@@ -492,7 +478,7 @@ HTML;
             'montant' => $montant
         ]];
         
-        return $this->generateNoteDebitWithLines($adherent, $montant, $periode, $lignes, $motif, $signataireFonction);
+        return $this->generateNoteDebitWithLines($adherent, $montant, $periode, $lignes, $motif, $signataireFonction, '');
     }
 
     // ============================================================
@@ -519,7 +505,8 @@ HTML;
         string $signataireNom = null,
         string $signataireTitre = null,
         string $labelDoit = 'DOIT :',
-        bool $isRecu = false
+        bool $isRecu = false,
+        string $commentaireHtml = ''
     ): string {
         $logoHtml = $this->buildLogoHtml();
         $signatureHtml = $this->buildSignatureHtml();
@@ -539,10 +526,15 @@ HTML;
         $montantLettresHtml = '';
         if (!$isRecu) {
             $montantLettresHtml = <<<HTML
-            <div class="montant-lettres">
-                Arrêtée à la somme de <strong>{$this->e($montantLettres)}</strong>
-            </div>
+        <div class="montant-lettres">
+            Arrêtée à la somme de <strong>{$this->e($montantLettres)}</strong>
+        </div>
 HTML;
+            
+            // Ajouter le commentaire APRÈS "Arrêtée à la somme de..."
+            if (!empty($commentaireHtml)) {
+                $montantLettresHtml .= $commentaireHtml;
+            }
         }
 
         return <<<HTML
@@ -610,6 +602,21 @@ HTML;
         }
         .montant-lettres strong { font-weight: 700; }
 
+        /* Styles pour le commentaire */
+        .commentaire-box {
+            margin: 10px 0 15px 0;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #2d5a27;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #333;
+            text-align: left;
+        }
+        .commentaire-box strong {
+            font-weight: 700;
+        }
+
         .footer-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
         .footer-table td { vertical-align: top; border: none; padding: 0; font-size: 13px; }
         .footer-left { width: 58%; line-height: 1.6; }
@@ -670,7 +677,7 @@ HTML;
         <!-- Contenu principal : soit tableau (ND), soit texte (Reçu) -->
         {$contenuHtml}
 
-        <!-- Montant en lettres (UNIQUEMENT pour les notes de débit) -->
+        <!-- Montant en lettres + Commentaire (pour les notes de débit) -->
         {$montantLettresHtml}
 
         <table class="footer-table">
@@ -690,6 +697,10 @@ HTML;
 HTML;
     }
 
+    // ============================================================
+    // MÉTHODES DE RENDU POUR LES NOTES DE DÉBIT
+    // ============================================================
+
     /**
      * Rendu HTML de la note de débit avec plusieurs lignes
      */
@@ -701,6 +712,7 @@ HTML;
         $montantFormate = number_format($montantTotal, 0, '.', ' ');
         $montantLettres = ucfirst($this->nombreEnLettres($montantTotal)) . ' Ariary';
         $dateCreation = $document->getDateCreation();
+        $commentaire = $document->getCommentaire();
 
         $adherentNom = $adherent->getNom() ?? 'Non renseigné';
         $adherentAdresse = $adherent->getAdresse() ?? 'Non renseignée';
@@ -724,6 +736,16 @@ HTML;
                 . '</tr>';
         }
 
+        // Générer le HTML du commentaire
+        $commentaireHtml = '';
+        if (!empty($commentaire)) {
+            $commentaireHtml = <<<HTML
+        <div class="commentaire-box">
+            <strong>Commentaire :</strong> {$this->e($commentaire)}
+        </div>
+HTML;
+        }
+
         return $this->renderDocumentHtmlWithLines(
             'Note de débit',
             'NOTE DE DEBIT',
@@ -741,7 +763,8 @@ HTML;
             $signataireNom,
             $signataireTitre,
             'DOIT :',
-            false  // isRecu = false
+            false,
+            $commentaireHtml
         );
     }
 
@@ -771,7 +794,6 @@ HTML;
         $modePaiement = $paiement->getModePaiement() ?? 'Non spécifié';
         $motif = 'Cotisation ' . $periode;
 
-        // Contenu texte pour le reçu
         $contenuPrincipal = $this->renderRecuContent($modePaiement, $reference, $montantLettres, $montantFormate, $motif);
 
         return $this->renderDocumentHtmlWithLines(
@@ -791,7 +813,7 @@ HTML;
             null,
             null,
             'A',
-            true  // isRecu = true
+            true
         );
     }
 
@@ -818,7 +840,6 @@ HTML;
         $modePaiement = $paiement->getModePaiement() ?? 'Non spécifié';
         $motif = 'Participation - ' . $evenement->getNom();
 
-        // Contenu texte pour le reçu
         $contenuPrincipal = $this->renderRecuContent($modePaiement, $reference, $montantLettres, $montantFormate, $motif);
 
         return $this->renderDocumentHtmlWithLines(
@@ -838,7 +859,7 @@ HTML;
             null,
             null,
             'A',
-            true  // isRecu = true
+            true
         );
     }
 
@@ -862,7 +883,6 @@ HTML;
         $reference = $document->getReference() ?? 'N/A';
         $motif = 'Cotisation ' . $periode;
 
-        // Contenu texte pour le reçu
         $contenuPrincipal = $this->renderRecuContent('Non spécifié', $reference, $montantLettres, $montantFormate, $motif);
 
         return $this->renderDocumentHtmlWithLines(
@@ -882,7 +902,7 @@ HTML;
             null,
             null,
             'A',
-            true  // isRecu = true
+            true
         );
     }
 
@@ -1003,9 +1023,12 @@ HTML;
         return $this->renderNoteDebitHtml($document, $document->getReference() ?? '');
     }
 
+    // ============================================================
+    // MÉTHODES DÉPRÉCIÉES (POUR COMPATIBILITÉ)
+    // ============================================================
+
     /**
      * @deprecated Utiliser renderNoteDebitWithLinesHtml() à la place
-     * Rendu HTML de la note de débit simple (méthode de compatibilité)
      */
     private function renderNoteDebitHtml(Document $document, string $motif, string $signataireFonction = 'president'): string
     {
@@ -1052,7 +1075,6 @@ HTML;
 
     /**
      * @deprecated Utiliser renderDocumentHtmlWithLines() à la place
-     * Gabarit HTML pour notes de débit avec tableau (méthode de compatibilité)
      */
     private function renderDocumentHtml(
         string $titrePage,
@@ -1105,7 +1127,6 @@ HTML;
 
     /**
      * @deprecated Utiliser generateRecuFromPaiementEvenement() à la place
-     * Génère un reçu à partir d'une participation (méthode de fallback)
      */
     public function generateRecuFromParticipation(Participation $participation): Document
     {
@@ -1141,7 +1162,6 @@ HTML;
 
     /**
      * @deprecated Utiliser renderRecuFromPaiementEvenementHtml() à la place
-     * Rendu HTML du reçu pour une participation (méthode de fallback)
      */
     private function renderRecuFromParticipationHtml(Document $document, Participation $participation): string
     {

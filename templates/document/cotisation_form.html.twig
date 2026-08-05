@@ -20,13 +20,6 @@
             </div>
         </div>
 
-        {#{% for message in app.flashes('error') %}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}#}
-
         <div class="card shadow-sm">
             <div class="card-body">
                 <!-- Informations de l'adhérent -->
@@ -99,6 +92,13 @@
                             <option value="tresorier">Trésorier SEBTP</option>
                         </select>
                         <small class="text-muted">Le signataire apparaîtra sur le document</small>
+                    </div>
+
+                    <!-- NOUVEAU CHAMP : Commentaire -->
+                    <div class="col-md-6">
+                        <label class="form-label">Commentaire</label>
+                        <input type="text" name="commentaire" class="form-control" placeholder="Ex: Paiement anticipé, Règlement partiel...">
+                        <small class="text-muted">Ce commentaire apparaîtra sur la note de débit</small>
                     </div>
                     
                     <div class="col-12">

@@ -170,9 +170,10 @@ class DocumentController extends AbstractController
         if ($request->isMethod('POST')) {
             $periode = $request->request->get('periode', date('Y'));
             $signataire = $request->request->get('signataire', 'president');
+            $commentaire = $request->request->get('commentaire', ''); // Récupérer le commentaire
             
             try {
-                // Calculer le montant avec le barème actuel (pas celui stocké)
+                // Calculer le montant avec le barème actuel
                 $result = $calculator->calculateMontantWithBareme($adherent, $calculator->createDateFromPeriode($periode));
                 $montant = $result['montant'];
                 
@@ -184,13 +185,11 @@ class DocumentController extends AbstractController
                     ]);
                 
                 if ($cotisation) {
-                    // Mettre à jour le montant de la cotisation avec le barème actuel
                     $cotisation->setMontant($montant);
                     $cotisation->setBaremeId($result['baremeId']);
                     $cotisation->setBaremeLibelle($result['baremeLibelle']);
                     $em->flush();
                 } else {
-                    // Créer une nouvelle cotisation
                     $cotisation = new Cotisation();
                     $cotisation->setAdherent($adherent);
                     $cotisation->setPeriode($periode);
@@ -203,11 +202,26 @@ class DocumentController extends AbstractController
                     $em->flush();
                 }
                 
-                // Motif = juste "Cotisation {période}"
+                // Motif
                 $motif = sprintf('Cotisation %s', $periode);
                 
-                // Générer la note de débit avec le montant recalculé et le signataire choisi
-                $document = $this->documentGenerator->generateNoteDebit($adherent, $montant, $periode, $motif, $signataire);
+                // Générer la note de débit avec le montant recalculé, le signataire et le commentaire
+                $document = $this->documentGenerator->generateNoteDebitWithLines(
+                    $adherent, 
+                    $montant, 
+                    $periode, 
+                    [
+                        [
+                            'designation' => $motif,
+                            'quantite' => 1,
+                            'prixUnitaire' => $montant,
+                            'montant' => $montant
+                        ]
+                    ], 
+                    $motif, 
+                    $signataire,
+                    $commentaire // Passer le commentaire
+                );
                 
                 $this->addFlash('success', sprintf('Note de débit pour cotisation %s générée avec succès ! Montant : %s MGA', $periode, number_format($montant, 0, '.', ' ')));
                 
