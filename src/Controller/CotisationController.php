@@ -35,7 +35,7 @@ final class CotisationController extends AbstractController
         $periode = $request->query->get('periode');
         $statutAdherent = $request->query->get('statutAdherent');
         
-        $cotisations = $repo->search($search, $statut, $periode);
+        $cotisations = $repo->search($search, $statut, $periode, $statutAdherent);
         
         return $this->render('cotisation/index.html.twig', [
             'cotisations' => $cotisations,

@@ -37,38 +37,41 @@ class CotisationRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    public function search(?string $term = null, ?string $statut = null, ?string $periode = null, ?string $statutAdherent = null): array
+     /**
+     * Recherche des cotisations avec filtres
+     */
+    public function search(?string $search, ?string $statut, ?string $periode, ?string $statutAdherent = null): array
     {
         $qb = $this->createQueryBuilder('c')
-            ->leftJoin('c.adherent', 'a')
-            ->addSelect('a');
+            ->leftJoin('c.adherent', 'a');
 
-        // Recherche par terme
-        if ($term) {
-            $qb->andWhere('a.nom LIKE :term')
-               ->setParameter('term', '%' . $term . '%');
+        // Filtre par recherche (nom, email, téléphone)
+        if ($search) {
+            $qb->andWhere('a.nom LIKE :search OR a.email LIKE :search OR a.numero LIKE :search')
+               ->setParameter('search', '%' . $search . '%');
         }
 
-        // Filtre par statut
-        if ($statut && $statut !== '') {
+        // Filtre par statut de paiement
+        if ($statut) {
             $qb->andWhere('c.statut = :statut')
                ->setParameter('statut', $statut);
         }
 
         // Filtre par période
-        if ($periode && $periode !== '') {
+        if ($periode) {
             $qb->andWhere('c.periode = :periode')
                ->setParameter('periode', $periode);
         }
 
-         if ($statutAdherent) {
+        // NOUVEAU : Filtre par statut de l'adhérent
+        if ($statutAdherent) {
             $qb->andWhere('a.statut = :statutAdherent')
-            ->setParameter('statutAdherent', $statutAdherent);
+               ->setParameter('statutAdherent', $statutAdherent);
         }
 
-        return $qb->orderBy('c.periode', 'DESC')
-                  ->addOrderBy('a.nom', 'ASC')
-                  ->getQuery()
-                  ->getResult();
+        $qb->orderBy('c.periode', 'DESC')
+           ->addOrderBy('a.nom', 'ASC');
+
+        return $qb->getQuery()->getResult();
     }
 }
