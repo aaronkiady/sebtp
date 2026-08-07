@@ -14,14 +14,45 @@
                 <div>
                     <h2 class="h3 fw-bold mb-0 text-dark">{{ liste.nom }}</h2>
                     <span class="badge {{ liste.statutMenmbre == 'bureau' ? 'bg-primary-light text-primary' : 'bg-light text-muted' }} rounded-pill px-3">
-                        {{ liste.statutMenmbre == 'bureau' ? 'Membre du Bureau' : 'Simple Membre' }}
+                        {{ liste.statutMenmbre == 'bureau'
+                            ? 'Membre du Bureau'
+                            : (liste.statutMenmbre == 'demande'
+                                ? 'Demande d\'adhésion'
+                                : 'Simple Membre')
+                        }}
                     </span>
+                    {# AFFICHAGE DU STATUT DEMANDE SI STATUT MEMBRE EST "demande" #}
+                    {% if liste.statutMenmbre == 'demande' and liste.statutDemande %}
+                        <span class="badge 
+                            {% if liste.statutDemande == 'attente_bureau' %}bg-warning
+                            {% elseif liste.statutDemande == 'attente_ag' %}bg-info
+                            {% elseif liste.statutDemande == 'adhere' %}bg-success
+                            {% elseif liste.statutDemande == 'rejete' %}bg-danger
+                            {% else %}bg-secondary{% endif %} 
+                            rounded-pill px-3 ms-2">
+                            <i class="fas 
+                                {% if liste.statutDemande == 'attente_bureau' %}fa-clock
+                                {% elseif liste.statutDemande == 'attente_ag' %}fa-hourglass-half
+                                {% elseif liste.statutDemande == 'adhere' %}fa-check-circle
+                                {% elseif liste.statutDemande == 'rejete' %}fa-times-circle
+                                {% else %}fa-question-circle{% endif %} 
+                                me-1"></i>
+                            {% if liste.statutDemande == 'attente_bureau' %}
+                                En attente validation bureau
+                            {% elseif liste.statutDemande == 'attente_ag' %}
+                                En attente validation AG
+                            {% elseif liste.statutDemande == 'adhere' %}
+                                Adhéré
+                            {% elseif liste.statutDemande == 'rejete' %}
+                                Rejeté
+                            {% else %}
+                                {{ liste.statutDemande }}
+                            {% endif %}
+                        </span>
+                    {% endif %}
                 </div>
             </div>
             <div class="d-flex gap-2">
-                {#<a href="{{ path('app_liste_stats', {'id': liste.id}) }}" class="btn-action btn-cute text-decoration-none" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                    <i class="fas fa-chart-line me-1"></i> Statistiques
-                </a>#}
                 <a href="{{ path('app_liste_edit', {'id': liste.id}) }}" class="btn-action btn-cute text-decoration-none">
                     <i class="fas fa-pen"></i> Modifier
                 </a>
@@ -123,38 +154,33 @@
                     </div>
                 </div>
                 {% endif %}
-<div class="col-12 mt-4 pt-4 border-top">
-    <h6 class="fw-bold mb-3">
-        <i class="fas fa-paperclip me-2 text-primary"></i>
-        Document(s) attaché(s)
-    </h6>
-    
-    {% if liste.fichiers %}
-        <div class="p-3 rounded-4" style="background: #f8fafc;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <i class="fas fa-file-pdf text-danger fa-2x me-3"></i>
-                    <span class="fw-bold">{{ liste.fichiers }}</span>
+                
+                <div class="col-12 mt-4 pt-4 border-top">
+                    <h6 class="fw-bold mb-3">
+                        <i class="fas fa-paperclip me-2 text-primary"></i>
+                        Document(s) attaché(s)
+                    </h6>
+                    
+                    {% if liste.fichiers %}
+                        <div class="p-3 rounded-4" style="background: #f8fafc;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-file-pdf text-danger fa-2x me-3"></i>
+                                    <span class="fw-bold">{{ liste.fichiers }}</span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a href="{{ path('app_liste_fichier_download', {'id': liste.id}) }}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-download me-1"></i> Télécharger
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i> Aucun document attaché.
+                        </div>
+                    {% endif %}
                 </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ path('app_liste_fichier_download', {'id': liste.id}) }}" class="btn btn-sm btn-success">
-                        <i class="fas fa-download me-1"></i> Télécharger
-                    </a>
-                    {#<form method="post" action="{{ path('app_liste_fichier_delete', {'id': liste.id}) }}" onsubmit="return confirm('Supprimer ce fichier ?')">
-                        <input type="hidden" name="_token" value="{{ csrf_token('delete_fichier_' ~ liste.id) }}">
-                        <button type="submit" class="btn btn-sm btn-danger">
-                            <i class="fas fa-trash me-1"></i> Supprimer
-                        </button>
-                    </form>#}
-                </div>
-            </div>
-        </div>
-    {% else %}
-        <div class="text-muted">
-            <i class="fas fa-info-circle me-1"></i> Aucun document attaché.
-        </div>
-    {% endif %}
-</div>
             </div>
             <div class="mt-5 pt-4 border-top d-flex justify-content-between align-items-center">
                 <a href="{{ path('app_liste_index') }}" class="btn-action btn-cancel text-decoration-none">

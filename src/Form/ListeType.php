@@ -137,6 +137,7 @@ class ListeType extends AbstractType
                 'choices' => [
                     'Simple Membre'   => 'simple',
                     'Membre du Bureau' => 'bureau',
+                    'Demande d\'adhésion' => 'demande',
                 ],
                 'placeholder' => 'Sélectionnez un statut',
             ])

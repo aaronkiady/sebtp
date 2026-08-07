@@ -30,7 +30,7 @@ class Liste
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $siteWeb = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(type: 'text', nullable: true)]
     private ?string $activite = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
