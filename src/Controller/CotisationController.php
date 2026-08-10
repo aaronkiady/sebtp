@@ -65,9 +65,14 @@ final class CotisationController extends AbstractController
         
         $montantAttendu = $calculator->calculateMontantByPeriode($adherent, date('Y'));
 
+        $cotisationsArray = $cotisations->toArray();
+            usort($cotisationsArray, function($a, $b) {
+                return $b->getPeriode() <=> $a->getPeriode();
+            });
+
         return $this->render('cotisation/history.html.twig', [
             'adherent' => $adherent,
-            'cotisations' => $cotisations,
+            'cotisations' => $cotisationsArray,
             'montantAttendu' => $montantAttendu,
             'totalPaye' => $totalPaye,
             'statut' => $totalPaye >= $montantAttendu ? 'paye' : 'impaye',
