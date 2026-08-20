@@ -87,15 +87,21 @@ class DocumentGenerator
      * Le numéro dans le nom de fichier est le même que celui du document
      * Utilise la table sequence pour un incrément continu même après suppression
      */
-    private function generateNumeroAndCompteur(string $type, Liste $adherent): array
+    private function generateNumeroAndCompteur(string $type, Liste $adherent, string $typeDocument = 'note_debit'): array
     {
         $year = date('Y');
 
+        // Déterminer le préfixe selon le type de document
         $prefixe = match ($type) {
             'note_debit' => 'NDD',
             'recu' => 'RECU',
             default => strtoupper($type),
         };
+        
+        // Pour les événements, si c'est une facture, utiliser 'FA' au lieu de 'NDD'
+        if ($type === 'note_debit' && $typeDocument === 'facture') {
+            $prefixe = 'FA';
+        }
 
         // Récupérer le dernier numéro de séquence pour ce type et année (même après suppression)
         $lastSequence = $this->documentRepository->getLastSequenceNumber($type, (int) $year);
@@ -264,7 +270,7 @@ class DocumentGenerator
     }
 
     /**
-     * Bloc "Mode de paiement" statique utilisé sur les notes de débit
+     * Bloc "Mode de paiement" statique utilisé sur les notes de débit et factures
      */
     private function buildModePaiementInstructionsHtml(): string
     {
@@ -434,9 +440,10 @@ HTML;
         array $lignes, 
         string $motif, 
         string $signataireFonction = 'president',
-        string $commentaire = ''
+        string $commentaire = '',
+        string $typeDocument = 'note_debit'
     ): Document {
-        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('note_debit', $adherent);
+        [$numero, $compteur, $year] = $this->generateNumeroAndCompteur('note_debit', $adherent, $typeDocument);
 
         $document = new Document();
         $document->setType('note_debit');
@@ -450,10 +457,15 @@ HTML;
         $this->entityManager->persist($document);
         $this->entityManager->flush();
 
-        $html = $this->renderNoteDebitWithLinesHtml($document, $lignes, $motif, $signataireFonction);
+        // Déterminer le titre du document
+        $titreDocument = $typeDocument === 'facture' ? 'FACTURE' : 'NOTE DE DEBIT';
+        
+        $html = $this->renderNoteDebitWithLinesHtml($document, $lignes, $motif, $signataireFonction, $titreDocument);
         $pdfContent = $this->generatePdf($html);
 
-        $fileName = $this->buildFileName($adherent, 'NDD', $year, $compteur);
+        // Utiliser 'FA' pour facture dans le nom de fichier
+        $prefixe = $typeDocument === 'facture' ? 'FA' : 'NDD';
+        $fileName = $this->buildFileName($adherent, $prefixe, $year, $compteur);
         $path = $this->saveDocument($pdfContent, $adherent, $fileName);
 
         $document->setCheminFichier($path);
@@ -463,6 +475,61 @@ HTML;
         $this->entityManager->flush();
 
         return $document;
+    }
+
+    /**
+     * Génère une note de débit à partir d'une participation d'événement
+     */
+    public function generateNoteDebitFromParticipation(
+        Participation $participation,
+        string $signataireFonction = 'president'
+    ): Document {
+        $adherent = $participation->getAdherent();
+        $evenement = $participation->getEvenement();
+        
+        // Déterminer le type de document (note_debit ou facture)
+        $typeDocument = $evenement->getTypeDocument() ?? 'note_debit';
+        
+        // Construire les lignes
+        $lignes = [];
+        $montantTotal = 0;
+        
+        foreach ($participation->getParticipationLignes() as $pl) {
+            $ligne = [
+                'designation' => $pl->getLigne()->getDesignation(),
+                'quantite' => $pl->getQuantite(),
+                'prixUnitaire' => $pl->getLigne()->getMontantUnitaire(),
+                'montant' => $pl->getMontantLigne()
+            ];
+            $lignes[] = $ligne;
+            $montantTotal += $pl->getMontantLigne();
+        }
+        
+        // Si aucune ligne, utiliser une ligne par défaut
+        if (empty($lignes)) {
+            $lignes = [[
+                'designation' => $evenement->getNom(),
+                'quantite' => 1,
+                'prixUnitaire' => $evenement->getMontantTotal() / max(1, $evenement->getTotalParticipants()),
+                'montant' => $evenement->getMontantTotal() / max(1, $evenement->getTotalParticipants())
+            ]];
+            $montantTotal = $evenement->getMontantTotal() / max(1, $evenement->getTotalParticipants());
+        }
+        
+        $motif = 'Participation - ' . $evenement->getNom();
+        $periode = $evenement->getPeriode() ?? date('Y');
+        $commentaire = 'Événement: ' . $evenement->getNom();
+        
+        return $this->generateNoteDebitWithLines(
+            $adherent,
+            $montantTotal,
+            $periode,
+            $lignes,
+            $motif,
+            $signataireFonction,
+            $commentaire,
+            $typeDocument
+        );
     }
 
     /**
@@ -478,7 +545,7 @@ HTML;
             'montant' => $montant
         ]];
         
-        return $this->generateNoteDebitWithLines($adherent, $montant, $periode, $lignes, $motif, $signataireFonction, '');
+        return $this->generateNoteDebitWithLines($adherent, $montant, $periode, $lignes, $motif, $signataireFonction, '', 'note_debit');
     }
 
     // ============================================================
@@ -507,7 +574,7 @@ HTML;
         string $labelDoit = 'DOIT :',
         bool $isRecu = false,
         string $commentaireHtml = '',
-        string $signataireFonction = 'president'  // NOUVEAU PARAMÈTRE
+        string $signataireFonction = 'president'
     ): string {
         $logoHtml = $this->buildLogoHtml();
 
@@ -516,21 +583,16 @@ HTML;
         $signataireNom = $signataireNom ?? self::PRESIDENT_NOM;
         $signataireTitre = $signataireTitre ?? self::PRESIDENT_TITRE;
 
-        // ============================================================
-        // GESTION DE LA SIGNATURE : UNIQUEMENT POUR LE SECRÉTAIRE
-        // ============================================================
-        $signatureHtml = '<div style="height:70px;"></div>'; // Vide par défaut
+        // Gestion de la signature
+        $signatureHtml = '<div style="height:70px;"></div>';
         
-        // Si le signataire est le secrétaire, afficher la signature
         if ($signataireFonction === 'secretaire') {
-            // Chercher la signature dans public/images/
             $signaturePath = $this->projectDir . '/public/images/signature_secretaire.jpeg';
             if (file_exists($signaturePath)) {
                 $signatureData = file_get_contents($signaturePath);
                 $signatureBase64 = 'data:image/jpeg;base64,' . base64_encode($signatureData);
                 $signatureHtml = '<img src="' . $signatureBase64 . '" alt="Signature" style="width:130px;height:auto;object-fit:contain;margin-top:8px;">';
             } else {
-                // Essayer avec .png
                 $signaturePathPng = $this->projectDir . '/public/images/signature_secretaire.png';
                 if (file_exists($signaturePathPng)) {
                     $signatureData = file_get_contents($signaturePathPng);
@@ -540,192 +602,183 @@ HTML;
             }
         }
 
-        // Pour les reçus, on affiche le texte directement
-        // Pour les notes de débit, on affiche le tableau
         $contenuHtml = $isRecu 
             ? $contenuPrincipal 
             : $this->renderTableauLignes($contenuPrincipal, $totalFormate);
 
-        // Afficher le montant en lettres UNIQUEMENT pour les notes de débit (pas pour les reçus)
         $montantLettresHtml = '';
         if (!$isRecu) {
             $montantLettresHtml = <<<HTML
             <div class="montant-lettres">
                 Arrêtée à la somme de <strong>{$this->e($montantLettres)}</strong>
             </div>
-    HTML;
+HTML;
             
-            // Ajouter le commentaire APRÈS "Arrêtée à la somme de..."
             if (!empty($commentaireHtml)) {
                 $montantLettresHtml .= $commentaireHtml;
             }
         }
 
         return <<<HTML
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{$titrePage} N° {$numero}</title>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-                font-family: 'Arial', sans-serif;
-                font-size: 13px;
-                color: #000;
-                background: #fff;
-                padding: 35px 40px;
-            }
-            .page { max-width: 760px; margin: 0 auto; }
-
-            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .header-table td { vertical-align: top; border: none; padding: 0; }
-            .logo-cell { width: 130px; }
-
-            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-            .info-table td { vertical-align: top; border: none; padding: 0; }
-            .info-left { width: 55%; font-size: 13px; line-height: 1.9; }
-            .info-right { width: 45%; font-size: 13px; line-height: 1.7; text-align: right; }
-
-            .doit-label {
-                font-weight: 700;
-                text-decoration: underline;
-                font-size: 15px;
-                margin: 6px 0 6px 0;
-            }
-            .client-nom { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
-            .client-info { font-size: 13px; margin-top: 2px; }
-
-            .doc-title-box {
-                border: 1px solid #000;
-                text-align: center;
-                font-weight: 700;
-                font-size: 14px;
-                padding: 10px;
-                margin: 22px 0 22px 0;
-                letter-spacing: 0.5px;
-            }
-
-            /* Styles pour le tableau des notes de débit */
-            table.details { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-            table.details th, table.details td {
-                border: 1px solid #000;
-                padding: 10px;
-                font-size: 13px;
-                text-align: center;
-            }
-            table.details th { font-weight: 700; }
-            table.details td:first-child, table.details th:first-child { text-align: left; }
-            table.details tfoot td { font-weight: 700; }
-            table.details tfoot td.total-label { text-align: right; }
-
-            .montant-lettres { 
-                margin: 22px 0 26px 0; 
-                font-size: 14px; 
-                text-align: center;
-            }
-            .montant-lettres strong { font-weight: 700; }
-
-            /* Styles pour le commentaire */
-            .commentaire-box {
-                margin: 10px 0 15px 0;
-                padding: 10px 15px;
-                background: #f8f9fa;
-                border-left: 4px solid #2d5a27;
-                border-radius: 4px;
-                font-size: 13px;
-                color: #333;
-                text-align: left;
-                line-height: 1.6;
-            }
-            .commentaire-box strong {
-                font-weight: 700;
-            }
-            .commentaire-box br {
-                display: block;
-                content: "";
-                margin-top: 2px;
-            }
-
-            .footer-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
-            .footer-table td { vertical-align: top; border: none; padding: 0; font-size: 13px; }
-            .footer-left { width: 58%; line-height: 1.6; }
-            .footer-right { width: 42%; text-align: center; line-height: 1.4; padding-top: 15px; }
-            .footer-left u { text-decoration: underline; }
-            .footer-right .president-titre { font-size: 13px; }
-            .footer-right .president-nom { font-weight: 700; font-size: 13px; margin-top: 4px; }
-
-            /* Styles pour le contenu des reçus */
-            .recu-content {
-                margin: 30px 0;
-                font-size: 14px;
-                line-height: 1.8;
-            }
-            .recu-content p {
-                text-align: justify;
-                margin-bottom: 10px;
-            }
-            .recu-content strong {
-                font-weight: 700;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="page">
-
-            <table class="header-table">
-                <tr>
-                    <td class="logo-cell">{$logoHtml}</td>
-                    <td></td>
-                </tr>
-            </table>
-
-            <table class="info-table">
-                <tr>
-                    <td class="info-left">
-                        <div><strong>{$this->e(self::SYNDICAT_SOUS_TITRE)}</strong></div>
-                        <div><strong>{$this->e(self::SYNDICAT_ADRESSE)}</strong></div>
-                        <div>Tel : {$this->e(self::SYNDICAT_TEL)}</div>
-                        <div>Email : {$this->e(self::SYNDICAT_EMAIL)}</div>
-                        <div style="margin-top:6px;">NIF : {$this->e(self::SYNDICAT_NIF)}</div>
-                        <div>STAT: {$this->e(self::SYNDICAT_STAT)}</div>
-                    </td>
-                    <td class="info-right">
-                        <div>Antananarivo, le {$dateCreationFormatee}</div>
-                        <div class="doit-label">{$this->e($labelDoit)}</div>
-                        <div class="client-nom">{$this->e($clientNom)}</div>
-                        <div class="client-info">Tél : {$this->e($clientTel)}</div>
-                        <div class="client-info">Adresse : {$this->e($clientAdresse)}</div>
-                        <div class="client-info">NIF : {$this->e($clientNif)}</div>
-                        <div class="client-info">STAT: {$this->e($clientStat)}</div>
-                    </td>
-                </tr>
-            </table>
-
-            <div class="doc-title-box">{$this->e($titreDocument)} N°{$this->e($numero)}</div>
-
-            <!-- Contenu principal : soit tableau (ND), soit texte (Reçu) -->
-            {$contenuHtml}
-
-            <!-- Montant en lettres + Commentaire (pour les notes de débit) -->
-            {$montantLettresHtml}
-
-            <table class="footer-table">
-                <tr>
-                    <td class="footer-left">{$blocPaiementGaucheHtml}</td>
-                    <td class="footer-right">
-                        <div class="president-titre">{$this->e($signataireTitre)}</div>
-                        {$signatureHtml}
-                        <div class="president-nom">{$this->e($signataireNom)}</div>
-                    </td>
-                </tr>
-            </table>
-
-        </div>
-    </body>
-    </html>
-    HTML;
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{$titrePage} N° {$numero}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 13px;
+            color: #000;
+            background: #fff;
+            padding: 35px 40px;
         }
+        .page { max-width: 760px; margin: 0 auto; }
+
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .header-table td { vertical-align: top; border: none; padding: 0; }
+        .logo-cell { width: 130px; }
+
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .info-table td { vertical-align: top; border: none; padding: 0; }
+        .info-left { width: 55%; font-size: 13px; line-height: 1.9; }
+        .info-right { width: 45%; font-size: 13px; line-height: 1.7; text-align: right; }
+
+        .doit-label {
+            font-weight: 700;
+            text-decoration: underline;
+            font-size: 15px;
+            margin: 6px 0 6px 0;
+        }
+        .client-nom { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+        .client-info { font-size: 13px; margin-top: 2px; }
+
+        .doc-title-box {
+            border: 1px solid #000;
+            text-align: center;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 10px;
+            margin: 22px 0 22px 0;
+            letter-spacing: 0.5px;
+        }
+
+        table.details { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+        table.details th, table.details td {
+            border: 1px solid #000;
+            padding: 10px;
+            font-size: 13px;
+            text-align: center;
+        }
+        table.details th { font-weight: 700; }
+        table.details td:first-child, table.details th:first-child { text-align: left; }
+        table.details tfoot td { font-weight: 700; }
+        table.details tfoot td.total-label { text-align: right; }
+
+        .montant-lettres { 
+            margin: 22px 0 26px 0; 
+            font-size: 14px; 
+            text-align: center;
+        }
+        .montant-lettres strong { font-weight: 700; }
+
+        .commentaire-box {
+            margin: 10px 0 15px 0;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #2d5a27;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #333;
+            text-align: left;
+            line-height: 1.6;
+        }
+        .commentaire-box strong {
+            font-weight: 700;
+        }
+        .commentaire-box br {
+            display: block;
+            content: "";
+            margin-top: 2px;
+        }
+
+        .footer-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+        .footer-table td { vertical-align: top; border: none; padding: 0; font-size: 13px; }
+        .footer-left { width: 58%; line-height: 1.6; }
+        .footer-right { width: 42%; text-align: center; line-height: 1.4; padding-top: 15px; }
+        .footer-left u { text-decoration: underline; }
+        .footer-right .president-titre { font-size: 13px; }
+        .footer-right .president-nom { font-weight: 700; font-size: 13px; margin-top: 4px; }
+
+        .recu-content {
+            margin: 30px 0;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        .recu-content p {
+            text-align: justify;
+            margin-bottom: 10px;
+        }
+        .recu-content strong {
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">{$logoHtml}</td>
+                <td></td>
+            </tr>
+        </table>
+
+        <table class="info-table">
+            <tr>
+                <td class="info-left">
+                    <div><strong>{$this->e(self::SYNDICAT_SOUS_TITRE)}</strong></div>
+                    <div><strong>{$this->e(self::SYNDICAT_ADRESSE)}</strong></div>
+                    <div>Tel : {$this->e(self::SYNDICAT_TEL)}</div>
+                    <div>Email : {$this->e(self::SYNDICAT_EMAIL)}</div>
+                    <div style="margin-top:6px;">NIF : {$this->e(self::SYNDICAT_NIF)}</div>
+                    <div>STAT: {$this->e(self::SYNDICAT_STAT)}</div>
+                </td>
+                <td class="info-right">
+                    <div>Antananarivo, le {$dateCreationFormatee}</div>
+                    <div class="doit-label">{$this->e($labelDoit)}</div>
+                    <div class="client-nom">{$this->e($clientNom)}</div>
+                    <div class="client-info">Tél : {$this->e($clientTel)}</div>
+                    <div class="client-info">Adresse : {$this->e($clientAdresse)}</div>
+                    <div class="client-info">NIF : {$this->e($clientNif)}</div>
+                    <div class="client-info">STAT: {$this->e($clientStat)}</div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="doc-title-box">{$this->e($titreDocument)} N°{$this->e($numero)}</div>
+
+        {$contenuHtml}
+
+        {$montantLettresHtml}
+
+        <table class="footer-table">
+            <tr>
+                <td class="footer-left">{$blocPaiementGaucheHtml}</td>
+                <td class="footer-right">
+                    <div class="president-titre">{$this->e($signataireTitre)}</div>
+                    {$signatureHtml}
+                    <div class="president-nom">{$this->e($signataireNom)}</div>
+                </td>
+            </tr>
+        </table>
+
+    </div>
+</body>
+</html>
+HTML;
+    }
 
     // ============================================================
     // MÉTHODES DE RENDU POUR LES NOTES DE DÉBIT
@@ -734,7 +787,7 @@ HTML;
     /**
      * Rendu HTML de la note de débit avec plusieurs lignes
      */
-    private function renderNoteDebitWithLinesHtml(Document $document, array $lignes, string $motif, string $signataireFonction = 'president'): string
+    private function renderNoteDebitWithLinesHtml(Document $document, array $lignes, string $motif, string $signataireFonction = 'president', string $titreDocument = 'NOTE DE DEBIT'): string
     {
         $adherent = $document->getAdherent();
         $numero = $document->getNumero();
@@ -753,7 +806,6 @@ HTML;
         $signataireNom = $this->getSignataireNom($signataireFonction);
         $signataireTitre = $this->getSignataireTitre($signataireFonction);
 
-        // Construire les lignes HTML pour le tableau
         $lignesHtml = '';
         foreach ($lignes as $ligne) {
             $montantLigneFormate = number_format($ligne['montant'], 0, '.', ' ');
@@ -766,7 +818,6 @@ HTML;
                 . '</tr>';
         }
 
-        // Générer le HTML du commentaire avec nl2br pour les sauts de ligne
         $commentaireHtml = '';
         if (!empty($commentaire)) {
             $commentaireAvecBr = nl2br(htmlspecialchars($commentaire));
@@ -775,12 +826,12 @@ HTML;
                 <strong>Commentaire :</strong><br>
                 {$commentaireAvecBr}
             </div>
-    HTML;
+HTML;
         }
 
         return $this->renderDocumentHtmlWithLines(
             'Note de débit',
-            'NOTE DE DEBIT',
+            $titreDocument,
             $numero,
             $dateCreation,
             $adherentNom,
@@ -797,7 +848,7 @@ HTML;
             'DOIT :',
             false,
             $commentaireHtml,
-            $signataireFonction,
+            $signataireFonction
         );
     }
 
@@ -957,7 +1008,6 @@ HTML;
         $parties = [];
         $reste = $nombre;
 
-        // Milliards
         if ($reste >= 1000000000) {
             $milliards = (int) floor($reste / 1000000000);
             $reste = $reste % 1000000000;
@@ -968,7 +1018,6 @@ HTML;
             }
         }
 
-        // Millions
         if ($reste >= 1000000) {
             $millions = (int) floor($reste / 1000000);
             $reste = $reste % 1000000;
@@ -979,7 +1028,6 @@ HTML;
             }
         }
 
-        // Milliers
         if ($reste >= 1000) {
             $milliers = (int) floor($reste / 1000);
             $reste = $reste % 1000;
@@ -990,7 +1038,6 @@ HTML;
             }
         }
 
-        // Centaines et unités
         if ($reste > 0) {
             $parties[] = $this->nombreEnLettresMoinsDeMille($reste);
         }

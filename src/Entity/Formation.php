@@ -19,8 +19,9 @@ class Formation
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $nom = null;
 
+    // MODIFICATION : 'type' devient 'formateurs' pour stocker le nom des formateurs
     #[ORM\Column(length: 255, nullable: true)]
-    private ?string $type = null;
+    private ?string $formateurs = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTime $dateDebut = null;
@@ -38,10 +39,10 @@ class Formation
     private Collection $participants;
 
     /**
-     * @var array Les détails des participants (noms des agents par adhérent)
+     * @var array Stocke le nombre de formés par adhérent (clé = id adhérent, valeur = nombre)
      */
     #[ORM\Column(type: 'json', nullable: true)]
-    private ?array $participantsDetails = [];
+    private ?array $nombresFormes = [];
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $reference = null;
@@ -52,7 +53,7 @@ class Formation
     public function __construct()
     {
         $this->participants = new ArrayCollection();
-        $this->participantsDetails = [];
+        $this->nombresFormes = [];
     }
 
     public function getId(): ?int
@@ -71,14 +72,26 @@ class Formation
         return $this;
     }
 
-    public function getType(): ?string
+    public function getFormateurs(): ?string
     {
-        return $this->type;
+        return $this->formateurs;
     }
 
-    public function setType(?string $type): static
+    public function setFormateurs(?string $formateurs): static
     {
-        $this->type = $type;
+        $this->formateurs = $formateurs;
+        return $this;
+    }
+
+    // Méthode de compatibilité pour l'ancien champ 'type'
+    public function getType(): ?string
+    {
+        return $this->formateurs;
+    }
+
+    public function setType(?string $formateurs): static
+    {
+        $this->formateurs = $formateurs;
         return $this;
     }
 
@@ -148,7 +161,6 @@ class Formation
     public function setReference(?string $reference): static
     {
         $this->reference = $reference;
-
         return $this;
     }
 
@@ -160,35 +172,76 @@ class Formation
     public function setRemarque(?string $remarque): static
     {
         $this->remarque = $remarque;
-
         return $this;
     }
 
-    public function getParticipantsDetails(): ?array
+    public function getNombresFormes(): ?array
     {
-        return $this->participantsDetails;
+        return $this->nombresFormes;
     }
 
-    public function setParticipantsDetails(?array $participantsDetails): static
+    public function setNombresFormes(?array $nombresFormes): static
     {
-        $this->participantsDetails = $participantsDetails;
+        $this->nombresFormes = $nombresFormes;
         return $this;
     }
 
     /**
-     * Récupère les détails pour un participant spécifique
+     * Récupère le nombre de formés pour un participant spécifique
      */
-    public function getParticipantDetail(int $participantId): ?string
+    public function getNombreFormes(int $participantId): ?int
     {
-        return $this->participantsDetails[$participantId] ?? null;
+        return $this->nombresFormes[$participantId] ?? null;
     }
 
     /**
-     * Ajoute un détail pour un participant
+     * Définit le nombre de formés pour un participant
      */
-    public function setParticipantDetail(int $participantId, string $detail): static
+    public function setNombreFormes(int $participantId, int $nombre): static
     {
-        $this->participantsDetails[$participantId] = $detail;
+        $this->nombresFormes[$participantId] = $nombre;
         return $this;
+    }
+
+    /**
+     * Calcule le nombre total de bénéficiaires (formés)
+     */
+    public function getTotalBeneficiaires(): int
+    {
+        $total = 0;
+        foreach ($this->nombresFormes ?? [] as $nombre) {
+            $total += (int) $nombre;
+        }
+        return $total;
+    }
+
+    /**
+     * Retourne le nombre de participants (adhérents)
+     */
+    public function getNbParticipants(): int
+    {
+        return $this->participants->count();
+    }
+
+    /**
+     * Retourne la période de la formation
+     */
+    public function getPeriode(): string
+    {
+        if ($this->dateDebut && $this->dateFin) {
+            return $this->dateDebut->format('d/m/Y') . ' - ' . $this->dateFin->format('d/m/Y');
+        }
+        return 'Non définie';
+    }
+
+    /**
+     * Retourne la durée en jours
+     */
+    public function getDuree(): int
+    {
+        if ($this->dateDebut && $this->dateFin) {
+            return $this->dateFin->diff($this->dateDebut)->days;
+        }
+        return 0;
     }
 }

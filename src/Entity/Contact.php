@@ -13,19 +13,20 @@ class Contact
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $nom = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $fonction = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $email = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $telephone = null;
 
     #[ORM\ManyToOne(inversedBy: 'contacts')]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Liste $liste = null;
 
     public function getId(): ?int
@@ -38,7 +39,7 @@ class Contact
         return $this->nom;
     }
 
-    public function setNom(string $nom): static
+    public function setNom(?string $nom): static
     {
         $this->nom = $nom;
 
@@ -50,7 +51,7 @@ class Contact
         return $this->fonction;
     }
 
-    public function setFonction(string $fonction): static
+    public function setFonction(?string $fonction): static
     {
         $this->fonction = $fonction;
 
@@ -62,7 +63,7 @@ class Contact
         return $this->email;
     }
 
-    public function setEmail(string $email): static
+    public function setEmail(?string $email): static
     {
         $this->email = $email;
 
@@ -74,7 +75,7 @@ class Contact
         return $this->telephone;
     }
 
-    public function setTelephone(string $telephone): static
+    public function setTelephone(?string $telephone): static
     {
         $this->telephone = $telephone;
 

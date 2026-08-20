@@ -27,13 +27,78 @@
         </div>
 
         <div class="p-4 p-md-5">
+
             <div class="alert alert-info">
                 <i class="fas fa-info-circle me-2"></i>
-                <strong>Information:</strong> Cochez les participants que vous souhaitez inscrire. Les participants décochés seront retirés de l'événement.
+                <strong>Information :</strong> Cochez les participants que vous souhaitez inscrire. Les participants décochés seront retirés de l'événement.
+                <br>
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Rappel :</strong> 
+                {% if evenement.montantFixe and evenement.montantFixe > 0 %}
+                    Montant fixe : <strong>{{ evenement.montantFixe|number_format(0, '.', ' ') }} MGA</strong> par participant.
+                {% elseif evenement.lignes|length > 0 %}
+                    {% set hasValidLignes = false %}
+                    {% for ligne in evenement.lignes %}
+                        {% if ligne.designation is not empty %}
+                            {% set hasValidLignes = true %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if hasValidLignes %}
+                        Désignations disponibles :
+                        {% for ligne in evenement.lignes %}
+                            {% if ligne.designation is not empty %}
+                                <span class="badge bg-info">{{ ligne.designation }} ({{ ligne.montantUnitaire|number_format(0, '.', ' ') }} MGA)</span>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        Aucune désignation définie.
+                    {% endif %}
+                {% else %}
+                    Aucun montant défini.
+                {% endif %}
+            </div>
+
+            {# Barre de recherche pour les participants #}
+            <div class="mb-3">
+                <input type="text" id="participantSearch" class="form-control" placeholder="Rechercher un adhérent...">
             </div>
 
             <div class="border rounded-3 p-3" style="max-height: 500px; overflow-y: auto;">
-                {{ form_widget(form.participants, {'attr': {'class': 'participants-checkbox-list'}}) }}
+                {% for child in form.participants %}
+                    {% set adherentId = child.vars.value %}
+                    {% set adherentNom = child.vars.label %}
+                    <div class="participant-item border-bottom pb-2 mb-2" data-adherent-id="{{ adherentId }}">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                {{ form_widget(child, {'attr': {'class': 'form-check-input'}}) }}
+                                <label class="form-check-label fw-bold">{{ adherentNom }}</label>
+                            </div>
+                            {# Affichage du nombre de participants actuel si l'adhérent est déjà inscrit #}
+                            {% set participationExistante = null %}
+                            {% for participation in evenement.participations %}
+                                {% if participation.adherent.id == adherentId %}
+                                    {% set participationExistante = participation %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if participationExistante %}
+                                <span class="badge bg-success rounded-pill">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    Déjà inscrit
+                                    {% if participationExistante.quantiteTotale > 0 %}
+                                        ({{ participationExistante.quantiteTotale }} participant(s))
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-3">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Seuls les adhérents <strong>actifs</strong> sont affichés.
+                </small>
             </div>
 
             <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
@@ -49,6 +114,35 @@
     {{ form_end(form) }}
 </div>
 
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Recherche de participants
+    const searchInput = document.getElementById('participantSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const items = document.querySelectorAll('.participant-item');
+            
+            items.forEach(function(item) {
+                const label = item.querySelector('.form-check-label');
+                if (label) {
+                    const text = label.textContent.toLowerCase();
+                    if (searchTerm === '' || text.includes(searchTerm)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
 <style>
 .participants-checkbox-list {
     display: flex;
@@ -72,5 +166,23 @@
 .participants-checkbox-list div:hover {
     background-color: #f8f9fa;
 }
+.participant-item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+.participant-item:hover {
+    background-color: #f8f9fa;
+}
+.participant-item .form-check-input {
+    margin-right: 10px;
+    cursor: pointer;
+    transform: scale(1.1);
+}
+.participant-item .form-check-label {
+    cursor: pointer;
+    margin-bottom: 0;
+}
 </style>
+{% endblock %}
 {% endblock %}

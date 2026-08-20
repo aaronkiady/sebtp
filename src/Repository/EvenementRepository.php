@@ -6,9 +6,6 @@ use App\Entity\Evenement;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<Evenement>
- */
 class EvenementRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -17,16 +14,33 @@ class EvenementRepository extends ServiceEntityRepository
     }
 
     /**
-     * Recherche des événements par terme
-     * @param string|null $term
-     * @return Evenement[]
+     * Recherche des événements avec filtres
      */
+    public function search(?string $search, ?string $statut = null): array
+    {
+        $qb = $this->createQueryBuilder('e');
+
+        if ($search) {
+            $qb->andWhere('e.nom LIKE :search')
+               ->setParameter('search', '%' . $search . '%');
+        }
+
+        if ($statut) {
+            $qb->andWhere('e.statut = :statut')
+               ->setParameter('statut', $statut);
+        }
+
+        return $qb->orderBy('e.date', 'DESC')
+                  ->getQuery()
+                  ->getResult();
+    }
+
     public function findBySearch(?string $term): array
     {
         $qb = $this->createQueryBuilder('e');
 
         if ($term) {
-            $qb->andWhere('e.nom LIKE :q OR e.montant LIKE :q OR e.commentaire LIKE :q')
+            $qb->andWhere('e.nom LIKE :q OR e.commentaire LIKE :q')
                ->setParameter('q', '%' . $term . '%');
         }
 
@@ -35,9 +49,6 @@ class EvenementRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Récupère les événements pour export avec filtres
-     */
     public function getForExport(
         ?string $annee = null,
         ?string $search = null
@@ -64,10 +75,6 @@ class EvenementRepository extends ServiceEntityRepository
                   ->getResult();
     }
 
-    /**
-     * Récupère les années disponibles pour les filtres
-     * Utilisation de SQL natif car DQL ne supporte pas YEAR()
-     */
     public function getAvailableYears(): array
     {
         $conn = $this->getEntityManager()->getConnection();
@@ -83,7 +90,6 @@ class EvenementRepository extends ServiceEntityRepository
             }
         }
         
-        // Si aucune année trouvée, ajouter l'année en cours
         if (empty($years)) {
             $years[] = date('Y');
         }
@@ -91,9 +97,6 @@ class EvenementRepository extends ServiceEntityRepository
         return $years;
     }
 
-    /**
-     * Statistiques des événements
-     */
     public function getStats(): array
     {
         $total = $this->createQueryBuilder('e')
@@ -112,9 +115,6 @@ class EvenementRepository extends ServiceEntityRepository
         ];
     }
 
-    /**
-     * Récupère les événements avec leurs participants
-     */
     public function findWithParticipants(): array
     {
         return $this->createQueryBuilder('e')
@@ -127,11 +127,6 @@ class EvenementRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Récupère tous les événements pour la liste déroulante
-     * 
-     * @return array Tableau associatif avec id => nom
-     */
     public function getAllForSelect(): array
     {
         $events = $this->createQueryBuilder('e')
@@ -146,37 +141,5 @@ class EvenementRepository extends ServiceEntityRepository
         }
         
         return $result;
-    }
-
-    /**
-     * Récupère les événements pour export avec filtres (modifié pour utiliser evenement_id)
-     */
-    public function getForExportWithEventId(
-        ?string $annee = null,
-        ?int $evenementId = null
-    ): array {
-        $qb = $this->createQueryBuilder('e')
-            ->leftJoin('e.participations', 'p')
-            ->leftJoin('p.adherent', 'a')
-            ->addSelect('p')
-            ->addSelect('a')
-            ->where('a.statut != :statutRadie OR a.statut IS NULL')
-            ->setParameter('statutRadie', 'radie');
-
-        if ($annee && $annee !== 'tous') {
-            $qb->andWhere('e.date BETWEEN :debut AND :fin')
-            ->setParameter('debut', $annee . '-01-01')
-            ->setParameter('fin', $annee . '-12-31');
-        }
-
-        if ($evenementId !== null && $evenementId > 0) {
-            $qb->andWhere('e.id = :evenementId')
-            ->setParameter('evenementId', $evenementId);
-        }
-
-        return $qb->orderBy('e.date', 'DESC')
-                ->addOrderBy('e.nom', 'ASC')
-                ->getQuery()
-                ->getResult();
     }
 }

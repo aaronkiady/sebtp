@@ -1,37 +1,89 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Gestion des Évènements{% endblock %}
+{% block title %}Gestion des Événements{% endblock %}
 
 {% block body %}
-<div class="main-wrapper mt-5">
-    <div class="form-card-wide p-4">
-        <div class="d-flex justify-content-between align-items-start mb-4">
-            <div class="d-flex align-items-center">
-                <a href="{{ path('app_home') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
-                    <i class="fas fa-calendar-alt"></i>
-                </div>
-                
-                <div>
-                    <h1 class="h2 fw-bold text-dark mb-0">Évènements</h1>
-                    <p class="text-muted mb-0">Liste et suivi des évènements de l'organisation</p>
-                </div>
-            </div>
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <a href="{{ path('app_home') }}" class="btn btn-outline-secondary shadow-sm">
+            <i class="fas fa-arrow-left me-2"></i>
+            Retour au dashboard
+        </a>
+        <a href="{{ path('app_evenement_new') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>
+            Nouvel événement
+        </a>
+    </div>
+</div>
 
-            <div class="d-flex gap-2">
-                <a href="{{ path('app_export_evenement_form') }}" class="btn btn-outline-success">
-                    <i class="fas fa-file-excel me-2"></i>Exporter
-                </a>
-                <a href="{{ path('app_evenement_new') }}" class="btn btn-cute">
-                    <i class="fas fa-plus me-2"></i>Nouvel évènement
-                </a>
+<div class="main-wrapper mt-3">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 fw-bold text-dark">Événements</h1>
+                <p class="text-muted">Gestion et suivi des événements</p>
             </div>
         </div>
 
-        <div class="px-2 mb-4">
-            {{ include('_search_bar.html.twig') }}
+        {# Barre de recherche #}
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form method="get" action="{{ path('app_evenement_index') }}" class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Rechercher un événement</label>
+                        <input type="text" name="search" class="form-control" placeholder="Nom de l'événement..." value="{{ search }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Statut</label>
+                        <select name="statut" class="form-select">
+                            <option value="">Tous</option>
+                            <option value="actif" {% if statutFilter == 'actif' %}selected{% endif %}>Actif</option>
+                            <option value="inactif" {% if statutFilter == 'inactif' %}selected{% endif %}>Inactif</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i>Rechercher
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {# TOTAUX #}
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);">
+                    <div class="card-body text-center">
+                        <small class="text-muted text-uppercase fw-bold">Nombre d'événements</small>
+                        <h3 class="fw-bold text-primary mb-0">{{ evenements|length }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0f7ee 0%, #e6f0e6 100%);">
+                    <div class="card-body text-center">
+                        <small class="text-muted text-uppercase fw-bold">Montant total attendu</small>
+                        <h3 class="fw-bold text-success mb-0">{{ totalAttendu|number_format(0, '.', ' ') }} MGA</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);">
+                    <div class="card-body text-center">
+                        <small class="text-muted text-uppercase fw-bold">Montant total payé</small>
+                        <h3 class="fw-bold text-primary mb-0">{{ totalPaye|number_format(0, '.', ' ') }} MGA</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%);">
+                    <div class="card-body text-center">
+                        <small class="text-muted text-uppercase fw-bold">Reste à payer total</small>
+                        <h3 class="fw-bold text-danger mb-0">{{ totalReste|number_format(0, '.', ' ') }} MGA</h3>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="table-responsive">
@@ -39,54 +91,59 @@
                 <thead class="table-light">
                     <tr>
                         <th>Nom</th>
+                        <th>Période</th>
+                        <th>Type</th>
                         <th>Date</th>
-                        <th>Montant unitaire</th>
                         <th>Participants</th>
-                        <th>Commentaire</th>
+                        <th>Montant total</th>
+                        <th>Montant payé</th>
+                        <th>Reste à payer</th>
+                        {#<th>Statut</th>#}
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                 {% for evenement in evenements %}
                     <tr>
+                        <td class="fw-bold">{{ evenement.nom }}</td>
+                        <td>{{ evenement.periode|default('-') }}</td>
                         <td>
-                            <span class="fw-bold text-primary">{{ evenement.nom }}</span>
+                            <span class="badge {% if evenement.typeDocument == 'facture' %}bg-primary{% else %}bg-warning{% endif %}">
+                                {{ evenement.typeDocument == 'facture' ? 'Facture' : 'ND' }}
+                            </span>
                         </td>
+                        <td>{{ evenement.date ? evenement.date|date('d/m/Y') : '-' }}</td>
                         <td>
-                            <i class="far fa-calendar-alt me-1 text-muted"></i>
-                            {{ evenement.date ? evenement.date|date('d/m/Y') : 'Non définie' }}
+                            <span class="badge bg-info">{{ evenement.getTotalParticipants }}</span>
                         </td>
-                        <td class="fw-bold">
-                            {{ evenement.montant ? evenement.montant|number_format(0, '.', ' ') ~ ' MGA' : '-' }}
+                        <td class="fw-bold">{{ evenement.getMontantTotal|number_format(0, '.', ' ') }} MGA</td>
+                        <td class="text-success fw-bold">{{ evenement.getMontantTotalPaye|number_format(0, '.', ' ') }} MGA</td>
+                        <td class="{% if (evenement.getMontantTotal - evenement.getMontantTotalPaye) > 0 %}text-danger{% else %}text-success{% endif %} fw-bold">
+                            {{ (evenement.getMontantTotal - evenement.getMontantTotalPaye)|number_format(0, '.', ' ') }} MGA
                         </td>
-                        <td>
-                            <span class="badge bg-info rounded-pill">{{ evenement.participations|length }} participant(s)</span>
-                        </td>
-                        <td>
-                            <span class="small text-muted">{{ evenement.commentaire|default('Aucun commentaire')|slice(0, 50) }}</span>
-                        </td>
+                        {#<td>
+                            {% if evenement.statut == 'actif' %}
+                                <span class="badge bg-success rounded-pill">Actif</span>
+                            {% else %}
+                                <span class="badge bg-secondary rounded-pill">Inactif</span>
+                            {% endif %}
+                        </td>#}
                         <td class="text-end">
-                            <div class="btn-group">
-                                <a href="{{ path('app_evenement_show', {'id': evenement.id}) }}" 
-                                   class="btn btn-sm btn-outline-secondary border-0 bg-light" 
-                                   title="Voir">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}" 
-                                   class="btn btn-sm btn-outline-secondary border-0 bg-light ms-1" 
-                                   title="Modifier">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                            </div>
+                            <a href="{{ path('app_evenement_show', {'id': evenement.id}) }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-eye me-1"></i> Voir
+                            </a>
+                            <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-edit"></i>
+                            </a>
                         </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="10" class="text-center py-5">
                             <div class="mb-3">
-                                <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="60" class="opacity-25" alt="aucun résultat">
+                                <i class="fas fa-calendar-alt fa-3x opacity-25 text-muted"></i>
                             </div>
-                            <p class="text-muted fw-bold">Aucun évènement enregistré.</p>
+                            <p class="text-muted fw-bold">Aucun événement trouvé.</p>
                             <a href="{{ path('app_evenement_new') }}" class="btn btn-primary mt-2">
                                 <i class="fas fa-plus me-2"></i>Créer un événement
                             </a>
@@ -95,6 +152,10 @@
                 {% endfor %}
                 </tbody>
             </table>
+        </div>
+
+        <div class="mt-3 text-muted small">
+            <i class="fas fa-list me-1"></i> {{ evenements|length }} événement(s) trouvé(s)
         </div>
     </div>
 </div>

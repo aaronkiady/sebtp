@@ -50,7 +50,6 @@ class PaiementEvenement
     public function setParticipation(?Participation $participation): static
     {
         $this->participation = $participation;
-
         return $this;
     }
 
@@ -62,7 +61,6 @@ class PaiementEvenement
     public function setMontant(float $montant): static
     {
         $this->montant = $montant;
-
         return $this;
     }
 
@@ -74,7 +72,6 @@ class PaiementEvenement
     public function setDatePaiement(\DateTimeInterface $datePaiement): static
     {
         $this->datePaiement = $datePaiement;
-
         return $this;
     }
 
@@ -86,7 +83,6 @@ class PaiementEvenement
     public function setModePaiement(?string $modePaiement): static
     {
         $this->modePaiement = $modePaiement;
-
         return $this;
     }
 
@@ -98,7 +94,6 @@ class PaiementEvenement
     public function setReference(?string $reference): static
     {
         $this->reference = $reference;
-
         return $this;
     }
 
@@ -110,7 +105,6 @@ class PaiementEvenement
     public function setCommentaire(?string $commentaire): static
     {
         $this->commentaire = $commentaire;
-
         return $this;
     }
 }

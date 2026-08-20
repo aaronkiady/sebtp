@@ -5,6 +5,10 @@
 {% block body %}
 <div class="main-wrapper mt-5">
     <div class="form-card-wide p-4">
+        
+        {# ==========================================
+           EN-TÊTE
+           ========================================== #}
         <div class="d-flex justify-content-between align-items-start mb-4">
             <div class="d-flex align-items-center">
                 <a href="{{ path('app_evenement_index') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
@@ -22,265 +26,465 @@
                 <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}" class="btn-action btn-cute text-decoration-none">
                     <i class="fas fa-pen"></i> Modifier
                 </a>
+                <a href="{{ path('app_evenement_ajouter_participant', {'id': evenement.id}) }}" class="btn btn-success">
+                    <i class="fas fa-user-plus me-1"></i> Ajouter un participant
+                </a>
             </div>
         </div>
 
-        {#{% for message in app.flashes('success') %}
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>{{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
+        {# ==========================================
+           MESSAGES FLASH
+           ========================================== #}
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert-{{ label }} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-{% if label == 'success' %}check-circle{% elseif label == 'error' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+                </div>
+            {% endfor %}
         {% endfor %}
 
-        {% for message in app.flashes('error') %}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}#}
-
-        {# Calcul des statistiques avec les participants filtrés (exclusion des radiés) #}
-        {% set totalParticipants = participationsFiltrees|length %}
-        {% set totalRepresentants = 0 %}
-        {% set montantGlobal = 0 %}
-        {% set payeCount = 0 %}
-        
-        {% for p in participationsFiltrees %}
-            {% set totalRepresentants = totalRepresentants + p.quantite %}
-            {% set montantGlobal = montantGlobal + (evenement.montant * p.quantite) %}
-            {% if p.statutPaiement == 'paye' %}
-                {% set payeCount = payeCount + 1 %}
-            {% endif %}
-        {% endfor %}
-        
-        {% set pourcentage = totalParticipants > 0 ? (payeCount / totalParticipants) * 100 : 0 %}
-
+        {# ==========================================
+           CARTES D'INFORMATIONS (2 colonnes)
+           ========================================== #}
         <div class="row g-4">
+
+            {# -- Carte : Informations générales -- #}
             <div class="col-md-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
                         <h6 class="card-title text-muted mb-3">
                             <i class="fas fa-info-circle me-2"></i>Informations générales
                         </h6>
-                        <div class="mb-3">
-                            <label class="text-muted small">Date</label>
-                            <div class="fw-bold">
-                                <i class="far fa-calendar-alt me-2"></i>
-                                {{ evenement.date ? evenement.date|date('d/m/Y H:i') : 'Non définie' }}
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="text-muted small">Nom</label>
+                                <div class="fw-bold">{{ evenement.nom }}</div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="text-muted small">Montant unitaire</label>
-                            <div class="fw-bold text-primary">
-                                <i class="fas fa-money-bill-wave me-2"></i>
-                                {{ evenement.montant ? evenement.montant|number_format(0, '.', ' ') ~ ' MGA' : 'Gratuit' }}
+                            <div class="col-6">
+                                <label class="text-muted small">Période</label>
+                                <div class="fw-bold">{{ evenement.periode|default('Non définie') }}</div>
                             </div>
+                            <div class="col-6">
+                                <label class="text-muted small">Date</label>
+                                <div class="fw-bold">
+                                    <i class="far fa-calendar-alt me-2"></i>
+                                    {{ evenement.date ? evenement.date|date('d/m/Y H:i') : 'Non définie' }}
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="text-muted small">Type de document</label>
+                                <div class="fw-bold">
+                                    <span class="badge {% if evenement.typeDocument == 'facture' %}bg-primary{% else %}bg-warning{% endif %} rounded-pill px-3 py-2">
+                                        <i class="fas {% if evenement.typeDocument == 'facture' %}fa-file-invoice{% else %}fa-file-invoice-dollar{% endif %} me-1"></i>
+                                        {{ evenement.typeDocument == 'facture' ? 'Facture' : 'Note de débit' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="text-muted small">Statut</label>
+                                <div class="fw-bold">
+                                    {% if evenement.statut == 'actif' %}
+                                        <span class="badge bg-success rounded-pill">Actif</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary rounded-pill">Inactif</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if evenement.commentaire %}
+                            <div class="col-12">
+                                <label class="text-muted small">Commentaire</label>
+                                <div class="fw-bold">{{ evenement.commentaire }}</div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
 
+            {# -- Carte : Montant / Désignations -- #}
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted mb-3">
+                            <i class="fas fa-list me-2"></i>
+                            {% set hasValidLignes = false %}
+                            {% for ligne in evenement.lignes %}
+                                {% if ligne.designation is not empty %}
+                                    {% set hasValidLignes = true %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if hasValidLignes %}
+                                Lignes de désignation
+                            {% else %}
+                                Détails du montant
+                            {% endif %}
+                        </h6>
+
+                        {% if hasValidLignes %}
+                            {# -- Affichage des lignes de désignation -- #}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-borderless">
+                                    <thead>
+                                        <tr>
+                                            <th>Désignation</th>
+                                            <th class="text-end">Montant unitaire</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ligne in evenement.lignes %}
+                                            {% if ligne.designation is not empty %}
+                                            <tr>
+                                                <td>
+                                                    <i class="fas fa-tag me-2 text-muted"></i>
+                                                    {{ ligne.designation }}
+                                                </td>
+                                                <td class="text-end fw-bold text-primary">
+                                                    {{ ligne.montantUnitaire|number_format(0, '.', ' ') }} MGA
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td class="fw-bold">Total des lignes</td>
+                                            <td class="text-end fw-bold text-success">
+                                                {% set totalLignes = 0 %}
+                                                {% for ligne in evenement.lignes %}
+                                                    {% if ligne.designation is not empty %}
+                                                        {% set totalLignes = totalLignes + ligne.montantUnitaire %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {{ totalLignes|number_format(0, '.', ' ') }} MGA
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                        {% elseif evenement.montantFixe and evenement.montantFixe > 0 %}
+                            {# -- Affichage du montant fixe -- #}
+                            <div class="text-center py-3">
+                                <div class="mb-3">
+                                    <span class="badge bg-primary rounded-pill px-4 py-2" style="font-size: 1.1rem;">
+                                        <i class="fas fa-money-bill-wave me-2"></i>
+                                        Montant fixe par participant
+                                    </span>
+                                </div>
+                                <div class="display-6 fw-bold text-success">
+                                    {{ evenement.montantFixe|number_format(0, '.', ' ') }} MGA
+                                </div>
+                                <div class="text-muted mt-2">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Ce montant est multiplié par le nombre de participants de chaque adhérent.
+                                </div>
+                            </div>
+
+                        {% else %}
+                            {# -- Aucun montant défini -- #}
+                            <div class="text-muted text-center py-3">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Aucun montant défini pour cet événement.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# ==========================================
+           CARTES STATISTIQUES (2 colonnes)
+           ========================================== #}
+        <div class="row g-4 mt-2">
+
+            {# -- Carte : Statistiques -- #}
             <div class="col-md-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
                         <h6 class="card-title text-muted mb-3">
                             <i class="fas fa-chart-line me-2"></i>Statistiques
                         </h6>
-                        <div class="mb-3">
-                            <label class="text-muted small">Participants</label>
-                            <div class="fw-bold">
-                                <i class="fas fa-users me-2"></i>
-                                {{ totalParticipants }} participant(s)
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="text-muted small">Participants</label>
+                                <div class="fw-bold fs-5">
+                                    <i class="fas fa-users me-2 text-primary"></i>
+                                    {{ totalParticipants }}
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="text-muted small">Nombre total de représentants</label>
-                            <div class="fw-bold">
-                                <i class="fas fa-user-friends me-2"></i>
-                                {{ totalRepresentants }} représentant(s)
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="text-muted small">Montant total</label>
-                            <div class="fw-bold text-success">
-                                <i class="fas fa-chart-line me-2"></i>
-                                {{ montantGlobal|number_format(0, '.', ' ') }} MGA
-                            </div>
-                        </div>
-                        {% if totalParticipants > 0 %}
-                            <div class="mb-3">
+                            <div class="col-6">
                                 <label class="text-muted small">Taux de paiement</label>
-                                <div class="fw-bold">
-                                    <i class="fas fa-percent me-2"></i>
-                                    {{ pourcentage|round(2) }}% ({{ payeCount }}/{{ totalParticipants }})
+                                <div class="fw-bold fs-5">
+                                    <i class="fas fa-percent me-2 text-success"></i>
+                                    {{ tauxPaiement|round(2) }}%
                                 </div>
-                                <div class="progress mt-2" style="height: 8px;">
-                                    <div class="progress-bar bg-success" style="width: {{ pourcentage }}%"></div>
+                                <div class="progress mt-1" style="height: 6px;">
+                                    <div class="progress-bar bg-success" style="width: {{ tauxPaiement }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ payeCount }}/{{ totalParticipants }} payé(s)</small>
+                            </div>
+                            <div class="col-6">
+                                <label class="text-muted small">Montant total</label>
+                                <div class="fw-bold fs-5 text-success">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    {{ montantGlobal|number_format(0, '.', ' ') }} MGA
                                 </div>
                             </div>
-                        {% endif %}
+                            <div class="col-6">
+                                <label class="text-muted small">Montant payé</label>
+                                <div class="fw-bold fs-5 text-primary">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    {{ totalPaye|number_format(0, '.', ' ') }} MGA
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {% if evenement.commentaire %}
-            <div class="col-12">
-                <div class="card shadow-sm">
+            {# -- Carte : Actions rapides -- #}
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
                     <div class="card-body">
                         <h6 class="card-title text-muted mb-3">
-                            <i class="fas fa-comment me-2"></i>Commentaire
+                            <i class="fas fa-tasks me-2"></i>Actions
                         </h6>
-                        <p class="mb-0">{{ evenement.commentaire }}</p>
+                        <div class="d-grid gap-2">
+                            <a href="{{ path('app_evenement_edit', {'id': evenement.id}) }}" class="btn btn-outline-primary">
+                                <i class="fas fa-pen me-2"></i> Modifier l'événement
+                            </a>
+                            <a href="{{ path('app_evenement_ajouter_participant', {'id': evenement.id}) }}" class="btn btn-outline-success">
+                                <i class="fas fa-user-plus me-2"></i> Ajouter un participant
+                            </a>
+                            
+                        </div>
                     </div>
                 </div>
             </div>
-            {% endif %}
+        </div>
 
-            <div class="col-12">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i class="fas fa-list me-2"></i>Liste des participants
-                        </h6>
-                        <div>
-                            <a href="{{ path('app_evenement_ajouter_participant', {'id': evenement.id}) }}" class="btn btn-sm btn-success me-2">
-                                <i class="fas fa-plus me-1"></i> Ajouter un participant
-                            </a>
-                        </div>
+        {# ==========================================
+           LISTE DES PARTICIPANTS
+           ========================================== #}
+        <div class="mt-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fas fa-users me-2 text-primary"></i>
+                        Liste des participants
+                        <span class="badge bg-primary ms-2 rounded-pill">{{ participationsFiltrees|length }}</span>
+                    </h6>
+                    <div>
+                        <a href="{{ path('app_evenement_ajouter_participant', {'id': evenement.id}) }}" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus me-1"></i> Ajouter
+                        </a>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Nom</th>
-                                        <th>Quantité</th>
-                                        <th>Montant total</th>
-                                        <th>Référence du paiement</th>
-                                        <th>Statut de paiement</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% if participationsFiltrees|length > 0 %}
-                                        {% for participation in participationsFiltrees %}
-                                            <tr>
-                                                <td class="fw-bold">
-                                                    <a href="{{ path('app_liste_show', {'id': participation.adherent.id}) }}" class="text-decoration-none">
-                                                        {{ participation.adherent.nom }}
-                                                    </a>
-                                                </td>
-                                                <td class="text-center">
-                                                    <span class="badge bg-info rounded-pill">
-                                                        <i class="fas fa-users me-1"></i> {{ participation.quantite }} représentant(s)
-                                                    </span>
-                                                </td>
-                                                <td class="fw-bold text-primary">
-                                                    {{ (evenement.montant * participation.quantite)|number_format(0, '.', ' ') }} MGA
-                                                </td>
-                                                <td>
-                                                    {{ participation.reference|default('-') }}
-                                                </td>
-                                                <td>
-                                                    {% if participation.statutPaiement == 'paye' %}
-                                                        <span class="badge bg-success rounded-pill px-3 py-2">
-                                                            <i class="fas fa-check-circle me-1"></i> Payé
-                                                        </span>
-                                                    {% else %}
-                                                        <span class="badge bg-danger rounded-pill px-3 py-2">
-                                                            <i class="fas fa-times-circle me-1"></i> Impayé
-                                                        </span>
-                                                    {% endif %}
-                                                </td>
-                                                {# Dans la liste des participants #}
-                                                <td>
-                                                    <div class="btn-group" role="group">
-                                                        {% if participation.statutPaiement == 'paye' %}
-                                                            <a href="{{ path('app_document_generer_recu_evenement', {'participation_id': participation.id}) }}" 
-                                                            class="btn btn-sm btn-success" title="Générer le reçu">
-                                                                <i class="fas fa-file-pdf"></i>
-                                                            </a>
-                                                        {% endif %}
-                                                        
-                                                        {# Bouton Ajouter un paiement #}
-                                                        <a href="{{ path('app_participation_paiement_new', {'participation_id': participation.id}) }}" 
-                                                        class="btn btn-sm btn-primary" title="Ajouter un paiement">
-                                                            <i class="fas fa-plus"></i>
-                                                        </a>
-                                                        
-                                                        <form method="post" action="{{ path('app_evenement_supprimer_participant', {'id': evenement.id, 'participation_id': participation.id}) }}" 
-                                                            onsubmit="return confirm('Êtes-vous sûr de vouloir retirer ce participant ?');" 
-                                                            style="display: inline-block;">
-                                                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ participation.id) }}">
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                    
-                                                    {# Afficher l'historique des paiements si la participation est payée #}
-                                                    {% if participation.statutPaiement == 'paye' and participation.paiements|length > 0 %}
-                                                        <div class="mt-2">
-                                                            <small class="text-muted">Paiements :</small>
-                                                            {% for paiement in participation.paiements %}
-                                                                <div class="d-flex justify-content-between align-items-center small border-bottom py-1">
-                                                                    <span>{{ paiement.datePaiement|date('d/m/Y') }} - {{ paiement.montant|number_format(0, '.', ' ') }} MGA</span>
-                                                                    <span>
-                                                                        {% if paiement.modePaiement %}
-                                                                            <span class="badge bg-secondary">{{ paiement.modePaiement }}</span>
-                                                                        {% endif %}
-                                                                        {% if paiement.reference %}
-                                                                            <span class="badge bg-light text-dark">{{ paiement.reference }}</span>
-                                                                        {% endif %}
-                                                                        <form method="post" action="{{ path('app_participation_paiement_delete', {'id': paiement.id}) }}" 
-                                                                            onsubmit="return confirm('Supprimer ce paiement ?')" style="display:inline">
-                                                                            <input type="hidden" name="_token" value="{{ csrf_token('delete_paiement_evenement_' ~ paiement.id) }}">
-                                                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                                                                <i class="fas fa-times"></i>
-                                                                            </button>
-                                                                        </form>
-                                                                    </span>
-                                                                </div>
-                                                            {% endfor %}
-                                                        </div>
-                                                    {% endif %}
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    {% else %}
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 15%;">Adhérent</th>
+                                    <th style="width: 15%;">Période</th>
+                                    <th style="width: 20%;">Détails</th>
+                                    <th style="width: 12%;" class="text-end">Montant total</th>
+                                    <th style="width: 12%;" class="text-end">Montant payé</th>
+                                    <th style="width: 12%;" class="text-end">Reste à payer</th>
+                                    <th style="width: 14%;" class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if participationsFiltrees|length > 0 %}
+                                    {% for participation in participationsFiltrees %}
+                                        {% set montantTotal = participation.montantTotal|default(0) %}
+                                        {% set montantPaye = participation.getMontantTotalPaye() %}
+                                        {% set resteAPayer = participation.getResteAPayer() %}
+                                        
                                         <tr>
-                                            <td colspan="6" class="text-center py-5">
-                                                <div class="mb-3">
-                                                    <i class="fas fa-users-slash fa-3x text-muted opacity-25"></i>
+                                            {# -- Nom de l'adhérent -- #}
+                                            <td class="fw-bold">
+                                                <a href="{{ path('app_liste_show', {'id': participation.adherent.id}) }}" class="text-decoration-none text-dark">
+                                                    <i class="fas fa-building me-2 text-muted"></i>
+                                                    {{ participation.adherent.nom }}
+                                                </a>
+                                            </td>
+
+                                            {# -- Période -- #}
+                                            <td>
+                                                <span class="badge bg-secondary bg-opacity-10 text-dark">
+                                                    <i class="far fa-calendar-alt me-1"></i>
+                                                    {{ evenement.periode|default('N/D') }}
+                                                </span>
+                                            </td>
+
+                                            {# -- Détails (désignations ou montant fixe) -- #}
+                                            <td>
+                                                {% if participation.participationLignes|length > 0 %}
+                                                    {# Cas avec désignations #}
+                                                    {% for pl in participation.participationLignes %}
+                                                        <span class="badge bg-info me-1 mb-1" style="font-size: 0.75rem;">
+                                                            {{ pl.ligne.designation }}: {{ pl.quantite }} × 
+                                                            {{ pl.ligne.montantUnitaire|number_format(0, '.', ' ') }} MGA
+                                                        </span>
+                                                    {% endfor %}
+                                                {% elseif evenement.montantFixe and evenement.montantFixe > 0 %}
+                                                    {# Cas montant fixe #}
+                                                    {% set nbParticipants = participation.nbParticipants|default(1) %}
+                                                    <span class="badge bg-primary me-1 mb-1" style="font-size: 0.8rem;">
+                                                        <i class="fas fa-users me-1"></i>
+                                                        {{ nbParticipants }} participant(s) × 
+                                                        {{ evenement.montantFixe|number_format(0, '.', ' ') }} MGA
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                                <br>
+                                                {# Statut paiement (petit badge) #}
+                                                {% if participation.statutPaiement == 'paye' %}
+                                                    <span class="badge bg-success" style="font-size: 0.65rem;">
+                                                        <i class="fas fa-check-circle me-1"></i> Payé
+                                                    </span>
+                                                {% elseif participation.statutPaiement == 'partiel' %}
+                                                    <span class="badge bg-warning" style="font-size: 0.65rem;">
+                                                        <i class="fas fa-clock me-1"></i> Partiel
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-danger" style="font-size: 0.65rem;">
+                                                        <i class="fas fa-times-circle me-1"></i> Impayé
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+
+                                            {# -- Montant total -- #}
+                                            <td class="fw-bold text-end text-primary">
+                                                {{ montantTotal|number_format(0, '.', ' ') }} MGA
+                                            </td>
+
+                                            {# -- Montant payé -- #}
+                                            <td class="fw-bold text-end text-success">
+                                                {{ montantPaye|number_format(0, '.', ' ') }} MGA
+                                            </td>
+
+                                            {# -- Reste à payer -- #}
+                                            <td class="fw-bold text-end {% if resteAPayer > 0 %}text-danger{% else %}text-muted{% endif %}">
+                                                {{ resteAPayer|number_format(0, '.', ' ') }} MGA
+                                            </td>
+
+                                            {# -- Actions -- #}
+                                            <td class="text-center">
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a href="{{ path('app_participation_paiement_new', {'participation_id': participation.id}) }}" 
+                                                       class="btn btn-primary" title="Ajouter un paiement">
+                                                        <i class="fas fa-plus"></i>
+                                                    </a>
+                                                    {% if participation.statutPaiement == 'paye' %}
+                                                        <a href="{{ path('app_document_generer_recu_evenement', {'participation_id': participation.id}) }}" 
+                                                           class="btn btn-success" title="Générer le reçu">
+                                                            <i class="fas fa-file-pdf"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                    <a href="{{ path('app_document_generer_note_debit_evenement', {'participation_id': participation.id}) }}" 
+                                                       class="btn btn-warning" title="Générer la note de débit">
+                                                        <i class="fas fa-file-invoice"></i>
+                                                    </a>
+                                                   
+                                                    <form method="post" 
+                                                          action="{{ path('app_evenement_supprimer_participant', {'id': evenement.id, 'participation_id': participation.id}) }}" 
+                                                          onsubmit="return confirm('Êtes-vous sûr de vouloir retirer ce participant ?');" 
+                                                          style="display: inline-block;">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ participation.id) }}">
+                                                        <button type="submit" class="btn btn-outline-danger" title="Retirer">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
                                                 </div>
-                                                <p class="text-muted fw-bold mb-0">Aucun participant inscrit à cet événement</p>
-                                                <p class="text-muted small">Cliquez sur "Ajouter un participant" pour commencer</p>
+
+                                                {# -- Historique des paiements -- #}
+                                                {% if participation.paiements|length > 0 %}
+                                                    <div class="mt-2 text-start">
+                                                        <small class="text-muted">Paiements :</small>
+                                                        {% for paiement in participation.paiements %}
+                                                            <div class="d-flex justify-content-between align-items-center small border-bottom py-1 px-2">
+                                                                <span>
+                                                                    {{ paiement.datePaiement|date('d/m/Y') }} - 
+                                                                    <strong>{{ paiement.montant|number_format(0, '.', ' ') }} MGA</strong>
+                                                                </span>
+                                                                <span>
+                                                                    {% if paiement.modePaiement %}
+                                                                        <span class="badge bg-secondary">{{ paiement.modePaiement|trans }}</span>
+                                                                    {% endif %}
+                                                                    {% if paiement.reference %}
+                                                                        <span class="badge bg-light text-dark">{{ paiement.reference }}</span>
+                                                                    {% endif %}
+                                                                    <form method="post" 
+                                                                          action="{{ path('app_participation_paiement_delete', {'id': paiement.id}) }}" 
+                                                                          onsubmit="return confirm('Supprimer ce paiement ?')" 
+                                                                          style="display:inline">
+                                                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_paiement_evenement_' ~ paiement.id) }}">
+                                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                                                            <i class="fas fa-times"></i>
+                                                                        </button>
+                                                                    </form>
+                                                                </span>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
                                             </td>
                                         </tr>
-                                    {% endif %}
-                                </tbody>
-                                {% if participationsFiltrees|length > 0 %}
-                                <tfoot class="table-light">
+                                    {% endfor %}
+                                {% else %}
+                                    {# -- Aucun participant -- #}
                                     <tr>
-                                        <td class="fw-bold">TOTAUX</td>
-                                        <td class="fw-bold text-center">{{ totalRepresentants }}</td>
-                                        <td class="fw-bold">{{ montantGlobal|number_format(0, '.', ' ') }} MGA</td>
-                                        <td colspan="3"></td>
+                                        <td colspan="7" class="text-center py-5">
+                                            <div class="mb-3">
+                                                <i class="fas fa-users-slash fa-3x text-muted opacity-25"></i>
+                                            </div>
+                                            <p class="text-muted fw-bold mb-0">Aucun participant inscrit à cet événement</p>
+                                            <p class="text-muted small">Cliquez sur "Ajouter un participant" pour commencer</p>
+                                        </td>
                                     </tr>
-                                </tfoot>
                                 {% endif %}
-                            </table>
-                        </div>
+                            </tbody>
+                            {% if participationsFiltrees|length > 0 %}
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td class="fw-bold" colspan="3">TOTAUX</td>
+                                    <td class="fw-bold text-end">{{ montantGlobal|number_format(0, '.', ' ') }} MGA</td>
+                                    <td class="fw-bold text-end">{{ totalPaye|number_format(0, '.', ' ') }} MGA</td>
+                                    <td class="fw-bold text-end">{{ (montantGlobal - totalPaye)|number_format(0, '.', ' ') }} MGA</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                            {% endif %}
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
 
+        {# ==========================================
+           BOUTONS DE BAS DE PAGE
+           ========================================== #}
         <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
             <a href="{{ path('app_evenement_index') }}" class="btn-action btn-cancel text-decoration-none">
-                <i class="fas fa-arrow-left"></i> Retour à la liste
+                <i class="fas fa-arrow-left me-2"></i> Retour à la liste
             </a>
+            <div class="d-flex gap-2">
+                <form method="post" 
+                      action="{{ path('app_evenement_delete', {'id': evenement.id}) }}" 
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible.');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ evenement.id) }}">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i> Supprimer
+                    </button>
+                </form>
+            </div>
         </div>
+
     </div>
 </div>
 {% endblock %}

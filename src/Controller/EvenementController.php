@@ -3,8 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Evenement;
+use App\Entity\LigneEvenement;
 use App\Entity\Liste;
 use App\Entity\Participation;
+use App\Entity\ParticipationLigne;
 use App\Entity\PaiementEvenement;
 use App\Form\EvenementType;
 use App\Form\PaiementEvenementType;
@@ -32,13 +34,31 @@ final class EvenementController extends AbstractController
         $this->documentGenerator = $documentGenerator;
     }
 
-    #[Route(name: 'app_evenement_index', methods: ['GET'])]
+    #[Route('/', name: 'app_evenement_index', methods: ['GET'])]
     public function index(Request $request, EvenementRepository $repo): Response
     {
-        $searchTerm = $request->query->get('q');
+        $search = $request->query->get('search');
+        $statut = $request->query->get('statut');
+        
+        $evenements = $repo->search($search, $statut);
+        
+        $totalAttendu = 0;
+        $totalPaye = 0;
+        $totalReste = 0;
+        
+        foreach ($evenements as $evenement) {
+            $totalAttendu += $evenement->getMontantTotal();
+            $totalPaye += $evenement->getMontantTotalPaye();
+            $totalReste += ($evenement->getMontantTotal() - $evenement->getMontantTotalPaye());
+        }
 
         return $this->render('evenement/index.html.twig', [
-            'evenements' => $repo->findBySearch($searchTerm)
+            'evenements' => $evenements,
+            'search' => $search,
+            'statutFilter' => $statut,
+            'totalAttendu' => $totalAttendu,
+            'totalPaye' => $totalPaye,
+            'totalReste' => $totalReste,
         ]);
     }
 
@@ -65,209 +85,346 @@ final class EvenementController extends AbstractController
     }
 
     #[Route('/new', name: 'app_evenement_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $em): Response
-    {
-        $evenement = new Evenement();
-        $form = $this->createForm(EvenementType::class, $evenement);
-        $form->handleRequest($request);
+public function new(Request $request, EntityManagerInterface $em): Response
+{
+    $evenement = new Evenement();
+    
+    if ($evenement->getLignes()->count() === 0) {
+        $ligne = new LigneEvenement();
+        $ligne->setDesignation('');
+        $ligne->setMontantUnitaire(0);
+        $ligne->setEvenement($evenement);
+        $evenement->addLigne($ligne);
+    }
+    
+    $form = $this->createForm(EvenementType::class, $evenement);
+    $form->handleRequest($request);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-           // $participants = $form->get('participantsTemp')->getData();
+    if ($form->isSubmitted() && $form->isValid()) {
+        $participants = $form->get('participants')->getData();
+        $montantFixe = $form->get('montantFixe')->getData();
+        
+        $nbParticipants = $request->request->all('nb_participants') ?? [];
+        $quantitesDesignations = $request->request->all('quantite_designation') ?? [];
+        
+        if ($participants instanceof \Doctrine\Common\Collections\Collection) {
+            $participantsArray = $participants->toArray();
+        } else {
+            $participantsArray = (array) $participants;
+        }
+        
+        $participantsActifs = array_filter($participantsArray, function($adherent) {
+            return $adherent && $adherent->getStatut() === 'actif';
+        });
+        
+        $lignes = $evenement->getLignes();
+        $hasLignes = $lignes->count() > 0 && $lignes->first()->getDesignation() !== '';
+        
+        foreach ($participantsActifs as $adherent) {
+            $adherentId = $adherent->getId();
             
-            if (!empty($participants)) {
-                foreach ($participants as $liste) {
-                    $participation = new Participation();
-                    $participation->setAdherent($liste);
-                    $participation->setEvenement($evenement);
-                    $participation->setStatutPaiement('impaye');
-                    $em->persist($participation);
+            $participation = new Participation();
+            $participation->setAdherent($adherent);
+            $participation->setEvenement($evenement);
+            $participation->setStatutPaiement('impaye');
+            
+            $montantTotal = 0;
+            
+            if ($montantFixe && $montantFixe > 0 && !$hasLignes) {
+                // Montant fixe : récupérer le nombre de participants
+                $nbParticipant = isset($nbParticipants[$adherentId]) ? (int) $nbParticipants[$adherentId] : 1;
+                if ($nbParticipant < 1) $nbParticipant = 1;
+                $participation->setNbParticipants($nbParticipant);
+                $participation->setMontantTotal($montantFixe * $nbParticipant);
+            } elseif ($hasLignes) {
+                // Désignations
+                $ligneIndex = 0;
+                foreach ($lignes as $ligne) {
+                    if ($ligne->getDesignation() === '') continue;
+                    $quantite = isset($quantitesDesignations[$adherentId][$ligneIndex]) ? (int) $quantitesDesignations[$adherentId][$ligneIndex] : 0;
+                    if ($quantite > 0) {
+                        $participationLigne = new ParticipationLigne();
+                        $participationLigne->setLigne($ligne);
+                        $participationLigne->setQuantite($quantite);
+                        $participationLigne->calculerMontantLigne();
+                        $participation->addParticipationLigne($participationLigne);
+                        $montantTotal += $participationLigne->getMontantLigne();
+                    }
+                    $ligneIndex++;
                 }
+                $participation->setMontantTotal($montantTotal);
+                $participation->setNbParticipants(1);
+            } else {
+                $participation->setMontantTotal(0);
+                $participation->setNbParticipants(1);
             }
-
-            $em->persist($evenement);
-            $em->flush();
-
-            $this->auditLogger->logCreate(
-                'Evenement',
-                $evenement->getId(),
-                $evenement->getNom(),
-                [
-                    'nom' => $evenement->getNom(),
-                    'date' => $evenement->getDate()?->format('Y-m-d'),
-                    'montant' => $evenement->getMontant(),
-                    'nb_participants' => count($participants ?? [])
-                ]
-            );
-
-            return $this->redirectToRoute('app_evenement_index');
+            
+            $em->persist($participation);
         }
 
-        return $this->render('evenement/new.html.twig', [
-            'form' => $form->createView(),
-        ]);
+        $em->persist($evenement);
+        $em->flush();
+
+        $this->addFlash('success', 'Événement créé avec succès !');
+        return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
     }
 
+    return $this->render('evenement/new.html.twig', [
+        'form' => $form->createView(),
+    ]);
+}
+
     #[Route('/{id}', name: 'app_evenement_show', methods: ['GET'])]
-    public function show(Evenement $evenement): Response
+    public function show(string $id, EntityManagerInterface $em): Response
     {
+        $evenement = $em->getRepository(Evenement::class)->find((int) $id);
+        
+        if (!$evenement) {
+            $this->addFlash('error', 'Événement non trouvé.');
+            return $this->redirectToRoute('app_evenement_index');
+        }
+        
         $participationsFiltrees = $evenement->getParticipations()->filter(function($participation) {
             $adherent = $participation->getAdherent();
             return $adherent && $adherent->getStatut() !== 'radie';
         });
 
+        $totalParticipants = $participationsFiltrees->count();
+        $totalPaye = 0;
+        $montantGlobal = 0;
+        $payeCount = 0;
+        
+        foreach ($participationsFiltrees as $p) {
+            $montantGlobal += $p->getMontantTotal() ?? 0;
+            if ($p->isPaye()) {
+                $payeCount++;
+                $totalPaye += $p->getMontantTotal() ?? 0;
+            }
+        }
+        
+        $tauxPaiement = $totalParticipants > 0 ? round(($payeCount / $totalParticipants) * 100, 2) : 0;
+
         return $this->render('evenement/show.html.twig', [
             'evenement' => $evenement,
             'participationsFiltrees' => $participationsFiltrees,
+            'totalParticipants' => $totalParticipants,
+            'montantGlobal' => $montantGlobal,
+            'totalPaye' => $totalPaye,
+            'payeCount' => $payeCount,
+            'tauxPaiement' => $tauxPaiement,
         ]);
     }
 
     #[Route('/{id}/edit', name: 'app_evenement_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Evenement $evenement, EntityManagerInterface $entityManager): Response
-    {
-        $oldData = [
-            'nom' => $evenement->getNom(),
-            'date' => $evenement->getDate()?->format('Y-m-d'),
-            'montant' => $evenement->getMontant(),
-            'commentaire' => $evenement->getCommentaire(),
-        ];
+public function edit(string $id, Request $request, EntityManagerInterface $entityManager): Response
+{
+    $evenement = $entityManager->getRepository(Evenement::class)->find((int) $id);
+    
+    if (!$evenement) {
+        $this->addFlash('error', 'Événement non trouvé.');
+        return $this->redirectToRoute('app_evenement_index');
+    }
+    
+    $oldData = [
+        'nom' => $evenement->getNom(),
+        'periode' => $evenement->getPeriode(),
+        'date' => $evenement->getDate()?->format('Y-m-d'),
+        'type_document' => $evenement->getTypeDocument(),
+        'commentaire' => $evenement->getCommentaire(),
+        'statut' => $evenement->getStatut(),
+    ];
 
-        $form = $this->createForm(EvenementType::class, $evenement);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
-
-            $newData = [
-                'nom' => $evenement->getNom(),
-                'date' => $evenement->getDate()?->format('Y-m-d'),
-                'montant' => $evenement->getMontant(),
-                'commentaire' => $evenement->getCommentaire(),
-            ];
-
-            $this->auditLogger->logUpdate(
-                'Evenement',
-                $evenement->getId(),
-                $evenement->getNom(),
-                $oldData,
-                $newData
-            );
-
-            return $this->redirectToRoute('app_evenement_index', [], Response::HTTP_SEE_OTHER);
+    $participantsActuels = [];
+    $quantitesDesignations = [];
+    $nbParticipants = [];
+    
+    foreach ($evenement->getParticipations() as $participation) {
+        $adherent = $participation->getAdherent();
+        if ($adherent && $adherent->getStatut() !== 'radie') {
+            $participantsActuels[] = $adherent;
+            
+            // Récupérer le nombre de participants pour les événements à montant fixe
+            $nbParticipants[$adherent->getId()] = $participation->getNbParticipants() ?? 1;
+            
+            // Récupérer les quantités par ligne
+            $lignesQuantites = [];
+            foreach ($participation->getParticipationLignes() as $pl) {
+                $ligneId = $pl->getLigne() ? $pl->getLigne()->getId() : 0;
+                $lignesQuantites[$ligneId] = $pl->getQuantite();
+            }
+            $quantitesDesignations[$adherent->getId()] = $lignesQuantites;
         }
-
-        return $this->render('evenement/edit.html.twig', [
-            'evenement' => $evenement,
-            'form' => $form->createView(),
-        ]);
     }
 
-    #[Route('/{id}/gerer-participants', name: 'app_evenement_gerer_participants', methods: ['GET', 'POST'])]
-    public function gererParticipants(Request $request, Evenement $evenement, EntityManagerInterface $em): Response
-    {
-        $participantsActuels = [];
+    $form = $this->createForm(EvenementType::class, $evenement);
+    $form->get('participants')->setData($participantsActuels);
+    $form->handleRequest($request);
+
+    if ($form->isSubmitted() && $form->isValid()) {
+        $nouveauxParticipants = $form->get('participants')->getData();
+        $montantFixe = $form->get('montantFixe')->getData();
+        
+        $nbParticipantsPost = $request->request->all('nb_participants') ?? [];
+        $quantitesDesignationsPost = $request->request->all('quantite_designation') ?? [];
+        
+        if ($nouveauxParticipants instanceof \Doctrine\Common\Collections\Collection) {
+            $nouveauxParticipantsArray = $nouveauxParticipants->toArray();
+        } else {
+            $nouveauxParticipantsArray = (array) $nouveauxParticipants;
+        }
+        
+        // Supprimer les participants retirés
         foreach ($evenement->getParticipations() as $participation) {
             $adherent = $participation->getAdherent();
-            if ($adherent && $adherent->getStatut() !== 'radie') {
-                $participantsActuels[] = $adherent;
+            if ($adherent && $adherent->getStatut() !== 'radie' && !in_array($adherent, $nouveauxParticipantsArray)) {
+                $entityManager->remove($participation);
             }
         }
-
-        $form = $this->createFormBuilder()
-            ->add('participants', EntityType::class, [
-                'class' => Liste::class,
-                'choice_label' => 'nom',
-                'multiple' => true,
-                'expanded' => true,
-                'required' => false,
-                'data' => $participantsActuels,
-                'label' => 'Sélectionnez les participants',
-                'attr' => ['class' => 'participants-checkbox-list']
-            ])
-            ->getForm();
-
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $nouveauxParticipants = $form->get('participants')->getData();
-            
+        
+        $lignes = $evenement->getLignes();
+        $hasLignes = $lignes->count() > 0 && $lignes->first()->getDesignation() !== '';
+        
+        foreach ($nouveauxParticipantsArray as $participant) {
+            $existe = false;
+            $existingParticipation = null;
             foreach ($evenement->getParticipations() as $participation) {
-                $adherent = $participation->getAdherent();
-                if ($adherent && $adherent->getStatut() !== 'radie' && !in_array($adherent, $nouveauxParticipants)) {
-                    $em->remove($participation);
+                if ($participation->getAdherent() === $participant) {
+                    $existe = true;
+                    $existingParticipation = $participation;
+                    break;
                 }
             }
             
-            foreach ($nouveauxParticipants as $participant) {
-                $existe = false;
-                foreach ($evenement->getParticipations() as $participation) {
-                    if ($participation->getAdherent() === $participant) {
-                        $existe = true;
-                        break;
-                    }
-                }
+            $adherentId = $participant->getId();
+            $nbParticipant = isset($nbParticipantsPost[$adherentId]) ? (int) $nbParticipantsPost[$adherentId] : 1;
+            if ($nbParticipant < 1) $nbParticipant = 1;
+            $montantTotal = 0;
+            
+            if ($existe && $existingParticipation) {
+                // 🔥 FIX: Mettre à jour le nombre de participants
+                $existingParticipation->setNbParticipants($nbParticipant);
                 
-                if (!$existe) {
-                    $participation = new Participation();
-                    $participation->setAdherent($participant);
-                    $participation->setEvenement($evenement);
-                    $participation->setStatutPaiement('impaye');
-                    $participation->setQuantite(1);
-                    $em->persist($participation);
+                // Supprimer les anciennes lignes
+                foreach ($existingParticipation->getParticipationLignes() as $pl) {
+                    $entityManager->remove($pl);
                 }
+                $existingParticipation->getParticipationLignes()->clear();
+                
+                if ($montantFixe && $montantFixe > 0 && !$hasLignes) {
+                    $existingParticipation->setMontantTotal($montantFixe * $nbParticipant);
+                } elseif ($hasLignes) {
+                    $ligneIndex = 0;
+                    foreach ($lignes as $ligne) {
+                        if ($ligne->getDesignation() === '') continue;
+                        $quantite = isset($quantitesDesignationsPost[$adherentId][$ligneIndex]) ? (int) $quantitesDesignationsPost[$adherentId][$ligneIndex] : 0;
+                        if ($quantite > 0) {
+                            $participationLigne = new ParticipationLigne();
+                            $participationLigne->setLigne($ligne);
+                            $participationLigne->setQuantite($quantite);
+                            $participationLigne->calculerMontantLigne();
+                            $existingParticipation->addParticipationLigne($participationLigne);
+                            $montantTotal += $participationLigne->getMontantLigne();
+                        }
+                        $ligneIndex++;
+                    }
+                    $existingParticipation->setMontantTotal($montantTotal);
+                } else {
+                    $existingParticipation->setMontantTotal(0);
+                }
+            } else {
+                // Créer une nouvelle participation
+                $participation = new Participation();
+                $participation->setAdherent($participant);
+                $participation->setEvenement($evenement);
+                $participation->setStatutPaiement('impaye');
+                
+                // 🔥 FIX: Définir nbParticipants pour les nouvelles participations
+                $participation->setNbParticipants($nbParticipant);
+                
+                if ($montantFixe && $montantFixe > 0 && !$hasLignes) {
+                    $participation->setMontantTotal($montantFixe * $nbParticipant);
+                } elseif ($hasLignes) {
+                    $ligneIndex = 0;
+                    foreach ($lignes as $ligne) {
+                        if ($ligne->getDesignation() === '') continue;
+                        $quantite = isset($quantitesDesignationsPost[$adherentId][$ligneIndex]) ? (int) $quantitesDesignationsPost[$adherentId][$ligneIndex] : 0;
+                        if ($quantite > 0) {
+                            $participationLigne = new ParticipationLigne();
+                            $participationLigne->setLigne($ligne);
+                            $participationLigne->setQuantite($quantite);
+                            $participationLigne->calculerMontantLigne();
+                            $participation->addParticipationLigne($participationLigne);
+                            $montantTotal += $participationLigne->getMontantLigne();
+                        }
+                        $ligneIndex++;
+                    }
+                    $participation->setMontantTotal($montantTotal);
+                } else {
+                    $participation->setMontantTotal(0);
+                }
+                $entityManager->persist($participation);
             }
-            
-            $em->flush();
-            
-            $this->addFlash('success', 'La liste des participants a été mise à jour avec succès!');
-            return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
         }
+        
+        $entityManager->flush();
 
-        return $this->render('evenement/gerer_participants.html.twig', [
-            'evenement' => $evenement,
-            'form' => $form->createView(),
-        ]);
+        $this->addFlash('success', 'Événement modifié avec succès !');
+        return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
     }
 
-    #[Route('/{id}/ajouter-participant', name: 'app_evenement_ajouter_participant', methods: ['GET', 'POST'])]
-    public function ajouterParticipant(Request $request, Evenement $evenement, EntityManagerInterface $em): Response
-    {
-        $adherentsActifs = $em->getRepository(Liste::class)->createQueryBuilder('l')
-            ->where('l.statut != :statutRadie')
-            ->setParameter('statutRadie', 'radie')
-            ->orderBy('l.nom', 'ASC')
-            ->getQuery()
-            ->getResult();
+    return $this->render('evenement/edit.html.twig', [
+        'evenement' => $evenement,
+        'form' => $form->createView(),
+        'quantitesDesignations' => $quantitesDesignations,
+        'nbParticipants' => $nbParticipants,
+    ]);
+}
+
+    #[Route('/{id}/gerer-participants', name: 'app_evenement_gerer_participants', methods: ['GET', 'POST'])]
+public function gererParticipants(Request $request, Evenement $evenement, EntityManagerInterface $em): Response
+{
+    $participantsActuels = [];
+    foreach ($evenement->getParticipations() as $participation) {
+        $adherent = $participation->getAdherent();
+        if ($adherent && $adherent->getStatut() !== 'radie') {
+            $participantsActuels[] = $adherent;
+        }
+    }
+
+    $form = $this->createFormBuilder()
+        ->add('participants', EntityType::class, [
+            'class' => Liste::class,
+            'choice_label' => 'nom',
+            'multiple' => true,
+            'expanded' => true,
+            'required' => false,
+            'data' => $participantsActuels,
+            'label' => 'Sélectionnez les participants',
+            'attr' => ['class' => 'participants-checkbox-list'],
+            'query_builder' => function($repository) {
+                return $repository->createQueryBuilder('l')
+                    ->where('l.statut != :statutRadie')
+                    ->setParameter('statutRadie', 'radie')
+                    ->orderBy('l.nom', 'ASC');
+            },
+        ])
+        ->getForm();
+
+    $form->handleRequest($request);
+
+    if ($form->isSubmitted() && $form->isValid()) {
+        $nouveauxParticipants = $form->get('participants')->getData();
         
-        $form = $this->createFormBuilder()
-            ->add('participant', EntityType::class, [
-                'class' => Liste::class,
-                'choice_label' => 'nom',
-                'multiple' => false,
-                'expanded' => false,
-                'required' => true,
-                'label' => 'Ajouter un participant',
-                'attr' => ['class' => 'form-control custom-input'],
-                'choices' => $adherentsActifs
-            ])
-            ->add('quantite', IntegerType::class, [
-                'label' => 'Nombre de représentants',
-                'required' => true,
-                'attr' => ['class' => 'form-control custom-input', 'min' => 1, 'value' => 1]
-            ])
-            ->add('reference', TextType::class, [
-                'label' => 'Référence du paiement',
-                'required' => false,
-                'attr' => ['class' => 'form-control custom-input', 'placeholder' => 'N° chèque, ref virement...']
-            ])
-            ->getForm();
-
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $participant = $form->get('participant')->getData();
-            $quantite = $form->get('quantite')->getData();
-            $reference = $form->get('reference')->getData();
-            
+        // Supprimer les participants retirés
+        foreach ($evenement->getParticipations() as $participation) {
+            $adherent = $participation->getAdherent();
+            if ($adherent && $adherent->getStatut() !== 'radie' && !in_array($adherent, $nouveauxParticipants)) {
+                $em->remove($participation);
+            }
+        }
+        
+        // Ajouter les nouveaux participants
+        foreach ($nouveauxParticipants as $participant) {
             $existe = false;
             foreach ($evenement->getParticipations() as $participation) {
                 if ($participation->getAdherent() === $participant) {
@@ -281,26 +438,160 @@ final class EvenementController extends AbstractController
                 $participation->setAdherent($participant);
                 $participation->setEvenement($evenement);
                 $participation->setStatutPaiement('impaye');
-                $participation->setQuantite($quantite);
-                $participation->setReference($reference);
-                $participation->calculerMontantTotal();
+                
+                // Initialiser avec 1 participant par défaut
+                $lignes = $evenement->getLignes();
+                $hasValidLignes = false;
+                foreach ($lignes as $ligne) {
+                    if ($ligne->getDesignation() !== '') {
+                        $hasValidLignes = true;
+                        break;
+                    }
+                }
+                
+                if ($evenement->getMontantFixe() && $evenement->getMontantFixe() > 0 && !$hasValidLignes) {
+                    $participation->setMontantTotal($evenement->getMontantFixe());
+                } elseif ($hasValidLignes) {
+                    foreach ($lignes as $ligne) {
+                        if ($ligne->getDesignation() !== '') {
+                            $participationLigne = new ParticipationLigne();
+                            $participationLigne->setLigne($ligne);
+                            $participationLigne->setQuantite(1);
+                            $participationLigne->calculerMontantLigne();
+                            $participation->addParticipationLigne($participationLigne);
+                        }
+                    }
+                    $participation->recalculerMontantTotal();
+                } else {
+                    $participation->setMontantTotal(0);
+                }
                 
                 $em->persist($participation);
-                $em->flush();
-                
-                $this->addFlash('success', sprintf('Participant ajouté avec succès! (%d représentant(s))', $quantite));
-            } else {
-                $this->addFlash('warning', 'Ce participant est déjà inscrit à cet événement.');
+            }
+        }
+        
+        $em->flush();
+        
+        $this->addFlash('success', 'La liste des participants a été mise à jour avec succès !');
+        return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
+    }
+
+    return $this->render('evenement/gerer_participants.html.twig', [
+        'evenement' => $evenement,
+        'form' => $form->createView(),
+    ]);
+}
+
+    #[Route('/{id}/ajouter-participant', name: 'app_evenement_ajouter_participant', methods: ['GET', 'POST'])]
+public function ajouterParticipant(Request $request, Evenement $evenement, EntityManagerInterface $em): Response
+{
+    $adherentsActifs = $em->getRepository(Liste::class)->createQueryBuilder('l')
+        ->where('l.statut != :statutRadie')
+        ->setParameter('statutRadie', 'radie')
+        ->orderBy('l.nom', 'ASC')
+        ->getQuery()
+        ->getResult();
+    
+    $form = $this->createFormBuilder()
+        ->add('participant', EntityType::class, [
+            'class' => Liste::class,
+            'choice_label' => 'nom',
+            'multiple' => false,
+            'expanded' => false,
+            'required' => true,
+            'label' => 'Adhérent',
+            'attr' => ['class' => 'form-control custom-input'],
+            'choices' => $adherentsActifs
+        ])
+        ->add('quantite', IntegerType::class, [
+            'label' => 'Nombre de participants',
+            'required' => false,
+            'attr' => ['class' => 'form-control custom-input', 'min' => 1, 'value' => 1]
+        ])
+        ->getForm();
+
+    $form->handleRequest($request);
+
+    if ($form->isSubmitted() && $form->isValid()) {
+        $participant = $form->get('participant')->getData();
+        $quantite = $form->get('quantite')->getData() ?? 1;
+        
+        // Récupérer les quantités temporaires par désignation
+        $quantitesDesignationsTemp = $request->request->all('quantite_designation_temp') ?? [];
+        
+        $existe = false;
+        foreach ($evenement->getParticipations() as $participation) {
+            if ($participation->getAdherent() === $participant) {
+                $existe = true;
+                break;
+            }
+        }
+        
+        if (!$existe) {
+            $participation = new Participation();
+            $participation->setAdherent($participant);
+            $participation->setEvenement($evenement);
+            $participation->setStatutPaiement('impaye');
+            
+            // 🔥 FIX: Définir le nombre de participants
+            $participation->setNbParticipants($quantite);
+            
+            $montantTotal = 0;
+            $lignes = $evenement->getLignes();
+            $hasValidLignes = false;
+            
+            // Vérifier s'il y a des lignes valides
+            foreach ($lignes as $ligne) {
+                if ($ligne->getDesignation() !== '') {
+                    $hasValidLignes = true;
+                    break;
+                }
             }
             
-            return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
+            // Si montant fixe est défini ET pas de désignations
+            if ($evenement->getMontantFixe() && $evenement->getMontantFixe() > 0 && !$hasValidLignes) {
+                $participation->setMontantTotal($evenement->getMontantFixe() * $quantite);
+            } elseif ($hasValidLignes) {
+                // Utiliser les quantités temporaires
+                $ligneIndex = 0;
+                foreach ($lignes as $ligne) {
+                    if ($ligne->getDesignation() === '') {
+                        $ligneIndex++;
+                        continue;
+                    }
+                    
+                    $quantiteLigne = isset($quantitesDesignationsTemp[$ligneIndex]) ? (int) $quantitesDesignationsTemp[$ligneIndex] : 0;
+                    if ($quantiteLigne > 0) {
+                        $participationLigne = new ParticipationLigne();
+                        $participationLigne->setLigne($ligne);
+                        $participationLigne->setQuantite($quantiteLigne);
+                        $participationLigne->calculerMontantLigne();
+                        $participation->addParticipationLigne($participationLigne);
+                        $montantTotal += $participationLigne->getMontantLigne();
+                    }
+                    $ligneIndex++;
+                }
+                $participation->setMontantTotal($montantTotal);
+            } else {
+                $participation->setMontantTotal(0);
+            }
+            
+            $em->persist($participation);
+            $em->flush();
+            
+            $this->addFlash('success', sprintf('Participant "%s" ajouté avec succès !', $participant->getNom()));
+        } else {
+            $this->addFlash('warning', 'Ce participant est déjà inscrit à cet événement.');
         }
-
-        return $this->render('evenement/ajouter_participant.html.twig', [
-            'evenement' => $evenement,
-            'form' => $form->createView(),
-        ]);
+        
+        return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
     }
+
+    return $this->render('evenement/ajouter_participant.html.twig', [
+        'evenement' => $evenement,
+        'form' => $form->createView(),
+    ]);
+}
 
     #[Route('/{id}/supprimer-participant/{participation_id}', name: 'app_evenement_supprimer_participant', methods: ['POST'])]
     public function supprimerParticipant(
@@ -345,8 +636,9 @@ final class EvenementController extends AbstractController
         if ($this->isCsrfTokenValid('delete' . $evenement->getId(), $token)) {
             $evenementData = [
                 'nom' => $evenement->getNom(),
+                'periode' => $evenement->getPeriode(),
                 'date' => $evenement->getDate()?->format('Y-m-d'),
-                'montant' => $evenement->getMontant(),
+                'type_document' => $evenement->getTypeDocument(),
             ];
             
             $entityManager->remove($evenement);
@@ -418,7 +710,7 @@ final class EvenementController extends AbstractController
             return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
         }
         
-        $montantTotal = $evenement->getMontant() * $participation->getQuantite();
+        $montantTotal = $participation->getMontantTotal() ?? 0;
         $resteAPayer = $participation->getResteAPayer();
         
         $paiement = new PaiementEvenement();
@@ -431,10 +723,7 @@ final class EvenementController extends AbstractController
         
         if ($form->isSubmitted() && $form->isValid()) {
             $em->persist($paiement);
-            
             $participation->addPaiement($paiement);
-            $participation->setStatutPaiement('paye');
-            
             $em->flush();
             
             $this->auditLogger->logPayment(
@@ -504,11 +793,38 @@ final class EvenementController extends AbstractController
             }
             
             $this->addFlash('success', 'Reçu généré avec succès !');
-            
             return $this->redirectToRoute('app_document_adherent', ['id' => $participation->getAdherent()->getId()]);
         } catch (\Exception $e) {
             $this->addFlash('error', 'Erreur lors de la génération du reçu : ' . $e->getMessage());
             return $this->redirectToRoute('app_evenement_history', ['adherent_id' => $participation->getAdherent()->getId()]);
+        }
+    }
+
+    #[Route('/generer-note-debit-evenement/{participation_id}', name: 'app_document_generer_note_debit_evenement', methods: ['GET'])]
+    public function genererNoteDebitEvenement(int $participation_id, EntityManagerInterface $em): Response
+    {
+        $participation = $em->getRepository(Participation::class)->find($participation_id);
+        
+        if (!$participation) {
+            $this->addFlash('error', 'Participation non trouvée');
+            return $this->redirectToRoute('app_home');
+        }
+        
+        $adherent = $participation->getAdherent();
+        $evenement = $participation->getEvenement();
+        
+        if ($adherent->getStatut() === 'radie') {
+            $this->addFlash('error', 'Impossible : cet adhérent est radié.');
+            return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
+        }
+        
+        try {
+            $document = $this->documentGenerator->generateNoteDebitFromParticipation($participation);
+            $this->addFlash('success', 'Note de débit générée avec succès !');
+            return $this->redirectToRoute('app_document_adherent', ['id' => $adherent->getId()]);
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'Erreur lors de la génération : ' . $e->getMessage());
+            return $this->redirectToRoute('app_evenement_show', ['id' => $evenement->getId()]);
         }
     }
 }

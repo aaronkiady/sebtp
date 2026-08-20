@@ -33,7 +33,7 @@ class PaiementEvenementType extends AbstractType
                     'Espèces' => 'especes',
                     'Chèque' => 'cheque',
                     'Virement bancaire' => 'virement',
-                    //'Mobile Money' => 'mobile_money',
+                    'Mobile Money' => 'mobile_money',
                     'Autre' => 'autre',
                 ],
                 'attr' => ['class' => 'form-select custom-input'],
@@ -49,7 +49,8 @@ class PaiementEvenementType extends AbstractType
                 'label' => 'Commentaire',
                 'attr' => ['class' => 'form-control custom-input'],
                 'required' => false,
-            ]);
+            ])
+        ;
     }
 
     public function configureOptions(OptionsResolver $resolver): void

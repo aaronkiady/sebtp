@@ -1,0 +1,66 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier les quantités - {{ participation.adherent.nom }}{% endblock %}
+
+{% block body %}
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_evenement_show', {'id': evenement.id}) }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-user-edit"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Modifier les quantités</h1>
+                    <p class="text-muted mb-0">{{ participation.adherent.nom }} - {{ evenement.nom }}</p>
+                </div>
+            </div>
+        </div>
+
+        {{ form_start(form) }}
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Désignation</th>
+                            <th>Prix unitaire</th>
+                            <th>Quantité</th>
+                            <th>Montant ligne</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for participationLigne in form.participationLignes %}
+                            <tr>
+                                <td>{{ participationLigne.vars.value.ligne.designation }}</td>
+                                <td>{{ participationLigne.vars.value.ligne.montantUnitaire|number_format(0, '.', ' ') }} MGA</td>
+                                <td>{{ form_widget(participationLigne.quantite, {'attr': {'class': 'form-control', 'min': 0}}) }}</td>
+                                <td class="fw-bold text-primary">
+                                    {{ (participationLigne.vars.value.ligne.montantUnitaire * participationLigne.vars.value.quantite)|number_format(0, '.', ' ') }} MGA
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="3" class="fw-bold text-end">TOTAL</td>
+                            <td class="fw-bold text-success">{{ participation.montantTotal|number_format(0, '.', ' ') }} MGA</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-3">
+                <a href="{{ path('app_evenement_show', {'id': evenement.id}) }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-2"></i> Annuler
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i> Enregistrer
+                </button>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}

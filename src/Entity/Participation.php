@@ -26,9 +26,6 @@ class Participation
     #[ORM\Column(length: 20)]
     private string $statutPaiement = 'impaye';
 
-    #[ORM\Column]
-    private ?int $quantite = 1;
-
     #[ORM\Column(nullable: true)]
     private ?float $montantTotal = null;
 
@@ -38,6 +35,15 @@ class Participation
     #[ORM\Column(nullable: true)]
     private ?\DateTime $datePaiement = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $nbParticipants = null;
+
+    /**
+     * @var Collection<int, ParticipationLigne>
+     */
+    #[ORM\OneToMany(mappedBy: 'participation', targetEntity: ParticipationLigne::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $participationLignes;
+
     /**
      * @var Collection<int, PaiementEvenement>
      */
@@ -46,9 +52,9 @@ class Participation
 
     public function __construct()
     {
+        $this->participationLignes = new ArrayCollection();
         $this->paiements = new ArrayCollection();
         $this->statutPaiement = 'impaye';
-        $this->quantite = 1;
     }
 
     public function getId(): ?int
@@ -75,7 +81,6 @@ class Participation
     public function setEvenement(?Evenement $evenement): static
     {
         $this->evenement = $evenement;
-        $this->calculerMontantTotal();
         return $this;
     }
 
@@ -90,18 +95,6 @@ class Participation
         return $this;
     }
 
-    public function getQuantite(): ?int
-    {
-        return $this->quantite;
-    }
-
-    public function setQuantite(int $quantite): static
-    {
-        $this->quantite = $quantite;
-        $this->calculerMontantTotal();
-        return $this;
-    }
-
     public function getMontantTotal(): ?float
     {
         return $this->montantTotal;
@@ -111,15 +104,6 @@ class Participation
     {
         $this->montantTotal = $montantTotal;
         return $this;
-    }
-
-    public function calculerMontantTotal(): void
-    {
-        if ($this->evenement && $this->evenement->getMontant()) {
-            $this->montantTotal = $this->evenement->getMontant() * $this->quantite;
-        } else {
-            $this->montantTotal = 0;
-        }
     }
 
     public function isPaye(): bool
@@ -147,6 +131,77 @@ class Participation
     {
         $this->datePaiement = $datePaiement;
         return $this;
+    }
+
+     public function getNbParticipants(): ?int
+    {
+        return $this->nbParticipants;
+    }
+
+    public function setNbParticipants(?int $nbParticipants): static
+    {
+        $this->nbParticipants = $nbParticipants;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ParticipationLigne>
+     */
+    public function getParticipationLignes(): Collection
+    {
+        return $this->participationLignes;
+    }
+
+    public function addParticipationLigne(ParticipationLigne $participationLigne): static
+    {
+        if (!$this->participationLignes->contains($participationLigne)) {
+            $this->participationLignes->add($participationLigne);
+            $participationLigne->setParticipation($this);
+            $this->recalculerMontantTotal();
+        }
+        return $this;
+    }
+
+    public function removeParticipationLigne(ParticipationLigne $participationLigne): static
+    {
+        if ($this->participationLignes->removeElement($participationLigne)) {
+            if ($participationLigne->getParticipation() === $this) {
+                $participationLigne->setParticipation(null);
+            }
+            $this->recalculerMontantTotal();
+        }
+        return $this;
+    }
+
+    /**
+     * Recalcule le montant total à partir des lignes de participation
+     */
+    public function recalculerMontantTotal(): void
+    {
+        $total = 0;
+        foreach ($this->participationLignes as $pl) {
+            $total += $pl->getMontantLigne();
+        }
+        $this->montantTotal = $total;
+    }
+
+    /**
+     * Retourne la quantité totale de participants (somme des quantités de toutes les lignes)
+     * Cette méthode est utilisée dans les templates
+     */
+    public function getQuantiteTotale(): int
+    {
+        // Si l'événement a des désignations, on somme les quantités des lignes
+        if ($this->participationLignes->count() > 0) {
+            $total = 0;
+            foreach ($this->participationLignes as $pl) {
+                $total += $pl->getQuantite();
+            }
+            return $total;
+        }
+        
+        // Sinon, retourner nbParticipants
+        return $this->nbParticipants ?? 1;
     }
 
     /**
@@ -178,14 +233,10 @@ class Participation
         return $this;
     }
 
-    /**
-     * Met à jour les champs de la participation à partir des paiements
-     */
     private function updateFromPaiements(): void
     {
         if ($this->paiements->isEmpty()) {
             $this->statutPaiement = 'impaye';
-            $this->montantTotal = $this->evenement ? $this->evenement->getMontant() * $this->quantite : 0;
             $this->datePaiement = null;
             $this->reference = null;
             return;
@@ -201,17 +252,14 @@ class Participation
             }
         }
 
-        $montantTotal = $this->evenement ? $this->evenement->getMontant() * $this->quantite : 0;
+        $montantTotal = $this->montantTotal ?? 0;
 
-        if ($totalPaye >= $montantTotal) {
+        if ($totalPaye >= $montantTotal && $montantTotal > 0) {
             $this->statutPaiement = 'paye';
-            $this->montantTotal = $montantTotal;
         } elseif ($totalPaye > 0) {
             $this->statutPaiement = 'partiel';
-            $this->montantTotal = $totalPaye;
         } else {
             $this->statutPaiement = 'impaye';
-            $this->montantTotal = $montantTotal;
         }
 
         if ($dernierPaiement) {
@@ -220,9 +268,6 @@ class Participation
         }
     }
 
-    /**
-     * Récupère le montant total payé
-     */
     public function getMontantTotalPaye(): float
     {
         $total = 0;
@@ -232,12 +277,13 @@ class Participation
         return $total;
     }
 
-    /**
-     * Récupère le reste à payer
-     */
     public function getResteAPayer(): float
     {
-        $montantTotal = $this->evenement ? $this->evenement->getMontant() * $this->quantite : 0;
-        return max(0, $montantTotal - $this->getMontantTotalPaye());
+        return max(0, ($this->montantTotal ?? 0) - $this->getMontantTotalPaye());
+    }
+
+    public function setQuantite(int $quantite): static
+    {
+        return $this;
     }
 }

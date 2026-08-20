@@ -27,6 +27,41 @@
         </div>
 
         <div class="p-4 p-md-5">
+
+            {# Informations sur l'événement #}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Informations de l'événement :</strong>
+                <ul class="mt-2 mb-0">
+                    <li><strong>Nom :</strong> {{ evenement.nom }}</li>
+                    <li><strong>Période :</strong> {{ evenement.periode|default('Non définie') }}</li>
+                    {% if evenement.montantFixe and evenement.montantFixe > 0 %}
+                        <li><strong>Type :</strong> Montant fixe (<strong>{{ evenement.montantFixe|number_format(0, '.', ' ') }} MGA</strong> par participant)</li>
+                    {% elseif evenement.lignes|length > 0 %}
+                        {% set hasValidLignes = false %}
+                        {% for ligne in evenement.lignes %}
+                            {% if ligne.designation is not empty %}
+                                {% set hasValidLignes = true %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if hasValidLignes %}
+                            <li><strong>Type :</strong> Désignations disponibles :</li>
+                            <ul>
+                                {% for ligne in evenement.lignes %}
+                                    {% if ligne.designation is not empty %}
+                                        <li>{{ ligne.designation }} : {{ ligne.montantUnitaire|number_format(0, '.', ' ') }} MGA</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <li><strong>Type :</strong> Aucune désignation définie</li>
+                        {% endif %}
+                    {% else %}
+                        <li><strong>Type :</strong> Aucun montant défini</li>
+                    {% endif %}
+                </ul>
+            </div>
+
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label">
@@ -37,31 +72,73 @@
                     <div class="text-danger small mt-1">{{ form_errors(form.participant) }}</div>
                     <small class="text-muted">Seuls les adhérents actifs sont affichés</small>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label">
-                        <i class="fas fa-users me-2 opacity-50"></i>
-                        {{ form.quantite.vars.label }}
-                    </label>
-                    {{ form_widget(form.quantite, {'attr': {'class': 'form-control custom-input'}}) }}
-                    <div class="text-danger small mt-1">{{ form_errors(form.quantite) }}</div>
-                    <small class="text-muted">Nombre de représentants de cette entreprise</small>
-                </div>
-                <div class="col-md-12">
-                    <label class="form-label">
-                        <i class="fas fa-file-invoice me-2 opacity-50"></i>
-                        {{ form.reference.vars.label }}
-                    </label>
-                    {{ form_widget(form.reference, {'attr': {'class': 'form-control custom-input'}}) }}
-                    <div class="text-danger small mt-1">{{ form_errors(form.reference) }}</div>
-                    <small class="text-muted">Référence du paiement (n° chèque, référence virement, etc.)</small>
-                </div>
+
+                {# Champ "Nombre de représentants" - UNIQUEMENT si montant fixe ET pas de désignations #}
+                {% set hasValidLignes = false %}
+                {% for ligne in evenement.lignes %}
+                    {% if ligne.designation is not empty %}
+                        {% set hasValidLignes = true %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if evenement.montantFixe and evenement.montantFixe > 0 and not hasValidLignes %}
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-users me-2 opacity-50"></i>
+                            {{ form.quantite.vars.label }}
+                        </label>
+                        {{ form_widget(form.quantite, {'attr': {'class': 'form-control custom-input'}}) }}
+                        <div class="text-danger small mt-1">{{ form_errors(form.quantite) }}</div>
+                        <small class="text-muted">Nombre de participants pour cet adhérent</small>
+                        <div class="text-muted small mt-1">
+                            <i class="fas fa-calculator me-1"></i>
+                            Total : <strong>{{ evenement.montantFixe|number_format(0, '.', ' ') }} MGA</strong> × quantité
+                        </div>
+                    </div>
+                {% endif %}
             </div>
 
-            {% if evenement.montant %}
-            <div class="alert alert-info mt-3">
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Information :</strong> Montant unitaire: {{ evenement.montant|number_format(0, '.', ' ') }} MGA
-            </div>
+            {# Affichage des désignations avec les quantités si l'événement a des lignes #}
+            {% if hasValidLignes %}
+                <div class="mt-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="fas fa-list me-2 text-primary"></i>
+                        Quantités par désignation
+                    </h6>
+                    <div class="alert alert-secondary">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Pour chaque désignation, indiquez la quantité. Le montant total sera : quantité × prix unitaire.
+                    </div>
+                    <div class="row g-3">
+                        {% for ligne in evenement.lignes %}
+                            {% if ligne.designation is not empty %}
+                                {% set ligneIndex = loop.index0 %}
+                                <div class="col-md-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text" style="font-size: 12px; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ ligne.designation }}">
+                                            {{ ligne.designation }}
+                                        </span>
+                                        <input type="number" 
+                                               name="quantite_designation_temp[{{ ligneIndex }}]" 
+                                               class="form-control quantite-designation-temp" 
+                                               value="1" 
+                                               min="0"
+                                               step="1"
+                                               placeholder="Qté">
+                                        <span class="input-group-text" style="font-size: 11px;">
+                                            × {{ ligne.montantUnitaire|number_format(0, '.', ' ') }} MGA
+                                        </span>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Ces quantités seront appliquées lors de l'ajout du participant.
+                        Vous pourrez les modifier ultérieurement.
+                    </small>
+                </div>
             {% endif %}
 
             <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
@@ -76,4 +153,14 @@
     </div>
     {{ form_end(form) }}
 </div>
+
+{% block stylesheets %}
+{{ parent() }}
+<style>
+.custom-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+</style>
+{% endblock %}
 {% endblock %}

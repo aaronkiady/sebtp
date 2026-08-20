@@ -6,9 +6,6 @@ use App\Entity\Formation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<Formation>
- */
 class FormationRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -18,15 +15,13 @@ class FormationRepository extends ServiceEntityRepository
 
     /**
      * Recherche des formations par terme
-     * @param string|null $term
-     * @return Formation[]
      */
     public function findBySearch(?string $term): array
     {
         $qb = $this->createQueryBuilder('f');
 
         if ($term) {
-            $qb->andWhere('f.nom LIKE :q OR f.type LIKE :q OR f.organisateur LIKE :q')
+            $qb->andWhere('f.nom LIKE :q OR f.formateurs LIKE :q OR f.organisateur LIKE :q')
                ->setParameter('q', '%' . $term . '%');
         }
 
@@ -46,18 +41,18 @@ class FormationRepository extends ServiceEntityRepository
 
         if ($annee && $annee !== 'tous') {
             $qb->andWhere('YEAR(f.dateDebut) = :annee OR YEAR(f.dateFin) = :annee')
-            ->setParameter('annee', $annee);
+               ->setParameter('annee', $annee);
         }
 
         if ($formationId !== null && $formationId > 0) {
             $qb->andWhere('f.id = :formationId')
-            ->setParameter('formationId', $formationId);
+               ->setParameter('formationId', $formationId);
         }
 
         return $qb->orderBy('f.dateDebut', 'DESC')
-                ->addOrderBy('f.nom', 'ASC')
-                ->getQuery()
-                ->getResult();
+                  ->addOrderBy('f.nom', 'ASC')
+                  ->getQuery()
+                  ->getResult();
     }
 
     /**
@@ -105,5 +100,34 @@ class FormationRepository extends ServiceEntityRepository
         }
         
         return array_unique($years);
+    }
+
+    /**
+     * Récupère les statistiques pour l'accueil
+     */
+    public function getStats(): array
+    {
+        $totalFormations = $this->createQueryBuilder('f')
+            ->select('COUNT(f.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $totalParticipants = $this->createQueryBuilder('f')
+            ->select('SUM(SIZE(f.participants))')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        // Calcul du total des bénéficiaires (via JSON)
+        $formations = $this->findAll();
+        $totalBeneficiaires = 0;
+        foreach ($formations as $formation) {
+            $totalBeneficiaires += $formation->getTotalBeneficiaires();
+        }
+
+        return [
+            'totalFormations' => (int) $totalFormations,
+            'totalParticipants' => (int) $totalParticipants,
+            'totalBeneficiaires' => (int) $totalBeneficiaires,
+        ];
     }
 }

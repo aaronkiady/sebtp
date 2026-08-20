@@ -1,0 +1,13 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Edit Partenariats{% endblock %}
+
+{% block body %}
+    <h1>Edit Partenariats</h1>
+
+    {{ include('partenariats/_form.html.twig', {'button_label': 'Update'}) }}
+
+    <a href="{{ path('app_partenariats_index') }}">back to list</a>
+
+    {{ include('partenariats/_delete_form.html.twig') }}
+{% endblock %}

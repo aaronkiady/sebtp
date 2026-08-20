@@ -8,7 +8,9 @@ use App\Form\FormationType;
 use App\Repository\FormationRepository;
 use App\Service\AuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -23,7 +25,7 @@ final class FormationController extends AbstractController
         $this->auditLogger = $auditLogger;
     }
 
-    #[Route(name: 'app_formation_index', methods: ['GET'])]
+    #[Route('/', name: 'app_formation_index', methods: ['GET'])]
     public function index(Request $request, FormationRepository $formationRepository): Response
     {
         $searchTerm = $request->query->get('q');
@@ -42,7 +44,6 @@ final class FormationController extends AbstractController
             throw $this->createNotFoundException("Adhérent non trouvé");
         }
 
-        // Si l'adhérent est radié, ne pas afficher les formations
         if ($adherent->getStatut() === 'radie') {
             $formations = [];
         } else {
@@ -52,7 +53,7 @@ final class FormationController extends AbstractController
             if ($searchTerm) {
                 $formations = $formations->filter(function(Formation $f) use ($searchTerm) {
                     return stripos($f->getNom(), $searchTerm) !== false || 
-                        stripos($f->getType(), $searchTerm) !== false;
+                        stripos($f->getFormateurs(), $searchTerm) !== false;
                 });
             }
         }
@@ -60,6 +61,51 @@ final class FormationController extends AbstractController
         return $this->render('formation/history.html.twig', [
             'adherent' => $adherent,
             'formations' => $formations,
+        ]);
+    }
+
+    #[Route('/{id}/participants', name: 'app_formation_show_participants', methods: ['GET', 'POST'])]
+    public function showParticipants(Request $request, Formation $formation, EntityManagerInterface $em): Response
+    {
+        $form = $this->createFormBuilder()
+            ->getForm();
+        
+        $participants = $formation->getParticipants();
+        $nombresFormes = $formation->getNombresFormes() ?? [];
+        
+        foreach ($participants as $participant) {
+            $defaultValue = $nombresFormes[$participant->getId()] ?? 0;
+            $form->add('nombre_' . $participant->getId(), IntegerType::class, [
+                'label' => false,
+                'data' => $defaultValue,
+                'attr' => ['class' => 'form-control text-center', 'min' => 0],
+                'required' => false,
+            ]);
+        }
+        
+        $form->handleRequest($request);
+        
+        if ($form->isSubmitted() && $form->isValid()) {
+            $data = $form->getData();
+            $newNombres = [];
+            
+            foreach ($participants as $participant) {
+                $key = 'nombre_' . $participant->getId();
+                if (isset($data[$key]) && $data[$key] !== null) {
+                    $newNombres[$participant->getId()] = (int) $data[$key];
+                }
+            }
+            
+            $formation->setNombresFormes($newNombres);
+            $em->flush();
+            
+            $this->addFlash('success', 'Les nombres de bénéficiaires ont été mis à jour !');
+            return $this->redirectToRoute('app_formation_show_participants', ['id' => $formation->getId()]);
+        }
+        
+        return $this->render('formation/show_participants.html.twig', [
+            'formation' => $formation,
+            'form' => $form->createView(),
         ]);
     }
 
@@ -71,30 +117,18 @@ final class FormationController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $participantsDetails = [];
             $participants = $formation->getParticipants();
-            
-            foreach ($participants as $participant) {
-                $detailKey = 'participant_detail_' . $participant->getId();
-                $detail = $request->request->get($detailKey);
-                if ($detail) {
-                    $participantsDetails[$participant->getId()] = $detail;
-                }
-            }
-            
-            $formation->setParticipantsDetails($participantsDetails);
             
             $entityManager->persist($formation);
             $entityManager->flush();
 
-            // Audit log
             $this->auditLogger->logCreate(
                 'Formation',
                 $formation->getId(),
                 $formation->getNom(),
                 [
                     'nom' => $formation->getNom(),
-                    'type' => $formation->getType(),
+                    'formateurs' => $formation->getFormateurs(),
                     'date_debut' => $formation->getDateDebut()?->format('Y-m-d'),
                     'date_fin' => $formation->getDateFin()?->format('Y-m-d'),
                     'organisateur' => $formation->getOrganisateur(),
@@ -120,60 +154,33 @@ final class FormationController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/participants', name: 'app_formation_show_participants', methods: ['GET'])]
-    public function showParticipants(Formation $formation): Response
-    {
-        $participantsFiltres = $formation->getParticipants()->filter(function($participant) {
-            return $participant->getStatut() !== 'radie';
-        });
-
-        return $this->render('liste/show_formation.html.twig', [
-            'formation' => $formation,
-            'participantsFiltres' => $participantsFiltres,
-        ]);
-    }
-
     #[Route('/{id}/edit', name: 'app_formation_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, Formation $formation, EntityManagerInterface $entityManager): Response
     {
         $oldData = [
             'nom' => $formation->getNom(),
-            'type' => $formation->getType(),
+            'formateurs' => $formation->getFormateurs(),
             'date_debut' => $formation->getDateDebut()?->format('Y-m-d'),
             'date_fin' => $formation->getDateFin()?->format('Y-m-d'),
             'organisateur' => $formation->getOrganisateur(),
-            'participants_details' => $formation->getParticipantsDetails(),
+            'nombres_formes' => $formation->getNombresFormes(),
         ];
 
         $form = $this->createForm(FormationType::class, $formation);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $participantsDetails = [];
-            $participants = $formation->getParticipants();
-            
-            foreach ($participants as $participant) {
-                $detailKey = 'participant_detail_' . $participant->getId();
-                $detail = $request->request->get($detailKey);
-                if ($detail) {
-                    $participantsDetails[$participant->getId()] = $detail;
-                }
-            }
-            
-            $formation->setParticipantsDetails($participantsDetails);
-            
             $entityManager->flush();
 
             $newData = [
                 'nom' => $formation->getNom(),
-                'type' => $formation->getType(),
+                'formateurs' => $formation->getFormateurs(),
                 'date_debut' => $formation->getDateDebut()?->format('Y-m-d'),
                 'date_fin' => $formation->getDateFin()?->format('Y-m-d'),
                 'organisateur' => $formation->getOrganisateur(),
-                'participants_details' => $formation->getParticipantsDetails(),
+                'nombres_formes' => $formation->getNombresFormes(),
             ];
 
-            // Audit log
             $this->auditLogger->logUpdate(
                 'Formation',
                 $formation->getId(),
@@ -192,12 +199,137 @@ final class FormationController extends AbstractController
         ]);
     }
 
+    #[Route('/{id}/ajouter-participant', name: 'app_formation_ajouter_participant', methods: ['GET', 'POST'])]
+public function ajouterParticipant(Request $request, Formation $formation, EntityManagerInterface $em): Response
+{
+    // Récupérer les adhérents actifs (non radiés)
+    $adherentsActifs = $em->getRepository(Liste::class)->createQueryBuilder('l')
+        ->where('l.statut != :statutRadie')
+        ->setParameter('statutRadie', 'radie')
+        ->orderBy('l.nom', 'ASC')
+        ->getQuery()
+        ->getResult();
+
+    // Créer un formulaire pour sélectionner un adhérent
+    $form = $this->createFormBuilder()
+        ->add('participant', EntityType::class, [
+            'class' => Liste::class,
+            'choice_label' => 'nom',
+            'multiple' => false,
+            'expanded' => false,
+            'required' => true,
+            'label' => 'Ajouter un participant',
+            'attr' => ['class' => 'form-control custom-input'],
+            'choices' => $adherentsActifs,
+            'query_builder' => function($repository) {
+                return $repository->createQueryBuilder('l')
+                    ->where('l.statut != :statutRadie')
+                    ->setParameter('statutRadie', 'radie')
+                    ->orderBy('l.nom', 'ASC');
+            },
+        ])
+        ->add('nombreBeneficiaires', IntegerType::class, [
+            'label' => 'Nombre de bénéficiaires (formés)',
+            'required' => false,
+            'data' => 1,
+            'attr' => ['class' => 'form-control', 'min' => 1],
+        ])
+        ->getForm();
+
+    $form->handleRequest($request);
+
+    if ($form->isSubmitted() && $form->isValid()) {
+        $participant = $form->get('participant')->getData();
+        $nombreBeneficiaires = $form->get('nombreBeneficiaires')->getData() ?? 1;
+
+        // Vérifier si le participant existe déjà
+        $existe = false;
+        foreach ($formation->getParticipants() as $p) {
+            if ($p->getId() === $participant->getId()) {
+                $existe = true;
+                break;
+            }
+        }
+
+        if (!$existe) {
+            // Ajouter le participant à la formation
+            $formation->addParticipant($participant);
+            
+            // Initialiser le nombre de bénéficiaires pour ce participant
+            $nombresFormes = $formation->getNombresFormes() ?? [];
+            $nombresFormes[$participant->getId()] = $nombreBeneficiaires;
+            $formation->setNombresFormes($nombresFormes);
+            
+            $em->flush();
+
+            $this->auditLogger->logUpdate(
+                'Formation',
+                $formation->getId(),
+                $formation->getNom(),
+                ['action' => 'Ajout participant'],
+                ['participant' => $participant->getNom(), 'nombre_beneficiaires' => $nombreBeneficiaires]
+            );
+
+            $this->addFlash('success', sprintf('Participant "%s" ajouté avec succès !', $participant->getNom()));
+        } else {
+            $this->addFlash('warning', 'Ce participant est déjà inscrit à cette formation.');
+        }
+
+        return $this->redirectToRoute('app_formation_show_participants', ['id' => $formation->getId()]);
+    }
+
+    return $this->render('formation/ajouter_participant.html.twig', [
+        'formation' => $formation,
+        'form' => $form->createView(),
+    ]);
+}
+
+    #[Route('/{id}/retirer-participant/{participant_id}', name: 'app_formation_retirer_participant', methods: ['POST'])]
+public function retirerParticipant(
+    Request $request,
+    Formation $formation,
+    int $participant_id,
+    EntityManagerInterface $em
+): Response {
+    $participant = $em->getRepository(Liste::class)->find($participant_id);
+    
+    if (!$participant) {
+        $this->addFlash('error', 'Participant non trouvé.');
+        return $this->redirectToRoute('app_formation_show_participants', ['id' => $formation->getId()]);
+    }
+
+    if ($this->isCsrfTokenValid('retirer_participant_' . $participant_id, $request->request->get('_token'))) {
+        $formation->removeParticipant($participant);
+        
+        // Supprimer le nombre de bénéficiaires pour ce participant
+        $nombresFormes = $formation->getNombresFormes() ?? [];
+        if (isset($nombresFormes[$participant_id])) {
+            unset($nombresFormes[$participant_id]);
+            $formation->setNombresFormes($nombresFormes);
+        }
+        
+        $em->flush();
+
+        $this->auditLogger->logUpdate(
+            'Formation',
+            $formation->getId(),
+            $formation->getNom(),
+            ['action' => 'Retrait participant'],
+            ['participant' => $participant->getNom()]
+        );
+
+        $this->addFlash('success', sprintf('Participant "%s" retiré avec succès !', $participant->getNom()));
+    }
+
+    return $this->redirectToRoute('app_formation_show_participants', ['id' => $formation->getId()]);
+}
+
     #[Route('/{id}', name: 'app_formation_delete', methods: ['POST'])]
     public function delete(Request $request, Formation $formation, EntityManagerInterface $entityManager): Response
     {
         $formationData = [
             'nom' => $formation->getNom(),
-            'type' => $formation->getType(),
+            'formateurs' => $formation->getFormateurs(),
             'date_debut' => $formation->getDateDebut()?->format('Y-m-d'),
             'date_fin' => $formation->getDateFin()?->format('Y-m-d'),
         ];
@@ -206,7 +338,6 @@ final class FormationController extends AbstractController
             $entityManager->remove($formation);
             $entityManager->flush();
 
-            // Audit log
             $this->auditLogger->logDelete(
                 'Formation',
                 $formation->getId(),

@@ -3,9 +3,6 @@
 namespace App\Form;
 
 use App\Entity\Formation;
-use App\Entity\Liste;
-use Doctrine\ORM\EntityRepository;
-use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -19,49 +16,41 @@ class FormationType extends AbstractType
         $builder
             ->add('nom', TextType::class, [
                 'label' => 'Nom de la formation',
-                'attr' => ['class' => 'form-control']
-            ])
-            ->add('reference', TextType::class, [
-                'label' => 'Référence',
-                'attr' => ['class' => 'form-control'],
+                'attr' => ['class' => 'form-control custom-input'],
                 'required' => false,
             ])
-            ->add('remarque', TextType::class, [
-                'label' => 'Remarque',
-                'attr' => ['class' => 'form-control'],
+            ->add('formateurs', TextType::class, [
+                'label' => 'Formateurs',
+                'attr' => ['class' => 'form-control custom-input'],
                 'required' => false,
-            ])
-            ->add('type', TextType::class, [
-                'label' => 'Type de formation',
-                'attr' => ['class' => 'form-control']
+                'help' => 'Nom des formateurs',
             ])
             ->add('dateDebut', DateType::class, [
                 'label' => 'Date de début',
                 'widget' => 'single_text',
-                'attr' => ['class' => 'form-control']
+                'attr' => ['class' => 'form-control custom-input'],
+                'required' => false,
             ])
             ->add('dateFin', DateType::class, [
                 'label' => 'Date de fin',
                 'widget' => 'single_text',
-                'attr' => ['class' => 'form-control']
+                'attr' => ['class' => 'form-control custom-input'],
+                'required' => false,
             ])
             ->add('organisateur', TextType::class, [
                 'label' => 'Organisateur',
-                'attr' => ['class' => 'form-control']
+                'attr' => ['class' => 'form-control custom-input'],
+                'required' => false,
             ])
-            ->add('participants', EntityType::class, [
-                'class' => Liste::class,
-                'choice_label' => 'nom',
-                'multiple' => true,
-                'expanded' => true,  // Changement : true pour des cases à cocher
-                'label' => 'Sélectionner les participants',
-                'attr' => ['class' => 'participants-checkbox-list'],
-                'query_builder' => function (EntityRepository $er) {
-                    return $er->createQueryBuilder('l')
-                        ->where('l.statut != :statutRadie')
-                        ->setParameter('statutRadie', 'radie')
-                        ->orderBy('l.nom', 'ASC');
-                },
+            ->add('reference', TextType::class, [
+                'label' => 'Référence',
+                'attr' => ['class' => 'form-control custom-input'],
+                'required' => false,
+            ])
+            ->add('remarque', TextType::class, [
+                'label' => 'Remarque',
+                'attr' => ['class' => 'form-control custom-input'],
+                'required' => false,
             ])
         ;
     }

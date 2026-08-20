@@ -1,89 +1,173 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Historique des événements - {{ adherent.nom }}{% endblock %}
+{% block title %}Historique Événements - {{ adherent.nom }}{% endblock %}
 
 {% block body %}
-<div class="main-wrapper mt-5">
-    <div class="form-card-wide p-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <a href="{{ path('app_liste_show', {'id': adherent.id}) }}" class="btn btn-outline-secondary btn-sm mb-3">
-                    <i class="fas fa-arrow-left"></i> Retour
-                </a>
-                <h2 class="fw-bold text-dark">Historique des événements</h2>
-                <p class="text-muted">{{ adherent.nom }}</p>
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Historique des Événements</h1>
+            <p class="text-muted">Participations de <strong>{{ adherent.nom }}</strong></p>
+        </div>
+        <a href="{{ path('app_liste_show', {'id': adherent.id}) }}" class="btn btn-outline-secondary shadow-sm">
+            <i class="fas fa-arrow-left"></i> Retour à la fiche
+        </a>
+    </div>
+
+    <div class="accordion" id="accordionEvenements">
+        {% for participation in participations %}
+        {% set evenement = participation.evenement %}
+        <div class="accordion-item mb-3 border rounded shadow-sm">
+            <h2 class="accordion-header" id="heading{{ participation.id }}">
+                <button class="accordion-button collapsed" type="button" 
+                        data-bs-toggle="collapse" data-bs-target="#collapse{{ participation.id }}" 
+                        aria-expanded="false" 
+                        aria-controls="collapse{{ participation.id }}">
+                    <div class="d-flex justify-content-between w-100 me-3">
+                        <strong class="text-primary">{{ evenement.nom }}</strong>
+                        <div class="d-flex gap-3">
+                            <span class="text-muted">{{ evenement.date ? evenement.date|date('d/m/Y') : 'Date non définie' }}</span>
+                            <span class="text-success">Montant: {{ participation.montantTotal|number_format(0, '.', ' ') }} MGA</span>
+                            <span class="text-success">Payé: {{ participation.getMontantTotalPaye|number_format(0, '.', ' ') }} MGA</span>
+                            <span class="text-danger">Reste: {{ participation.getResteAPayer|number_format(0, '.', ' ') }} MGA</span>
+                            {% if participation.statutPaiement == 'paye' %}
+                                <span class="badge bg-success">Payé</span>
+                            {% elseif participation.statutPaiement == 'partiel' %}
+                                <span class="badge bg-warning">Partiel</span>
+                            {% else %}
+                                <span class="badge bg-danger">Impayé</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </button>
+            </h2>
+            <div id="collapse{{ participation.id }}" class="accordion-collapse collapse" 
+                 aria-labelledby="heading{{ participation.id }}" data-bs-parent="#accordionEvenements">
+                <div class="accordion-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <div class="text-muted small">Montant total</div>
+                                    <h4 class="mb-0">{{ participation.montantTotal|number_format(0, '.', ' ') }} MGA</h4>
+                                    <small class="text-muted">
+                                        {% set totalQuantite = 0 %}
+                                        {% for pl in participation.participationLignes %}
+                                            {% set totalQuantite = totalQuantite + pl.quantite %}
+                                        {% endfor %}
+                                        {{ totalQuantite }} représentant(s)
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            {# Afficher les détails des lignes de participation #}
+                            {% if participation.participationLignes|length > 0 %}
+                            <h6 class="fw-bold mb-2">Détails de la participation</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Désignation</th>
+                                            <th class="text-center">Quantité</th>
+                                            <th class="text-end">Prix unitaire</th>
+                                            <th class="text-end">Montant</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for pl in participation.participationLignes %}
+                                        <tr>
+                                            <td>{{ pl.ligne.designation }}</td>
+                                            <td class="text-center">{{ pl.quantite }}</td>
+                                            <td class="text-end">{{ pl.ligne.montantUnitaire|number_format(0, '.', ' ') }} MGA</td>
+                                            <td class="text-end fw-bold">{{ pl.montantLigne|number_format(0, '.', ' ') }} MGA</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="3" class="fw-bold text-end">TOTAL</td>
+                                            <td class="fw-bold text-end">{{ participation.montantTotal|number_format(0, '.', ' ') }} MGA</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            {% endif %}
+
+                            {# Historique des paiements #}
+                            {% set paiements = participation.paiements %}
+                            {% if paiements|length > 0 %}
+                            <h6 class="fw-bold mb-2 mt-3">Historique des paiements</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Montant</th>
+                                            <th>Mode</th>
+                                            <th>Référence</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for paiement in paiements %}
+                                        <tr>
+                                            <td>{{ paiement.datePaiement|date('d/m/Y') }}</td>
+                                            <td class="text-success fw-bold">{{ paiement.montant|number_format(0, '.', ' ') }} MGA</td>
+                                            <td>{{ paiement.modePaiement|default('-') }}</td>
+                                            <td>{{ paiement.reference|default('-') }}</td>
+                                            <td class="text-center">
+                                                <div class="btn-group">
+                                                    <a href="{{ path('app_document_generer_note_debit_evenement', {'participation_id': participation.id}) }}" 
+                                                    class="btn btn-sm btn-warning" title="Générer la note de débit">
+                                                        <i class="fas fa-file-invoice"></i>
+                                                    </a>
+                                                    <a href="{{ path('app_document_generer_recu_evenement', {'participation_id': participation.id}) }}" 
+                                                    class="btn btn-sm btn-success" title="Générer le reçu">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </a>
+                                                    {#<form method="post" action="{{ path('app_participation_paiement_delete_from_history', {'id': paiement.id}) }}" 
+                                                        onsubmit="return confirm('Supprimer ce paiement ?')" style="display:inline">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_paiement_evenement_' ~ paiement.id) }}">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>#}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-light text-center">
+                                <i class="fas fa-info-circle me-1"></i> 
+                                Aucun paiement pour cette participation
+                            </div>
+                            {% endif %}
+                            <div class="text-end mt-2">
+                                <a href="{{ path('app_participation_paiement_new_from_history', {'participation_id': participation.id}) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus me-1"></i> Ajouter un paiement
+                                </a>
+                                {#<a href="{{ path('app_participation_toggle_from_history', {'id': participation.id}) }}" 
+                                   class="btn btn-sm btn-outline-secondary" title="Changer statut">
+                                    <i class="fas fa-exchange-alt me-1"></i> Changer statut
+                                </a>#}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-
-        {#{% for message in app.flashes('success') %}
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>{{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}#}
-
-        {% if adherent.statut == 'radie' %}
-            <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>Adhérent radié :</strong> Cet adhérent a été radié. L'historique des événements n'est pas disponible.
-            </div>
-        {% elseif participations|length > 0 %}
-            {# Affichage du tableau des participations #}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Événement</th>
-                            <th>Date</th>
-                            <th>Montant (MGA)</th>
-                            <th>Statut de paiement</th>
-                            {#<th>Action</th>#}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for participation in participations %}
-                            {% set evenement = participation.evenement %}
-                            <tr>
-                                <td class="fw-bold">{{ evenement.nom }}</td>
-                                <td>
-                                    <i class="far fa-calendar-alt me-1 text-muted"></i>
-                                    {{ evenement.date ? evenement.date|date('d/m/Y') : 'Date non définie' }}
-                                </td>
-                                <td class="fw-bold">
-                                    {{ evenement.montant ? evenement.montant|number_format(0, '.', ' ') : '0' }} MGA
-                                </td>
-                                <td>
-                                    {% if participation.statutPaiement == 'paye' %}
-                                        <span class="badge bg-success rounded-pill px-3 py-2">
-                                            <i class="fas fa-check-circle me-1"></i> Payé
-                                        </span>
-                                    {% else %}
-                                        <span class="badge bg-danger rounded-pill px-3 py-2">
-                                            <i class="fas fa-times-circle me-1"></i> Impayé
-                                        </span>
-                                    {% endif %}
-                                </td>
-                                {#<td>
-                                    <a href="{{ path('app_participation_toggle', {'id': participation.id}) }}" 
-                                       class="btn btn-sm {% if participation.statutPaiement == 'paye' %}btn-warning{% else %}btn-success{% endif %}"
-                                       onclick="return confirm('Confirmer le changement de statut ?')">
-                                        <i class="fas {% if participation.statutPaiement == 'paye' %}fa-undo{% else %}fa-check{% endif %} me-1"></i>
-                                        {% if participation.statutPaiement == 'paye' %}Marquer impayé{% else %}Marquer payé{% endif %}
-                                    </a>
-                                </td>#}
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
         {% else %}
-            <div class="text-center py-5">
-                <div class="mb-3">
-                    <i class="fas fa-calendar-times fa-4x text-muted opacity-25"></i>
-                </div>
-                <p class="text-muted fw-bold">Aucun événement enregistré pour cet adhérent.</p>
+        <div class="card shadow mb-4">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-calendar-alt fa-3x mb-3 d-block opacity-25"></i>
+                <p class="text-muted fw-bold">Aucune participation trouvée.</p>
             </div>
-        {% endif %}
+        </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

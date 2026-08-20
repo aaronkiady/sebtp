@@ -1,59 +1,220 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Détails Formation{% endblock %}
+{% block title %}Détails Formation - {{ formation.nom }}{% endblock %}
 
 {% block body %}
-<div class="main-wrapper">
-    <div class="form-card-wide" style="max-width: 800px;">
-        <div class="card-header-modern justify-content-between">
+<div class="main-wrapper mt-5">
+    <div class="form-card-wide p-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
             <div class="d-flex align-items-center">
-                <div class="header-icon"><i class="fas fa-info-circle"></i></div>
+                <a href="{{ path('app_formation_index') }}" class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
                 <div>
-                    <h4 class="mb-0 fw-800">{{ formation.nom }}</h4>
-                    <p class="text-muted mb-0 small">Détails techniques de la formation</p>
+                    <h1 class="h2 fw-bold text-dark mb-0">{{ formation.nom }}</h1>
+                    <p class="text-muted mb-0">Détails de la formation</p>
                 </div>
             </div>
-            <a href="{{ path('app_formation_edit', {'id': formation.id}) }}" class="btn-action btn-cute text-decoration-none">
-                <i class="fas fa-pen"></i> Modifier
-            </a>
+            <div class="d-flex gap-2">
+                <a href="{{ path('app_formation_edit', {'id': formation.id}) }}" class="btn-action btn-cute text-decoration-none">
+                    <i class="fas fa-pen"></i> Modifier
+                </a>
+            </div>
         </div>
 
-        <div class="p-4 p-md-5">
-            <div class="row g-4 mb-5">
-                <div class="col-md-6">
-                    <div class="p-3 border rounded-4 bg-light">
-                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Type de formation</label>
-                        <span class="fw-bold">{{ formation.type }}</span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="p-3 border rounded-4 bg-light">
-                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Organisateur</label>
-                        <span class="fw-bold">{{ formation.organisateur }}</span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="p-3 border rounded-4">
-                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Date de début</label>
-                        <span class="text-primary fw-bold"><i class="far fa-calendar-alt me-2"></i>{{ formation.dateDebut ? formation.dateDebut|date('d/m/Y') : 'Non définie' }}</span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="p-3 border rounded-4">
-                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Date de fin</label>
-                        <span class="text-success fw-bold"><i class="fas fa-calendar-check me-2"></i>{{ formation.dateFin ? formation.dateFin|date('d/m/Y') : 'Non définie' }}</span>
+        <div class="row g-4">
+            <!-- Informations générales -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted mb-3">
+                            <i class="fas fa-info-circle me-2"></i>Informations générales
+                        </h6>
+                        <div class="mb-3">
+                            <label class="text-muted small">Nom de la formation</label>
+                            <div class="fw-bold">{{ formation.nom }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Formateurs</label>
+                            <div class="fw-bold">{{ formation.formateurs|default('Non renseigné') }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Organisateur</label>
+                            <div class="fw-bold">{{ formation.organisateur|default('Non renseigné') }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Référence</label>
+                            <div class="fw-bold">{{ formation.reference|default('Non renseignée') }}</div>
+                        </div>
+                        {% if formation.remarque %}
+                        <div class="mb-3">
+                            <label class="text-muted small">Remarque</label>
+                            <div class="fw-bold">{{ formation.remarque }}</div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-            
 
-            <div class="d-flex justify-content-between align-items-center border-top pt-4">
-                <a href="{{ path('app_formation_index') }}" class="btn-action btn-cancel text-decoration-none">
-                    <i class="fas fa-arrow-left"></i> Retour à la liste
+            <!-- Période et Statistiques -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted mb-3">
+                            <i class="fas fa-calendar-alt me-2"></i>Période et statistiques
+                        </h6>
+                        <div class="mb-3">
+                            <label class="text-muted small">Date de début</label>
+                            <div class="fw-bold text-primary">
+                                <i class="far fa-calendar-alt me-2"></i>
+                                {{ formation.dateDebut ? formation.dateDebut|date('d/m/Y') : 'Non définie' }}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Date de fin</label>
+                            <div class="fw-bold text-success">
+                                <i class="fas fa-calendar-check me-2"></i>
+                                {{ formation.dateFin ? formation.dateFin|date('d/m/Y') : 'Non définie' }}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Durée</label>
+                            <div class="fw-bold">
+                                <i class="fas fa-clock me-2"></i>
+                                {% if formation.dateDebut and formation.dateFin %}
+                                    {{ formation.dateFin.diff(formation.dateDebut).days }} jours
+                                {% else %}
+                                    Non définie
+                                {% endif %}
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="mb-3">
+                            <label class="text-muted small">Nombre d'adhérents participants</label>
+                            <div class="fw-bold text-primary">
+                                <i class="fas fa-users me-2"></i>
+                                {{ formation.getNbParticipants }}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Nombre total des participants (formés)</label>
+                            <div class="fw-bold text-success">
+                                <i class="fas fa-user-graduate me-2"></i>
+                                {{ formation.getTotalBeneficiaires }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des participants -->
+        <div class="mt-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Liste des participants
+                        <span class="badge bg-primary ms-2">{{ formation.getNbParticipants }}</span>
+                    </h6>
+                    <div>
+                        <a href="{{ path('app_formation_ajouter_participant', {'id': formation.id}) }}" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus me-1"></i> Ajouter un participant
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Adhérent</th>
+                                    <th class="text-center">Nombre de participants (formés)</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if formation.participants|length > 0 %}
+                                    {% for participant in formation.participants %}
+                                        <tr>
+                                            <td class="fw-bold">
+                                                <a href="{{ path('app_liste_show', {'id': participant.id}) }}" class="text-decoration-none">
+                                                    <i class="fas fa-building me-2 text-muted"></i>
+                                                    {{ participant.nom }}
+                                                </a>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-info rounded-pill">
+                                                    <i class="fas fa-user-graduate me-1"></i>
+                                                    {{ formation.getNombreFormes(participant.id)|default(0) }}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group" role="group">
+                                                    <a href="{{ path('app_liste_show', {'id': participant.id}) }}" 
+                                                       class="btn btn-sm btn-outline-primary" title="Voir l'adhérent">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    <form method="post" action="{{ path('app_formation_retirer_participant', {'id': formation.id, 'participant_id': participant.id}) }}" 
+                                                          onsubmit="return confirm('Êtes-vous sûr de vouloir retirer ce participant ?');" 
+                                                          style="display: inline-block;">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('retirer_participant_' ~ participant.id) }}">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Retirer">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center py-5">
+                                            <div class="mb-3">
+                                                <i class="fas fa-users-slash fa-3x text-muted opacity-25"></i>
+                                            </div>
+                                            <p class="text-muted fw-bold mb-0">Aucun participant inscrit à cette formation</p>
+                                            <p class="text-muted small">Cliquez sur "Ajouter un participant" pour commencer</p>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                            {% if formation.participants|length > 0 %}
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td class="fw-bold">TOTAL</td>
+                                    <td class="text-center fw-bold text-success">
+                                        <i class="fas fa-user-graduate me-1"></i>
+                                        {{ formation.getTotalBeneficiaires }}
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+            <a href="{{ path('app_formation_index') }}" class="btn-action btn-cancel text-decoration-none">
+                <i class="fas fa-arrow-left"></i> Retour à la liste
+            </a>
+            <div class="d-flex gap-2">
+                <a href="{{ path('app_formation_show_participants', {'id': formation.id}) }}" class="btn btn-outline-primary">
+                    <i class="fas fa-edit me-2"></i> Gérer les participants
                 </a>
-                {#<div class="opacity-75">
-                    {{ include('formation/_delete_form.html.twig') }}
-                </div>#}
+                <form method="post" action="{{ path('app_formation_delete', {'id': formation.id}) }}" 
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette formation ? Cette action est irréversible.');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ formation.id) }}">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i> Supprimer
+                    </button>
+                </form>
             </div>
         </div>
     </div>

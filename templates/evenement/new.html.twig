@@ -4,129 +4,897 @@
 
 {% block body %}
 <div class="main-wrapper mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <a href="{{ path('app_evenement_index') }}" class="btn btn-outline-secondary btn-sm mb-3">
-                <i class="fas fa-arrow-left"></i> Retour à la liste
-            </a>
-            <h1 class="h2 fw-bold text-dark">Créer un nouvel événement</h1>
-            <p class="text-muted">Remplissez les informations ci-dessous</p>
-        </div>
-    </div>
+    <div class="form-card-wide p-4">
 
-    {#{% for message in app.flashes('warning') %}
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i>{{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    {% endfor %}#}
-
-    {{ form_start(form, {'attr': {'class': 'needs-validation', 'novalidate': 'novalidate'}}) }}
-    
-    <div class="form-card-wide mx-auto my-4">
-        <div class="card-header-modern">
-            <div class="header-icon">
-                <i class="fas fa-calendar-alt"></i>
-            </div>
-            <div>
-                <h4 class="mb-0 fw-800">Informations de l'événement</h4>
-                <p class="text-muted mb-0 small">Renseignez les détails de l'événement</p>
-            </div>
-        </div>
-
-        <div class="p-4 p-md-5">
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <label class="form-label">
-                        <i class="fas fa-tag me-2 opacity-50"></i>
-                        {{ form.nom.vars.label }}
-                    </label>
-                    {{ form_widget(form.nom, {'attr': {'class': 'form-control custom-input'}}) }}
-                    <div class="text-danger small mt-1">{{ form_errors(form.nom) }}</div>
-                </div>
-
-                <div class="col-md-6">
-                    <label class="form-label">
-                        <i class="fas fa-calendar-day me-2 opacity-50"></i>
-                        {{ form.date.vars.label }}
-                    </label>
-                    {{ form_widget(form.date, {'attr': {'class': 'form-control custom-input'}}) }}
-                    <div class="text-danger small mt-1">{{ form_errors(form.date) }}</div>
-                </div>
-
-                <div class="col-md-6">
-                    <label class="form-label">
-                        <i class="fas fa-money-bill-wave me-2 opacity-50"></i>
-                        {{ form.montant.vars.label }}
-                    </label>
-                    {{ form_widget(form.montant, {'attr': {'class': 'form-control custom-input'}}) }}
-                    <div class="text-danger small mt-1">{{ form_errors(form.montant) }}</div>
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label">
-                        <i class="fas fa-comment me-2 opacity-50"></i>
-                        {{ form.commentaire.vars.label }}
-                    </label>
-                    {{ form_widget(form.commentaire, {'attr': {'class': 'form-control custom-input'}}) }}
-                    <div class="text-danger small mt-1">{{ form_errors(form.commentaire) }}</div>
-                </div>
-
-                {#<div class="col-12">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Note:</strong> La sélection des participants est optionnelle. Vous pourrez ajouter des participants plus tard.
-                    </div>
-                    <label class="form-label fw-bold">
-                        <i class="fas fa-users me-2 opacity-50"></i>
-                        {{ form.participantsTemp.vars.label }} <span class="text-muted">(Optionnel)</span>
-                    </label>
-                    <div class="border rounded-3 p-3" style="max-height: 300px; overflow-y: auto;">
-                        {{ form_widget(form.participantsTemp, {'attr': {'class': 'participants-checkbox-list'}}) }}
-                    </div>
-                    <small class="text-muted">Vous pouvez sélectionner des participants maintenant ou les ajouter ultérieurement.</small>
-                    <div class="text-danger small mt-1">{{ form_errors(form.participantsTemp) }}</div>
-                </div>#}
-            </div>
-
-            {{ form_rest(form) }}
-
-            <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
-                <a href="{{ path('app_evenement_index') }}" class="btn-action btn-cancel text-decoration-none">
-                    <i class="fas fa-times me-2"></i> Annuler
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <a href="{{ path('app_evenement_index') }}"
+                   class="btn btn-outline-secondary btn-sm shadow-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
                 </a>
-                <button type="submit" class="btn-action btn-update">
-                    <i class="fas fa-save me-2"></i> Créer l'événement
+
+                <div class="header-icon"
+                     style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">Nouvel événement</h1>
+                    <p class="text-muted mb-0">
+                        Création d'un événement avec ses participants
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {# Messages flash #}
+        {% for message in app.flashes('error') %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                {{ message }}
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert"
+                        aria-label="Fermer">
                 </button>
             </div>
-        </div>
-    </div>
+        {% endfor %}
 
-    {{ form_end(form) }}
+        {{ form_start(form, {
+            'attr': {
+                'novalidate': 'novalidate'
+            }
+        }) }}
+
+        {# =========================
+           INFORMATIONS ÉVÉNEMENT
+           ========================= #}
+
+        <div class="row g-4">
+
+            <div class="col-md-6">
+                {{ form_row(form.nom) }}
+            </div>
+
+            <div class="col-md-3">
+                {{ form_row(form.periode) }}
+            </div>
+
+            <div class="col-md-3">
+                {{ form_row(form.date) }}
+            </div>
+
+            <div class="col-md-4">
+                {{ form_row(form.typeDocument) }}
+            </div>
+
+            <div class="col-md-4">
+                {{ form_row(form.montantFixe) }}
+            </div>
+
+            <div class="col-12">
+                {{ form_row(form.commentaire) }}
+            </div>
+
+        </div>
+
+
+        {# =========================
+           LIGNES DE DÉSIGNATION
+           ========================= #}
+
+        <div class="mt-4">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">
+                    <i class="fas fa-list me-2 text-primary"></i>
+                    Lignes de désignation
+                </h5>
+
+                <span class="badge bg-info">Optionnel</span>
+            </div>
+
+            <p class="text-muted small">
+                <i class="fas fa-info-circle me-1"></i>
+                Laissez vide si vous avez saisi un montant fixe ci-dessus.
+            </p>
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered" id="lignes-table">
+
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 60%;">
+                                Désignation
+                            </th>
+
+                            <th style="width: 30%;">
+                                Montant unitaire (MGA)
+                            </th>
+
+                            <th style="width: 10%;"></th>
+                        </tr>
+                    </thead>
+
+                    <tbody
+                        id="lignes-container"
+                        data-prototype="{{ form_widget(form.lignes.vars.prototype)|e('html_attr') }}"
+                    >
+
+                        {% for ligne in form.lignes %}
+
+                            <tr class="ligne-row">
+
+                                <td>
+                                    {{ form_widget(ligne.designation, {
+                                        'attr': {
+                                            'class': 'form-control form-control-sm'
+                                        }
+                                    }) }}
+                                </td>
+
+                                <td>
+                                    {{ form_widget(ligne.montantUnitaire, {
+                                        'attr': {
+                                            'class': 'form-control form-control-sm'
+                                        }
+                                    }) }}
+                                </td>
+
+                                <td class="text-center">
+
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger remove-ligne"
+                                            title="Supprimer">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                    <tfoot>
+                        <tr>
+                            <td colspan="3">
+
+                                <button type="button"
+                                        class="btn btn-sm btn-success"
+                                        id="add-ligne">
+                                    <i class="fas fa-plus me-1"></i>
+                                    Ajouter une ligne
+                                </button>
+
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        id="remove-all-lignes">
+                                    <i class="fas fa-trash me-1"></i>
+                                    Supprimer toutes les lignes
+                                </button>
+
+                            </td>
+                        </tr>
+                    </tfoot>
+
+                </table>
+
+            </div>
+
+        </div>
+
+
+        {# =========================
+           PARTICIPANTS
+           ========================= #}
+
+        <div class="mt-4">
+
+            <h5 class="fw-bold mb-3">
+                <i class="fas fa-users me-2 text-primary"></i>
+                Sélection des participants
+            </h5>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Seuls les adhérents <strong>actifs</strong> peuvent être sélectionnés.
+            </div>
+
+            <div class="mb-3">
+                <input
+                    type="text"
+                    id="participantSearch"
+                    class="form-control"
+                    placeholder="Rechercher un adhérent..."
+                >
+            </div>
+
+            <div class="border rounded-3 p-3"
+                 style="max-height: 500px; overflow-y: auto;">
+
+                {% for child in form.participants %}
+
+                    {% set adherentId = child.vars.value %}
+                    {% set adherentNom = child.vars.label %}
+
+                    <div class="participant-item border-bottom pb-3 mb-3"
+                         data-adherent-id="{{ adherentId }}">
+
+                        <div class="d-flex align-items-center mb-2">
+
+                            <div class="flex-grow-1">
+
+                                {{ form_widget(child, {
+                                    'attr': {
+                                        'class': 'form-check-input'
+                                    }
+                                }) }}
+
+                                <label class="form-check-label fw-bold">
+                                    {{ adherentNom }}
+                                </label>
+
+                            </div>
+
+                            {# ==========================================
+                               NOUVEAU : NOMBRE DE PARTICIPANTS
+                               ========================================== #}
+                            <div style="width: 180px; flex-shrink: 0;">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text" style="font-size: 11px;">
+                                        <i class="fas fa-users"></i>
+                                    </span>
+                                    <input type="number"
+                                        name="nb_participants[{{ adherentId }}]"
+                                        class="form-control form-control-sm nb-participants"
+                                        value="1"
+                                        min="1"
+                                        step="1"
+                                        placeholder="Nb participants">
+                                </div>
+                            </div>
+
+
+                        </div>
+
+                        {# ==========================================
+                           QUANTITÉS PAR DÉSIGNATION (si présentes)
+                           ========================================== #}
+                        <div class="ms-4 ps-3 border-start"
+                             id="quantites-container-{{ adherentId }}">
+
+                            <div class="row g-2">
+
+                                <div class="col-12">
+
+                                    <small class="text-muted">
+                                        <i class="fas fa-tags me-1"></i>
+                                        Quantités par désignation :
+                                    </small>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Cochez les adhérents et indiquez le nombre de participants.
+                <br>
+                <i class="fas fa-calculator me-1"></i>
+                <strong>Pour un montant fixe :</strong> total = montant fixe × nombre de participants.
+                <br>
+                <i class="fas fa-calculator me-1"></i>
+                <strong>Avec désignations :</strong> total = (quantité × prix unitaire) pour chaque ligne.
+            </small>
+
+        </div>
+
+
+        {# =========================
+           BOUTONS
+           ========================= #}
+
+        <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
+
+            <a href="{{ path('app_evenement_index') }}"
+               class="btn btn-outline-secondary">
+                <i class="fas fa-times me-2"></i>
+                Annuler
+            </a>
+
+            <button type="submit"
+                    class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>
+                Créer l'événement
+            </button>
+
+        </div>
+
+        {{ form_end(form) }}
+
+    </div>
 </div>
+{% endblock %}
+
+
+{% block javascripts %}
+{{ parent() }}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const lignesContainer = document.getElementById('lignes-container');
+    const addButton = document.getElementById('add-ligne');
+    const removeAllButton = document.getElementById('remove-all-lignes');
+
+    if (!lignesContainer) {
+        return;
+    }
+
+
+    /* ==========================================
+       RÉCUPÉRER LES LIGNES
+       ========================================== */
+
+    function getLignesData() {
+
+        const lignes = [];
+
+        lignesContainer
+            .querySelectorAll('.ligne-row')
+            .forEach(function (row, index) {
+
+                const designationInput =
+                    row.querySelector('input[name*="[designation]"]');
+
+                const montantInput =
+                    row.querySelector('input[name*="[montantUnitaire]"]');
+
+                if (!designationInput || !montantInput) {
+                    return;
+                }
+
+                const designation =
+                    designationInput.value.trim();
+
+                const montant =
+                    parseFloat(montantInput.value) || 0;
+
+                /*
+                 * Une ligne vide n'est pas considérée
+                 * comme une désignation.
+                 */
+                if (designation === '') {
+                    return;
+                }
+
+                lignes.push({
+                    id: index,
+                    designation: designation,
+                    montantUnitaire: montant
+                });
+
+            });
+
+        return lignes;
+    }
+
+
+    /* ==========================================
+       RÉINDEXER LES LIGNES
+       ========================================== */
+
+    function reindexLignes() {
+
+        const rows =
+            lignesContainer.querySelectorAll('.ligne-row');
+
+        rows.forEach(function (row, index) {
+
+            const designationInput =
+                row.querySelector('input[name*="[designation]"]');
+
+            const montantInput =
+                row.querySelector('input[name*="[montantUnitaire]"]');
+
+            if (designationInput) {
+
+                designationInput.name =
+                    `evenement[lignes][${index}][designation]`;
+
+            }
+
+            if (montantInput) {
+
+                montantInput.name =
+                    `evenement[lignes][${index}][montantUnitaire]`;
+
+            }
+
+        });
+    }
+
+
+    /* ==========================================
+       QUANTITÉS DES PARTICIPANTS
+       ========================================== */
+
+    function updateQuantitesLignes() {
+
+        const lignes = getLignesData();
+
+        document.querySelectorAll('.participant-item')
+            .forEach(function (item) {
+
+                const adherentId =
+                    item.dataset.adherentId;
+
+                const quantitesContainer =
+                    document.getElementById(
+                        'quantites-container-' + adherentId
+                    );
+
+                if (!quantitesContainer) {
+                    return;
+                }
+
+                quantitesContainer.innerHTML = '';
+
+
+                /*
+                 * Label
+                 */
+
+                const labelDiv =
+                    document.createElement('div');
+
+                labelDiv.className = 'row g-2';
+
+                labelDiv.innerHTML = `
+                    <div class="col-12">
+                        <small class="text-muted">
+                            <i class="fas fa-tags me-1"></i>
+                            Quantités par désignation :
+                        </small>
+                    </div>
+                `;
+
+                quantitesContainer.appendChild(labelDiv);
+
+
+                /*
+                 * Aucune ligne
+                 */
+
+                if (lignes.length === 0) {
+
+                    const emptyDiv =
+                        document.createElement('div');
+
+                    emptyDiv.className = 'row g-2';
+
+                    emptyDiv.innerHTML = `
+                        <div class="col-12">
+                            <small class="text-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Aucune désignation définie.
+                                Utilisez le champ "Nombre de participants" ci-dessus.
+                            </small>
+                        </div>
+                    `;
+
+                    quantitesContainer.appendChild(emptyDiv);
+
+                    return;
+                }
+
+
+                /*
+                 * Champs de quantité
+                 */
+
+                lignes.forEach(function (ligne, index) {
+
+                    const rowDiv =
+                        document.createElement('div');
+
+                    rowDiv.className = 'row g-2 mb-1';
+
+                    rowDiv.innerHTML = `
+                        <div class="col-md-6">
+
+                            <div class="input-group input-group-sm">
+
+                                <span
+                                    class="input-group-text"
+                                    style="
+                                        font-size: 11px;
+                                        max-width: 120px;
+                                        overflow: hidden;
+                                        text-overflow: ellipsis;
+                                        white-space: nowrap;
+                                    "
+                                    title="${escapeHtml(ligne.designation)}"
+                                >
+                                    ${escapeHtml(ligne.designation)}
+                                </span>
+
+                                <input
+                                    type="number"
+                                    name="quantite_designation[${adherentId}][${index}]"
+                                    class="form-control form-control-sm quantite-designation"
+                                    value="0"
+                                    min="0"
+                                    step="1"
+                                    placeholder="Qté"
+                                >
+
+                                <span
+                                    class="input-group-text"
+                                    style="font-size: 10px;"
+                                >
+                                    × ${ligne.montantUnitaire.toLocaleString('fr-FR')}
+                                </span>
+
+                            </div>
+
+                        </div>
+                    `;
+
+                    quantitesContainer.appendChild(rowDiv);
+
+                });
+
+            });
+    }
+
+
+    /* ==========================================
+       ÉCHAPPEMENT HTML
+       ========================================== */
+
+    function escapeHtml(value) {
+
+        const div = document.createElement('div');
+
+        div.textContent = value;
+
+        return div.innerHTML;
+    }
+
+
+    /* ==========================================
+       SUPPRIMER UNE LIGNE
+       ========================================== */
+
+    function removeLigne(button) {
+
+        const row =
+            button.closest('.ligne-row');
+
+        if (!row) {
+            return;
+        }
+
+        row.remove();
+
+        reindexLignes();
+
+        updateQuantitesLignes();
+    }
+
+
+    /* ==========================================
+       BOUTONS SUPPRESSION
+       ========================================== */
+
+    document.querySelectorAll('.remove-ligne')
+        .forEach(function (button) {
+
+            button.addEventListener(
+                'click',
+                function () {
+                    removeLigne(this);
+                }
+            );
+
+        });
+
+
+    /* ==========================================
+       AJOUTER UNE LIGNE
+       ========================================== */
+
+    if (addButton) {
+
+        addButton.addEventListener(
+            'click',
+            function () {
+
+                const prototype =
+                    lignesContainer.dataset.prototype;
+
+                if (!prototype) {
+                    console.error(
+                        'Prototype Symfony introuvable.'
+                    );
+                    return;
+                }
+
+                const index =
+                    lignesContainer
+                        .querySelectorAll('.ligne-row')
+                        .length;
+
+                const html =
+                    prototype.replace(
+                        /__name__/g,
+                        index
+                    );
+
+
+                /*
+                 * Le prototype doit contenir
+                 * les champs de la ligne.
+                 */
+
+                const tr =
+                    document.createElement('tr');
+
+                tr.className = 'ligne-row';
+
+                tr.innerHTML = `
+                    <td>
+                        ${html}
+                    </td>
+
+                    <td></td>
+
+                    <td class="text-center">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-danger remove-ligne"
+                            title="Supprimer"
+                        >
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                `;
+
+
+                /*
+                 * Si le prototype contient déjà
+                 * plusieurs champs, on replace
+                 * correctement le montant.
+                 */
+
+                const fields =
+                    tr.querySelectorAll(
+                        'input'
+                    );
+
+                if (fields.length >= 2) {
+
+                    const designationInput =
+                        fields[0];
+
+                    const montantInput =
+                        fields[1];
+
+                    const designationCell =
+                        tr.children[0];
+
+                    const montantCell =
+                        tr.children[1];
+
+                    designationCell.innerHTML = '';
+
+                    montantCell.innerHTML = '';
+
+                    designationCell.appendChild(
+                        designationInput
+                    );
+
+                    montantCell.appendChild(
+                        montantInput
+                    );
+
+                }
+
+
+                lignesContainer.appendChild(tr);
+
+
+                /*
+                 * Bouton supprimer
+                 */
+
+                const removeButton =
+                    tr.querySelector('.remove-ligne');
+
+                if (removeButton) {
+
+                    removeButton.addEventListener(
+                        'click',
+                        function () {
+                            removeLigne(this);
+                        }
+                    );
+
+                }
+
+
+                reindexLignes();
+
+                updateQuantitesLignes();
+
+            }
+        );
+    }
+
+
+    /* ==========================================
+       SUPPRIMER TOUTES LES LIGNES
+       ========================================== */
+
+    if (removeAllButton) {
+
+        removeAllButton.addEventListener(
+            'click',
+            function () {
+
+                if (!confirm(
+                    'Êtes-vous sûr de vouloir supprimer toutes les lignes ?'
+                )) {
+                    return;
+                }
+
+                lignesContainer
+                    .querySelectorAll('.ligne-row')
+                    .forEach(function (row) {
+                        row.remove();
+                    });
+
+                updateQuantitesLignes();
+
+            }
+        );
+
+    }
+
+
+    /* ==========================================
+       CHANGEMENT D'UNE LIGNE
+       ========================================== */
+
+    lignesContainer.addEventListener(
+        'input',
+        function (event) {
+
+            if (
+                event.target.matches(
+                    'input[name*="[designation]"], input[name*="[montantUnitaire]"]'
+                )
+            ) {
+                updateQuantitesLignes();
+            }
+
+        }
+    );
+
+
+    /* ==========================================
+       RECHERCHE PARTICIPANTS
+       ========================================== */
+
+    const searchInput =
+        document.getElementById(
+            'participantSearch'
+        );
+
+    if (searchInput) {
+
+        searchInput.addEventListener(
+            'input',
+            function () {
+
+                const searchTerm =
+                    this.value
+                        .toLowerCase()
+                        .trim();
+
+                document
+                    .querySelectorAll('.participant-item')
+                    .forEach(function (item) {
+
+                        const label =
+                            item.querySelector(
+                                '.form-check-label'
+                            );
+
+                        if (!label) {
+                            return;
+                        }
+
+                        const text =
+                            label.textContent
+                                .toLowerCase();
+
+                        item.style.display =
+                            (
+                                searchTerm === '' ||
+                                text.includes(searchTerm)
+                            )
+                                ? 'block'
+                                : 'none';
+
+                    });
+
+            }
+        );
+
+    }
+
+
+    /* ==========================================
+       INITIALISATION
+       ========================================== */
+
+    updateQuantitesLignes();
+
+});
+</script>
+{% endblock %}
+
+
+{% block stylesheets %}
+{{ parent() }}
 
 <style>
-.participants-checkbox-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.participants-checkbox-list label {
-    margin-left: 10px;
-    cursor: pointer;
-}
-.participants-checkbox-list input[type="checkbox"] {
-    margin-right: 10px;
-    cursor: pointer;
-    transform: scale(1.1);
-}
-.participants-checkbox-list div {
-    padding: 8px;
-    border-radius: 8px;
-    transition: background-color 0.2s;
-}
-.participants-checkbox-list div:hover {
-    background-color: #f8f9fa;
-}
+    .participant-item {
+        padding: 12px 8px;
+        border-radius: 6px;
+        transition: background-color 0.2s;
+    }
+
+    .participant-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .participant-item .form-check-input {
+        margin-right: 10px;
+        cursor: pointer;
+        transform: scale(1.1);
+    }
+
+    .participant-item .form-check-label {
+        cursor: pointer;
+        margin-bottom: 0;
+    }
+
+    .quantite-designation {
+        width: 80px;
+    }
+
+    .input-group-text {
+        font-size: 11px;
+        min-width: 80px;
+    }
+
+    .nb-participants {
+        width: 100%;
+    }
 </style>
 {% endblock %}
